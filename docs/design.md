@@ -93,6 +93,8 @@ monitor 后端由 GTK 主线程读取，后台 IPC 线程不会用空的 GDK 结
   loop、muted、fit、start offset 和性能策略合成后的目标 FPS。
 - `video-renderer` feature 会启动独立 GStreamer worker，消费同一份
   `render_sync`，并按输出管理 playbin 生命周期、loop、muted、pause/resume/stop。
+  性能策略合成出的 `target_max_fps` 会通过 `videorate ! capsfilter` 应用到
+  playbin 的 `video-filter`。
   当前实现先使用 headless sink 固化控制面和测试；把视频 sink 绑定到每个输出的
   Wayland/layer-shell surface 是下一步。
 - 支持 MP4/H.264、WebM/VP9/AV1，实际支持由系统插件决定。

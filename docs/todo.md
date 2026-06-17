@@ -52,7 +52,7 @@
 - [x] 实现 pause/resume/stop 的 pipeline 控制。
 - [ ] 将视频 sink 绑定到每个输出的 Wayland/layer-shell surface。
 - [ ] 实现 poster 显示。
-- [ ] 实现 max_fps 或 pipeline throttling。
+- [x] 实现 max_fps 或 pipeline throttling。
 - [ ] 验证 MP4/H.264、WebM/VP9、WebM/AV1。
 - [x] 添加 fullscreen 暂停策略接口。
 
