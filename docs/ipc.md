@@ -84,11 +84,20 @@ gilderctl stop [--output <name>]
 
 控制动画或移除壁纸。
 
+### properties
+
+```sh
+gilderctl properties get [key] [--output <name>]
+gilderctl properties set <key> <value-json> [--output <name>]
+gilderctl properties unset <key> [--output <name>]
+```
+
+读取、设置或清除壁纸用户属性。不带 `--output` 时操作全局/default 属性；带 `--output` 时操作指定输出的覆盖属性。`set` 的值按 JSON 解析，无法解析为 JSON 时作为字符串保存，因此 `true`、`0.5`、`{"x":1}` 和 `#ffaa00` 都能通过 CLI 传入。
+
 ## 计划命令
 
 - `load`：预加载壁纸包。
 - `config get/set`：读取或修改配置。
-- `properties get/set`：读取或修改壁纸用户属性。
 - `watch`：订阅输出变化、状态变化、错误事件。
 - `import`：导入 `.gwpdir` 或 `.gwp` 到用户数据目录。
 

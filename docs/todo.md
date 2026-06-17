@@ -8,7 +8,7 @@
 - [x] 写入设计文档、格式文档、转换文档和 TODO。
 - [x] 采用 `src/foo.rs` + `src/foo/` 的 Rust 模块组织方式。
 - [x] 初始化 Git 仓库。
-- [ ] 添加 CI：`cargo fmt`、`cargo check`、`cargo test`。
+- [x] 添加 CI：`cargo fmt`、`cargo check`、`cargo test`。
 
 ## M1: 格式与加载器
 
@@ -25,7 +25,8 @@
 - [x] 用真实 JSON parser 替换当前占位字符串匹配。
 - [x] 实现 JSON-RPC 错误响应。
 - [x] 添加 `outputs`。
-- [ ] 添加 `watch`、`properties set/get`。
+- [x] 添加 `properties set/get`。
+- [ ] 添加 `watch`。
 - [x] 状态写入 `$XDG_STATE_HOME/gilder/state.json`。
 - [x] 配置读取 `$XDG_CONFIG_HOME/gilder/config.toml`。
 - [x] socket 权限和 stale socket 处理。
