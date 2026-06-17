@@ -19,6 +19,13 @@ Run the codec smoke:
 scripts/video-codec-smoke.sh
 ```
 
+Standalone Ubuntu CI jobs should install the smoke runtime dependencies first:
+
+```sh
+scripts/install-video-codec-smoke-deps-ubuntu.sh
+scripts/video-codec-smoke.sh --report-dir /tmp/gilder-video-codec-smoke
+```
+
 The script generates tiny synthetic samples and validates:
 
 - MP4/H.264 can be generated with `ffmpeg` and decoded by GStreamer.
@@ -92,8 +99,10 @@ On Ubuntu-like systems the strict smoke path expects:
 - `gstreamer1.0-plugins-ugly`
 
 The GitHub Actions workflow installs the full CI dependency set through
-`scripts/install-ci-deps-ubuntu.sh`; use the same helper on Ubuntu CI images
-when reproducing codec smoke failures.
+`scripts/install-ci-deps-ubuntu.sh`; codec-only CI jobs can use
+`scripts/install-video-codec-smoke-deps-ubuntu.sh`. Do not run strict codec
+smoke on a fresh Ubuntu CI image without one of these installers, because
+`gst-launch-1.0` is provided by `gstreamer1.0-tools`.
 
 The GTK video surface path also needs a runtime plugin that provides
 `gtk4paintablesink` such as `gst-plugin-gtk4`. Package names differ by

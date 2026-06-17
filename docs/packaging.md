@@ -15,7 +15,9 @@ The daemon is normally built with `gtk-renderer` for static wallpaper display.
 Video support also needs `video-renderer` plus host GStreamer plugins. MP4/H.264
 and WebM/VP9/AV1 smoke validation expects `gstreamer1.0-tools`,
 `gstreamer1.0-libav`, and the base, good, bad, and ugly plugin sets on
-Ubuntu-like systems.
+Ubuntu-like systems. Ubuntu CI jobs that only need codec smoke can install
+those runtime packages with `scripts/install-video-codec-smoke-deps-ubuntu.sh`;
+the full project CI dependency helper is `scripts/install-ci-deps-ubuntu.sh`.
 Real GTK/layer-shell video display additionally needs a runtime plugin that
 provides `gtk4paintablesink`, such as `gst-plugin-gtk4`; Gilder probes it at
 runtime and keeps the poster visible when it is unavailable.
