@@ -6,6 +6,9 @@ Gilder IPC 是用户会话内的 Unix socket 协议：
 $XDG_RUNTIME_DIR/gilder/gilder.sock
 ```
 
+`GILDER_SOCKET=/path/to/socket` 可以覆盖 daemon 和 `gilderctl` 使用的 socket
+路径，适合测试脚本或多实例诊断；生产会话通常使用默认路径。
+
 早期使用 JSON Lines，每行一个请求或响应。后续可保留 JSON-RPC 2.0 形态，并在大流量事件订阅中切换到更紧凑的编码。
 
 ## 设计目标

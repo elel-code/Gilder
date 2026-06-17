@@ -52,6 +52,7 @@
 - [x] 实现 pause/resume/stop 的 pipeline 控制。
 - [x] 将视频 sink 通过 GTK paintable 接入每个输出的 layer-shell window。
 - [x] 在 IPC status/watch 中报告视频 surface 运行时能力。
+- [x] 添加 Wayland 视频 surface smoke 验证脚本。
 - [ ] 在真实 niri/Hyprland Wayland 会话验证视频 surface 显示。
 - [x] 实现 poster 显示。
 - [x] 实现 max_fps 或 pipeline throttling。

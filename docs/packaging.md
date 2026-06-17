@@ -41,6 +41,10 @@ packaging/build-dist.sh --features gtk-renderer
 packaging/build-dist.sh --profile debug --no-build --dest /tmp/gilder-dist
 ```
 
+Validation helpers are installed under
+`share/doc/gilder/scripts/video-codec-smoke.sh` and
+`share/doc/gilder/scripts/wayland-video-surface-smoke.sh`.
+
 ## systemd User Service
 
 The example user service is in `packaging/systemd/gilder.service`.
