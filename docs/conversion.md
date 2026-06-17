@@ -83,7 +83,8 @@ gilder-convert wallpaper-engine --allow-web <source> <dest.gwpdir>
 - 视频复制到 `assets/`。
 - poster 复制；缺失 preview 时优先调用 `ffmpeg` 从第一帧生成 `previews/poster.jpg` 和 `previews/thumbnail.jpg`，如果 `ffmpeg` 不在 `PATH` 或解码失败，则生成 SVG fallback 并在转换报告写入 warning。
 - `entry.type = "video"`。
-- 默认 `loop = true`、`muted = true`。
+- 默认 `loop = true`、`muted = true`。如果 `project.json` 有明确音频开关或音频文件字段，
+  转换器会设置 `runtime.allow_audio = true` 并把 video entry `muted` 设为 `false`。
 
 转码策略：
 
@@ -109,7 +110,8 @@ gilder-convert wallpaper-engine --allow-web <source> <dest.gwpdir>
 
 - 默认禁止网络请求。
 - 默认禁止访问包根之外的本地文件。
-- 音频可视化、媒体集成、RGB 硬件接口先记录为 unsupported feature。
+- 音频可视化、媒体集成、RGB 硬件接口先记录为 unsupported feature；检测到 Web
+  或 Scene 音频意图时会写入转换报告，但不会打开 `runtime.allow_audio`。
 - `directory` 属性可迁移为普通 `file`/`directory` schema，但运行时能力后置实现。
 
 ## Scene 转换
