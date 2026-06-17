@@ -76,7 +76,7 @@
 - [x] 复制 preview 为 poster 和 thumbnail。
 - [x] 缺失 preview 时从图片生成 poster 和 thumbnail。
 - [x] 缺失 preview 时为视频生成 fallback poster 和 thumbnail。
-- [ ] 缺失 preview 时从视频首帧生成 poster 和 thumbnail。
+- [x] 缺失 preview 时从视频首帧生成 poster 和 thumbnail。
 - [x] Web 项目复制与 bridge 注入。
 - [x] 用户属性映射。
 - [x] 生成 `metadata/conversion-report.json`。

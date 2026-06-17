@@ -18,16 +18,20 @@ gilder-convert \- convert and pack Gilder wallpaper packages
 packs and unpacks Gilder wallpaper packages and converts local Wallpaper Engine
 projects into Gilder packages.
 .PP
-Wallpaper Engine conversion currently supports static image, video, and web
-projects. Scene and executable application projects are reported clearly in
+Wallpaper Engine conversion currently supports static image, video, web, and
+conservative scene-lite projects. Executable application projects are reported clearly in
 .I metadata/conversion-report.json
 and are not executed.
 .SH OUTPUT
 Converted projects contain
 .I manifest.gilder.json
 plus copied assets, previews, and metadata. Missing previews are generated from
-static source images when possible; video projects without previews receive a
-metadata-based SVG fallback until first-frame extraction is implemented.
+static source images when possible. Video projects without previews use
+.B ffmpeg
+from
+.I PATH
+to generate first-frame poster and thumbnail images, then fall back to a
+metadata-based SVG preview if extraction is unavailable or fails.
 .SH SEE ALSO
 .BR gilderd (1),
 .BR gilderctl (1)

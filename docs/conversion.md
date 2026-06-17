@@ -16,7 +16,7 @@
 gilder-convert wallpaper-engine <source-project-dir> <dest.gwpdir>
 ```
 
-当前实现支持静态图片、视频、Web 和保守 `scene-lite` 项目的 `.gwpdir` 输出；application/executable 项目会生成转换报告并拒绝转换。缺失预览图时，静态图片项目会从源图生成 poster/thumbnail，视频和 Scene 项目会生成 metadata-based SVG fallback；视频首帧提取后续再接入。
+当前实现支持静态图片、视频、Web 和保守 `scene-lite` 项目的 `.gwpdir` 输出；application/executable 项目会生成转换报告并拒绝转换。缺失预览图时，静态图片项目会从源图生成 poster/thumbnail，视频项目会优先通过本机 `ffmpeg` 从首帧生成 poster/thumbnail，失败时回退到 metadata-based SVG fallback；Scene 项目会生成 metadata-based SVG fallback。
 
 已支持：
 
@@ -81,7 +81,7 @@ gilder-convert wallpaper-engine --allow-web <source> <dest.gwpdir>
 输出：
 
 - 视频复制到 `assets/`。
-- poster 复制；缺失 preview 时生成 SVG fallback，后续可升级为首帧提取。
+- poster 复制；缺失 preview 时优先调用 `ffmpeg` 从第一帧生成 `previews/poster.jpg` 和 `previews/thumbnail.jpg`，如果 `ffmpeg` 不在 `PATH` 或解码失败，则生成 SVG fallback 并在转换报告写入 warning。
 - `entry.type = "video"`。
 - 默认 `loop = true`、`muted = true`。
 

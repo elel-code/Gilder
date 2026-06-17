@@ -13,6 +13,8 @@ Install these binaries into a directory visible to the user session:
 
 The daemon is normally built with `gtk-renderer` for static wallpaper display.
 Video support also needs `video-renderer` plus host GStreamer plugins.
+Wallpaper Engine video preview extraction in `gilder-convert` can use `ffmpeg`
+from `PATH`; packages may declare it as an optional runtime dependency.
 
 ## Distribution Tarball
 
