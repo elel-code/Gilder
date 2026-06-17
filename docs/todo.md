@@ -57,6 +57,7 @@
 - [x] 添加 CPU/RSS/status 性能采样脚本。
 - [x] 将 active-video 性能采样接入 Wayland 视频 surface smoke。
 - [x] 将 paused-video 性能采样接入 Wayland 视频 surface smoke。
+- [x] 在性能采样证据中输出 render decision CSV 和摘要。
 - [x] 实现 poster 显示。
 - [x] 实现 max_fps 或 pipeline throttling。
 - [x] 添加 MP4/WebM codec smoke 验证脚本。

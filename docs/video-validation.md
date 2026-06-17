@@ -125,7 +125,10 @@ scripts/wayland-video-surface-smoke.sh --sample-paused --sample-duration 30 --ke
 
 The script finds a running `gilderd` process, samples `ps` CPU/RSS/VSZ fields,
 computes a small `summary.txt`, and writes one `gilderctl status` JSON snapshot
-per sample. Pass `--pid`, `--socket`, or `--gilderctl` when testing an isolated
-daemon such as the Wayland surface smoke script. The CSV, summary, and raw
-status files are intended to be compared between scenarios; GPU sampling remains
-platform-specific follow-up work.
+per sample. It also asks `gilderctl status --decisions-csv --from-file` to
+produce `decisions.csv` and `decision-summary.txt`, so active/paused,
+fullscreen, and battery scenarios can be compared by both resource usage and
+the daemon's actual `mode/reason/max_fps` decision. Pass `--pid`, `--socket`, or
+`--gilderctl` when testing an isolated daemon such as the Wayland surface smoke
+script. The CSV, summaries, and raw status files are intended to be compared
+between scenarios; GPU sampling remains platform-specific follow-up work.

@@ -57,12 +57,15 @@ gilderctl ping
 
 ```sh
 gilderctl status
+gilderctl status --decisions-csv
+gilderctl status --decisions-csv --from-file status-001.json
 ```
 
 返回 daemon 状态、桌面快照、输出列表、当前壁纸、暂停状态、配置/状态文件位置、性能决策信息、renderer 能力诊断和 `render_sync`。
 `render_sync` 包含静态图片渲染器下一次同步需要执行的 `plans`、视频渲染器后续要消费的 `video_plans`、需要关闭的 `removals`、包加载/格式错误 `errors`，以及每个输出的 `decisions`。
 视频壁纸有 poster 时，`plans` 会包含同一输出的静态 poster 占位计划，`video_plans` 仍包含实际视频 pipeline 计划。
 `decisions` 会记录输出动作、当前壁纸路径和由桌面状态性能策略产生的 `mode/max_fps/reason`，视频/GStreamer 渲染器会用它执行暂停或限帧。`.gwp` 包会先解包到 `$XDG_CACHE_HOME/gilder/render-cache/`，再生成计划。
+`--decisions-csv` 会把 `render_sync.decisions` 输出为 `output_name,action,mode,reason,max_fps,wallpaper` CSV，便于性能采样脚本和人工对比 active/paused/fullscreen/battery 场景；`--from-file` 可以重放已经保存的 `gilderctl status` JSON-RPC 响应。
 daemon 会周期刷新桌面快照，只有快照变化时才发送 `desktop.changed` 事件；只有 `render_sync` 实际变化时才投递给渲染器。
 启用 `gtk-renderer` feature 的 daemon 会在 GTK 主线程消费同一份 `render_sync`，并把可用输出同步到 layer-shell background 窗口。
 同时启用 `gtk-renderer` 和 `video-renderer` 时，GTK 主线程会尝试用 `gtk4paintablesink` 把视频 paintable 放入对应输出的 layer-shell 窗口；只启用 `video-renderer` 时，daemon 会启动 headless GStreamer worker 消费 `video_plans`，负责视频 pipeline 生命周期控制。

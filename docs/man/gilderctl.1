@@ -21,6 +21,14 @@ Check daemon availability and protocol compatibility.
 .B status
 Print daemon state, desktop outputs, persisted state, and current render sync.
 .TP
+.B status --decisions-csv
+.RB [ "--from-file " status.json ]
+Print render sync decisions as CSV. With
+.B --from-file
+the CSV is generated from a saved
+.B gilderctl status
+JSON-RPC response instead of contacting the daemon.
+.TP
 .B outputs
 Print the daemon's current desktop output snapshot.
 .TP
