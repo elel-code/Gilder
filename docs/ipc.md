@@ -56,7 +56,15 @@ gilderctl ping
 gilderctl status
 ```
 
-返回 daemon 状态、输出列表、当前壁纸、暂停状态和性能信息。
+返回 daemon 状态、输出列表、当前壁纸、暂停状态、配置/状态文件位置和性能决策信息。
+
+### outputs
+
+```sh
+gilderctl outputs
+```
+
+返回 daemon 当前知道的输出列表。早期实现会合并持久化状态中的输出和合成器适配器提供的输出；在真实合成器适配器接入前，列表可能只包含通过 IPC 设置过的输出。
 
 ### set
 
@@ -78,7 +86,6 @@ gilderctl stop [--output <name>]
 
 ## 计划命令
 
-- `outputs`：列出输出和可用名称。
 - `load`：预加载壁纸包。
 - `config get/set`：读取或修改配置。
 - `properties get/set`：读取或修改壁纸用户属性。
@@ -98,4 +105,3 @@ gilderctl stop [--output <name>]
 ## 稳定性
 
 协议版本从 `1` 开始。破坏性变更必须提升 `protocol`，并保持 `ping` 可用于版本协商。
-

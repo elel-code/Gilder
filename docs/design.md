@@ -110,6 +110,17 @@ Rust 模块组织采用 2018+ 常见布局：`src/foo.rs` 作为模块入口，`
 - 输出不可见、显示器断开、用户暂停、合成器 fullscreen 时暂停动画。
 - 对 HiDPI 输出优先选高分辨率 variant，避免运行时放大模糊。
 
+## 桌面状态性能策略
+
+性能策略独立于 GTK 渲染器和具体合成器适配器：
+
+- 合成器适配器提供 `DesktopSnapshot`，包含输出可见性、focused、fullscreen、工作区和电源状态。
+- daemon 持久化 `AppState`，记录每个输出的壁纸、暂停状态和用户属性。
+- `PerformanceConfig` 从 `$XDG_CONFIG_HOME/gilder/config.toml` 读取，控制 fullscreen、unfocused、battery 时继续、限帧或暂停。
+- `decide_performance` 将配置、桌面状态和输出状态合成为渲染决策：active、throttled 或 paused。
+
+这让后续 niri/Hyprland 适配器只需要负责提供准确桌面状态，渲染器只需要执行策略结果。
+
 ## 安全原则
 
 - `.gwp` 和 `.gwpdir` 不允许 manifest 路径逃逸包根目录。

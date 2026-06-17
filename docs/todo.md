@@ -7,7 +7,7 @@
 - [x] 定义基础 IPC socket 路径和命令。
 - [x] 写入设计文档、格式文档、转换文档和 TODO。
 - [x] 采用 `src/foo.rs` + `src/foo/` 的 Rust 模块组织方式。
-- [ ] 初始化 Git 仓库。
+- [x] 初始化 Git 仓库。
 - [ ] 添加 CI：`cargo fmt`、`cargo check`、`cargo test`。
 
 ## M1: 格式与加载器
@@ -24,11 +24,12 @@
 
 - [x] 用真实 JSON parser 替换当前占位字符串匹配。
 - [x] 实现 JSON-RPC 错误响应。
-- [ ] 添加 `outputs`、`watch`、`properties set/get`。
-- [ ] 状态写入 `$XDG_STATE_HOME/gilder/state.json`。
-- [ ] 配置读取 `$XDG_CONFIG_HOME/gilder/config.toml`。
-- [ ] socket 权限和 stale socket 处理。
-- [ ] daemon 单实例检测。
+- [x] 添加 `outputs`。
+- [ ] 添加 `watch`、`properties set/get`。
+- [x] 状态写入 `$XDG_STATE_HOME/gilder/state.json`。
+- [x] 配置读取 `$XDG_CONFIG_HOME/gilder/config.toml`。
+- [x] socket 权限和 stale socket 处理。
+- [x] daemon 单实例检测。
 
 ## M3: GTK/Wayland 静态壁纸
 
@@ -52,6 +53,8 @@
 
 ## M5: 合成器适配
 
+- [x] 定义合成器输出/桌面状态快照模型。
+- [x] 定义 fullscreen、unfocused、battery 等性能策略决策层。
 - [ ] 通用 GDK monitor 后端。
 - [ ] Hyprland IPC 后端。
 - [ ] niri IPC 后端。
