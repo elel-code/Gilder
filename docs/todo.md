@@ -63,6 +63,7 @@
 - [x] 将 active-video 性能采样接入 Wayland 视频 surface smoke。
 - [x] 将 paused-video 性能采样接入 Wayland 视频 surface smoke。
 - [x] 在性能采样证据中输出 render decision CSV 和摘要。
+- [x] 在 decision CSV 中记录计划类型、资源、fit、视频限帧和静音状态。
 - [x] 单次 render sync 内复用同一路径壁纸包的加载结果。
 - [x] 实现 poster 显示。
 - [x] 实现 max_fps 或 pipeline throttling。

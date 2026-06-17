@@ -23,6 +23,13 @@ Standalone Ubuntu CI jobs should install the smoke runtime dependencies first:
 
 ```sh
 scripts/install-video-codec-smoke-deps-ubuntu.sh
+scripts/video-codec-smoke.sh --work-dir /tmp
+```
+
+Use a stable report directory when the CI job should upload artifacts:
+
+```sh
+scripts/install-video-codec-smoke-deps-ubuntu.sh
 scripts/video-codec-smoke.sh --report-dir /tmp/gilder-video-codec-smoke
 ```
 
@@ -103,6 +110,10 @@ The GitHub Actions workflow installs the full CI dependency set through
 `scripts/install-video-codec-smoke-deps-ubuntu.sh`. Do not run strict codec
 smoke on a fresh Ubuntu CI image without one of these installers, because
 `gst-launch-1.0` is provided by `gstreamer1.0-tools`.
+If CI fails with `FAIL: gst-launch-1.0 is not available`, the dependency install
+step did not run or did not complete before the codec smoke command. Use
+`--allow-missing` only for optional smoke jobs where missing codecs should be
+recorded as skips instead of failures.
 
 The GTK video surface path also needs a runtime plugin that provides
 `gtk4paintablesink` such as `gst-plugin-gtk4`. Package names differ by
