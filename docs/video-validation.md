@@ -122,6 +122,10 @@ The GitHub Actions workflow installs the full CI dependency set through
 `scripts/install-video-codec-smoke-deps-ubuntu.sh`. Do not run strict codec
 smoke on a fresh Ubuntu CI image without one of these installers, because
 `gst-launch-1.0` is provided by `gstreamer1.0-tools`.
+As a guardrail, `scripts/video-codec-smoke.sh` will auto-run the codec
+dependency installer when strict mode is used on a GitHub Actions Ubuntu runner
+and `ffmpeg` or `gst-launch-1.0` is missing. Local runs still fail explicitly
+unless `--allow-missing` is passed.
 If CI fails with `FAIL: gst-launch-1.0 is not available`, the dependency install
 step did not run or did not complete before the codec smoke command. Use
 `--allow-missing` only for optional smoke jobs where missing codecs should be
