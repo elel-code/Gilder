@@ -43,7 +43,9 @@ packaging/build-dist.sh --profile debug --no-build --dest /tmp/gilder-dist
 
 Validation helpers are installed under
 `share/doc/gilder/scripts/video-codec-smoke.sh` and
-`share/doc/gilder/scripts/wayland-video-surface-smoke.sh`.
+`share/doc/gilder/scripts/wayland-video-surface-smoke.sh`, with
+`share/doc/gilder/scripts/performance-snapshot.sh` for compositor-session
+resource sampling.
 
 ## systemd User Service
 

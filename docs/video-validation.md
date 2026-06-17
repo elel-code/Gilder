@@ -99,3 +99,19 @@ The GTK paintable sink code path still needs compositor-facing checks:
 - fullscreen pause and resume latency;
 - battery/unfocused throttling behavior;
 - CPU, memory, and GPU usage sampling while active and paused.
+
+## Performance Sampling
+
+For repeatable active/paused/fullscreen/battery comparisons, collect daemon
+resource and status evidence while the scenario is running:
+
+```sh
+scripts/performance-snapshot.sh --label active-video --duration 30 --interval 1 --keep
+scripts/performance-snapshot.sh --label paused-video --duration 30 --interval 1 --keep
+```
+
+The script finds a running `gilderd` process, samples `ps` CPU/RSS/VSZ fields,
+and writes one `gilderctl status` JSON snapshot per sample. Pass `--pid`,
+`--socket`, or `--gilderctl` when testing an isolated daemon such as the Wayland
+surface smoke script. The CSV and raw status files are intended to be compared
+between scenarios; GPU sampling remains platform-specific follow-up work.

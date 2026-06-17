@@ -54,6 +54,7 @@
 - [x] 在 IPC status/watch 中报告视频 surface 运行时能力。
 - [x] 添加 Wayland 视频 surface smoke 验证脚本。
 - [ ] 在真实 niri/Hyprland Wayland 会话验证视频 surface 显示。
+- [x] 添加 CPU/RSS/status 性能采样脚本。
 - [x] 实现 poster 显示。
 - [x] 实现 max_fps 或 pipeline throttling。
 - [x] 添加 MP4/WebM codec smoke 验证脚本。
