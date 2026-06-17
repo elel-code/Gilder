@@ -78,6 +78,7 @@ Useful options:
 ```sh
 scripts/wayland-video-surface-smoke.sh --output eDP-1
 scripts/wayland-video-surface-smoke.sh --sample-performance --keep
+scripts/wayland-video-surface-smoke.sh --simulate-power battery --sample-performance --keep
 scripts/wayland-video-surface-smoke.sh --sample-paused --keep
 scripts/wayland-video-surface-smoke.sh --allow-missing
 scripts/wayland-video-surface-smoke.sh --no-build --keep
@@ -92,6 +93,10 @@ runs `performance-snapshot.sh` against the isolated daemon and writes
 same kept work directory. With `--sample-paused`, it captures the active sample,
 pauses the selected output, verifies a `user-paused` performance decision,
 captures `performance-paused/`, and resumes the output.
+With `--simulate-power battery`, it starts the isolated daemon with
+`GILDER_POWER_STATE=battery`, verifies that status reports `power: battery`,
+checks for a battery performance decision after applying the wallpaper, and
+stores the primary performance sample under `performance-battery/`.
 
 ## Runtime Packages
 
@@ -162,3 +167,6 @@ modes, muted video counts, and target FPS ranges. Pass `--pid`, `--socket`, or
 `--gilderctl` when testing an isolated daemon such as the Wayland surface smoke
 script. The CSV, summaries, and raw status files are intended to be compared
 between scenarios; GPU sampling remains platform-specific follow-up work.
+For battery policy comparisons on machines that are not actually discharging,
+run the daemon or smoke script with `GILDER_POWER_STATE=battery`; unset it to
+return to sysfs-based power detection.

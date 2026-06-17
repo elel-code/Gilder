@@ -26,6 +26,15 @@ Render cache and unpacked wallpaper archives.
 .TP
 .I $XDG_RUNTIME_DIR/gilder/gilder.sock
 IPC socket.
+.SH ENVIRONMENT
+.TP
+.B GILDER_POWER_STATE
+Validation override for the daemon power state. Accepted values are
+.BR ac ,
+.BR battery ,
+and
+.BR unknown .
+When unset, Gilder reads power state from sysfs.
 .SH SEE ALSO
 .BR gilderctl (1),
 .BR gilder-convert (1)

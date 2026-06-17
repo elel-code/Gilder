@@ -72,6 +72,9 @@ monitor 后端由 GTK 主线程读取，后台 IPC 线程不会用空的 GDK 结
 `DesktopSnapshot.power`。会话活跃状态会在 systemd-logind 可用时通过
 `XDG_SESSION_ID` 和 `loginctl show-session ... Active` 读取；不可用时保守视为
 active。
+验证和性能采样可以用 `GILDER_POWER_STATE=ac|battery|unknown` 覆盖当前 daemon
+进程看到的电源状态，便于在台式机或 CI 中复现 battery throttling；未设置时仍只读
+真实 sysfs 状态。
 
 ## 渲染路径
 
@@ -163,6 +166,8 @@ active。
 - 合成器适配器提供 `DesktopSnapshot`，包含输出可见性、focused、fullscreen、工作区和电源状态。
 - 电源状态由 Linux `power_supply` sysfs 提供；系统电池放电时触发 battery
   策略，外接电源在线或电池正在充电/已满时视为 AC。
+- `GILDER_POWER_STATE=ac|battery|unknown` 是验证用覆盖入口，可以强制当前 daemon
+  进程的 `DesktopSnapshot.power`，用于稳定采集 battery/AC 对比证据。
 - 会话状态由 logind 提供；当用户切换到非活跃 session/VT 时，
   `SessionInactive` 决策会暂停渲染。
 - daemon 持久化 `AppState`，记录每个输出的壁纸、暂停状态和用户属性。
