@@ -56,6 +56,7 @@ Useful options:
 
 ```sh
 scripts/wayland-video-surface-smoke.sh --output eDP-1
+scripts/wayland-video-surface-smoke.sh --sample-performance --keep
 scripts/wayland-video-surface-smoke.sh --allow-missing
 scripts/wayland-video-surface-smoke.sh --no-build --keep
 ```
@@ -63,7 +64,10 @@ scripts/wayland-video-surface-smoke.sh --no-build --keep
 The smoke is intentionally partly visual: after the script reports success,
 confirm that the selected output shows the generated moving test video. It also
 checks that `gtk4paintablesink` is available and that daemon status contains an
-active `render_sync.video_plans` entry.
+active `render_sync.video_plans` entry. With `--sample-performance`, it also
+runs `performance-snapshot.sh` against the isolated daemon and writes
+`performance-active/samples.csv`, `summary.txt`, and status snapshots under the
+same kept work directory.
 
 ## Runtime Packages
 
@@ -108,6 +112,7 @@ resource and status evidence while the scenario is running:
 ```sh
 scripts/performance-snapshot.sh --label active-video --duration 30 --interval 1 --keep
 scripts/performance-snapshot.sh --label paused-video --duration 30 --interval 1 --keep
+scripts/wayland-video-surface-smoke.sh --sample-performance --sample-duration 30 --keep
 ```
 
 The script finds a running `gilderd` process, samples `ps` CPU/RSS/VSZ fields,
