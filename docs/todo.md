@@ -29,6 +29,7 @@
 - [x] 添加 `watch`。
 - [x] 状态写入 `$XDG_STATE_HOME/gilder/state.json`。
 - [x] 配置读取 `$XDG_CONFIG_HOME/gilder/config.toml`。
+- [x] 配置默认壁纸和按输出壁纸参与渲染计划。
 - [x] socket 权限和 stale socket 处理。
 - [x] daemon 单实例检测。
 
