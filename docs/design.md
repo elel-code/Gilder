@@ -75,6 +75,10 @@ monitor 后端会随 GTK 渲染器接入。
 - 加载 PNG、JPEG、WebP、AVIF，后续按系统库能力扩展。
 - 在包加载时读取尺寸和色彩信息，按输出选择最接近的 variant。
 - 渲染层只处理 fit/crop/tile/solid background，不在热路径做重复解码。
+- `gtk-renderer` feature 使用 GTK 4 与 gtk4-layer-shell 创建 background layer
+  窗口，并通过 CSS background 映射 `cover`、`contain`、`stretch`、`tile`、
+  `center`。该模块已经可编译，后续需要把 daemon 主循环切换到 GTK application
+  并把 IPC 状态变更应用到窗口。
 
 视频壁纸：
 

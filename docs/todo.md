@@ -34,11 +34,11 @@
 
 ## M3: GTK/Wayland 静态壁纸
 
-- [ ] 引入 GTK-rs。
-- [ ] 选择并接入 layer-shell 支持。
+- [x] 引入 GTK-rs。
+- [x] 选择并接入 layer-shell 支持。
 - [ ] 为每个输出创建 background layer 窗口。
 - [ ] 实现静态图片解码和显示。
-- [ ] 实现 fit mode：cover、contain、stretch、tile、center。
+- [x] 实现 fit mode：cover、contain、stretch、tile、center。
 - [ ] 支持输出热插拔。
 - [ ] 支持按 output 设置不同壁纸。
 
@@ -56,7 +56,7 @@
 
 - [x] 定义合成器输出/桌面状态快照模型。
 - [x] 定义 fullscreen、unfocused、battery 等性能策略决策层。
-- [ ] 通用 GDK monitor 后端。
+- [x] 通用 GDK monitor 后端。
 - [x] Hyprland IPC 后端。
 - [x] niri IPC 后端。
 - [x] 输出名称稳定映射。
