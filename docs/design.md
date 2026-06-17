@@ -135,8 +135,9 @@ active。
 - 转换器生成包的导入目录。
 
 配置里的 `default_wallpaper` 和 `[outputs.<name>].wallpaper` 会作为默认绑定参与
-`render_sync`。IPC 产生的 persisted state 是运行时覆盖层，优先级为：输出状态
-壁纸、默认状态壁纸、输出配置壁纸、默认配置壁纸。
+`render_sync`，`[outputs.<name>].fit` 可以覆盖该输出上的 manifest fit mode。IPC
+产生的 persisted state 是运行时覆盖层，壁纸选择优先级为：输出状态壁纸、默认状态
+壁纸、输出配置壁纸、默认配置壁纸。
 
 ## 性能原则
 
@@ -179,6 +180,7 @@ battery_max_fps = 24
 
 [outputs."HDMI-A-1"]
 wallpaper = "/home/me/Wallpapers/quiet.gwpdir"
+fit = "contain"
 
 [outputs."HDMI-A-1".performance]
 background_max_fps = 12
