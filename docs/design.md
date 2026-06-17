@@ -153,7 +153,7 @@ active。
   `SessionInactive` 决策会暂停渲染。
 - daemon 持久化 `AppState`，记录每个输出的壁纸、暂停状态和用户属性。
 - `PerformanceConfig` 从 `$XDG_CONFIG_HOME/gilder/config.toml` 读取，控制 fullscreen、unfocused、battery 时继续、限帧或暂停。
-- `decide_performance` 将配置、桌面状态和输出状态合成为渲染决策：active、throttled 或 paused。
+- `decide_performance` 将配置、桌面状态和输出状态合成为渲染决策：active、throttled 或 paused。多个条件同时命中时选择最省资源的结果：paused 优先于 throttled，同为 throttled/active 时选择更低 `max_fps`；同等强度时保留更早命中的明确原因。
 
 这让后续 niri/Hyprland 适配器只需要负责提供准确桌面状态，渲染器只需要执行策略结果。
 `status`、`outputs`、状态变更事件和 daemon 周期刷新都会刷新桌面快照并返回每个

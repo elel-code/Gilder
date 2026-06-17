@@ -76,6 +76,7 @@
 - [x] 从 logind 读取 session active 状态并驱动 inactive 暂停策略。
 - [x] daemon 周期刷新桌面状态并只在变化时投递性能策略更新。
 - [x] 允许配置桌面状态刷新周期。
+- [x] 组合多种桌面状态时选择最省资源的性能策略。
 - [x] 配置中允许禁用特定适配器。
 
 ## M6: Wallpaper Engine 转换器
