@@ -146,6 +146,8 @@ example.gwpdir/
 ```
 
 视频壁纸必须可无音频运行。即使源视频包含音轨，默认也应丢弃或静音。
+daemon 会把 video entry 转成 `render_sync.video_plans`，其中 `manifest_max_fps`
+保留包内声明的上限，`target_max_fps` 是 manifest 与桌面状态性能策略合成后的运行上限。
 
 ### Slideshow
 

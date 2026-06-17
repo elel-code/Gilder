@@ -89,6 +89,9 @@ monitor 后端由 GTK 主线程读取，后台 IPC 线程不会用空的 GDK 结
 视频壁纸：
 
 - 首选 GStreamer pipeline，利用系统硬件解码能力。
+- daemon 已经会为 video entry 生成 `render_sync.video_plans`，包含 source、poster、
+  loop、muted、fit、start offset 和性能策略合成后的目标 FPS；后续 GStreamer
+  renderer 只需要消费这些计划并管理 pipeline 生命周期。
 - 支持 MP4/H.264、WebM/VP9/AV1，实际支持由系统插件决定。
 - 循环、静音、音频丢弃、最大 FPS、空闲暂停必须是 manifest 中的显式策略。
 - 解码和播放控制不阻塞 GTK 主线程。

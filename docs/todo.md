@@ -46,8 +46,8 @@
 ## M4: 视频壁纸
 
 - [ ] 引入 GStreamer。
-- [ ] 实现视频 entry 加载。
-- [ ] 实现 loop、muted、poster。
+- [x] 实现视频 entry 加载。
+- [ ] 在 GStreamer runtime 实现 loop、muted、poster。
 - [ ] 实现 pause/resume/stop。
 - [ ] 实现 max_fps 或 pipeline throttling。
 - [ ] 验证 MP4/H.264、WebM/VP9、WebM/AV1。
