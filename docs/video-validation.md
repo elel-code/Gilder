@@ -84,6 +84,10 @@ On Ubuntu-like systems the strict smoke path expects:
 - `gstreamer1.0-plugins-bad`
 - `gstreamer1.0-plugins-ugly`
 
+The GitHub Actions workflow installs the full CI dependency set through
+`scripts/install-ci-deps-ubuntu.sh`; use the same helper on Ubuntu CI images
+when reproducing codec smoke failures.
+
 The GTK video surface path also needs a runtime plugin that provides
 `gtk4paintablesink` such as `gst-plugin-gtk4`. Package names differ by
 distribution, so Gilder probes it at runtime instead of making it a Rust build
