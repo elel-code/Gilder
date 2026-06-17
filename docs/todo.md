@@ -43,6 +43,7 @@
 - [x] 实现 fit mode：cover、contain、stretch、tile、center。
 - [x] 支持配置按输出覆盖 fit mode。
 - [x] 为 daemon 状态生成静态渲染同步计划。
+- [x] 没有显式 variant 时按输出尺寸自动选择资源变体。
 - [x] 支持输出热插拔。
 - [x] 支持按 output 设置不同壁纸。
 

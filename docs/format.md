@@ -112,8 +112,9 @@ example.gwpdir/
 
 当前渲染路径会在壁纸绑定携带 variant ID 时使用 `variants[].source` 替代
 `entry.source`。这适用于静态图片和视频 entry；CLI 可以通过
-`gilderctl set <wallpaper> --variant <id>` 绑定指定变体。按输出尺寸自动选择最合适
-variant 属于后续增强。
+`gilderctl set <wallpaper> --variant <id>` 绑定指定变体。没有显式 variant 时，daemon
+会根据输出尺寸和 scale，在能覆盖目标尺寸的 variant 中选择像素面积最小的资源；没有
+可覆盖 variant 时继续使用 entry 默认资源，避免把大屏输出降级到小资源。
 
 ## Entry 类型
 
