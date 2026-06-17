@@ -16,7 +16,7 @@
 gilder-convert wallpaper-engine <source-project-dir> <dest.gwpdir>
 ```
 
-当前实现支持静态图片、视频和 Web 项目的 `.gwpdir` 输出；Scene 和 application/executable 项目会生成转换报告并拒绝转换。缺失预览图时，静态图片项目会从源图生成 poster/thumbnail，视频项目会生成 metadata-based SVG fallback；视频首帧提取后续再接入。
+当前实现支持静态图片、视频、Web 和保守 `scene-lite` 项目的 `.gwpdir` 输出；application/executable 项目会生成转换报告并拒绝转换。缺失预览图时，静态图片项目会从源图生成 poster/thumbnail，视频和 Scene 项目会生成 metadata-based SVG fallback；视频首帧提取后续再接入。
 
 已支持：
 
@@ -48,7 +48,7 @@ gilder-convert wallpaper-engine --allow-web <source> <dest.gwpdir>
 | Image / Scene from image | `static-image` 或 `scene-lite` | 高/中 | 纯图片无损复制；含效果时转 scene-lite 子集或静态 fallback |
 | Video | `video` | 高 | 复制可播放视频；必要时转码；生成 poster |
 | Web | `web` | 中 | 复制 HTML/CSS/JS/资源；注入兼容 bridge；默认禁网 |
-| Scene | `scene-lite` / `video` / `static-image` | 低到中 | 只迁移图层、简单变换、时间线；复杂效果需要 fallback |
+| Scene | `scene-lite` / `video` / `static-image` | 低到中 | 复制 Scene 入口元数据并生成 fallback；复杂效果记录为 unsupported |
 | Application / executable | 不支持 | 无 | 拒绝转换，仅生成报告 |
 
 ## 静态图片转换
@@ -133,9 +133,10 @@ Wallpaper Engine scene 能力很大，v1 只实现可解释子集。
 
 Scene 转换策略按优先级：
 
-1. 如果能无损表达为 `scene-lite`，生成 `entry.type = "scene-lite"`。
-2. 如果主要视觉是视频或图片，降级为 `video` 或 `static-image`。
-3. 如果无法合理迁移，拒绝并输出转换报告。
+1. 当前先生成保守 `entry.type = "scene-lite"`，复制 Scene 入口文件到 `assets/`。
+2. 如果项目提供 preview，则作为 `fallback`；缺失时生成 SVG fallback。
+3. SceneScript、shader、复杂粒子和音频响应记录为 unsupported，不执行也不翻译。
+4. 后续如果能识别主要视频或图片，可降级为 `video` 或 `static-image`。
 
 ## 用户属性映射
 

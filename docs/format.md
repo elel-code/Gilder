@@ -193,6 +193,7 @@ Web 运行时默认受限：
 - 变换、透明度、简单时间线。
 - 基础粒子或 shader 需要逐项白名单。
 - 不执行 SceneScript。
+- 当前渲染器优先显示 `fallback`，完整 scene-lite runtime 后续实现。
 
 ## 用户属性
 

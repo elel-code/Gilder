@@ -81,7 +81,7 @@
 - [x] 用户属性映射。
 - [x] 生成 `metadata/conversion-report.json`。
 - [x] 拒绝 executable/application 类型并输出清晰错误。
-- [ ] Scene 子集转换到 `scene-lite`。
+- [x] Scene 子集转换到 `scene-lite`。
 
 ## M7: 打包与发布
 
