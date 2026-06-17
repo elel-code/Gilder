@@ -91,6 +91,9 @@ monitor 后端由 GTK 主线程读取，后台 IPC 线程不会用空的 GDK 结
 - 首选 GStreamer pipeline，利用系统硬件解码能力。
 - daemon 会为 video entry 生成 `render_sync.video_plans`，包含 source、poster、
   loop、muted、fit、start offset 和性能策略合成后的目标 FPS。
+- 如果 video entry 提供 poster，或 manifest 的 `preview.poster` 可用，daemon 会同时
+  生成一条静态 poster plan；`gtk-renderer` 可以先把它显示在 background layer，
+  作为视频 sink 接入前以及加载/暂停时的占位画面。
 - `video-renderer` feature 会启动独立 GStreamer worker，消费同一份
   `render_sync`，并按输出管理 playbin 生命周期、loop、muted、pause/resume/stop。
   性能策略合成出的 `target_max_fps` 会通过 `videorate ! capsfilter` 应用到

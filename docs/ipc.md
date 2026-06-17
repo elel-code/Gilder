@@ -58,6 +58,7 @@ gilderctl status
 
 返回 daemon 状态、桌面快照、输出列表、当前壁纸、暂停状态、配置/状态文件位置、性能决策信息和 `render_sync`。
 `render_sync` 包含静态图片渲染器下一次同步需要执行的 `plans`、视频渲染器后续要消费的 `video_plans`、需要关闭的 `removals`、包加载/格式错误 `errors`，以及每个输出的 `decisions`。
+视频壁纸有 poster 时，`plans` 会包含同一输出的静态 poster 占位计划，`video_plans` 仍包含实际视频 pipeline 计划。
 `decisions` 会记录输出动作、当前壁纸路径和由桌面状态性能策略产生的 `mode/max_fps/reason`，视频/GStreamer 渲染器会用它执行暂停或限帧。`.gwp` 包会先解包到 `$XDG_CACHE_HOME/gilder/render-cache/`，再生成计划。
 启用 `gtk-renderer` feature 的 daemon 会在 GTK 主线程消费同一份 `render_sync`，并把可用输出同步到 layer-shell background 窗口。
 启用 `video-renderer` feature 时，daemon 会启动 GStreamer worker 消费 `video_plans`，负责视频 pipeline 生命周期控制。

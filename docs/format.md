@@ -149,6 +149,9 @@ example.gwpdir/
 daemon 会把 video entry 转成 `render_sync.video_plans`，其中 `manifest_max_fps`
 保留包内声明的上限，`target_max_fps` 是 manifest 与桌面状态性能策略合成后的运行上限。
 启用 `video-renderer` feature 时，GStreamer worker 会把该上限应用到视频 pipeline。
+`entry.poster` 会优先作为视频占位图；如果没有设置，会回退到 manifest 的
+`preview.poster`。有可用 poster 时，daemon 会额外生成一条静态渲染计划供
+`gtk-renderer` 显示。
 
 ### Slideshow
 
