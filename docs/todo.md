@@ -65,15 +65,17 @@
 
 ## M6: Wallpaper Engine 转换器
 
-- [ ] 解析 `project.json`。
-- [ ] 识别 image/video/web/scene/application 类型。
-- [ ] 静态图片转换到 `static-image`。
-- [ ] 视频转换到 `video`。
-- [ ] 生成 poster 和 thumbnail。
-- [ ] Web 项目复制与 bridge 注入。
-- [ ] 用户属性映射。
-- [ ] 生成 `metadata/conversion-report.json`。
-- [ ] 拒绝 executable/application 类型并输出清晰错误。
+- [x] 解析 `project.json`。
+- [x] 识别 image/video/web/scene/application 类型。
+- [x] 静态图片转换到 `static-image`。
+- [x] 视频转换到 `video`。
+- [x] 复制 preview 为 poster 和 thumbnail。
+- [ ] 缺失 preview 时从图片/视频生成 poster 和 thumbnail。
+- [x] Web 项目复制与 bridge 注入。
+- [x] 用户属性映射。
+- [x] 生成 `metadata/conversion-report.json`。
+- [x] 拒绝 executable/application 类型并输出清晰错误。
+- [ ] Scene 子集转换到 `scene-lite`。
 
 ## M7: 打包与发布
 

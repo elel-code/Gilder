@@ -16,6 +16,8 @@
 gilder-convert wallpaper-engine <source-project-dir> <dest.gwpdir>
 ```
 
+当前实现支持静态图片、视频和 Web 项目的 `.gwpdir` 输出；Scene 和 application/executable 项目会生成转换报告并拒绝转换。缺失预览图时，转换器暂不从源图片或视频生成 poster/thumbnail。
+
 后续可扩展：
 
 ```sh
@@ -96,7 +98,7 @@ gilder-convert wallpaper-engine --allow-web <source> <dest.gwpdir>
 - Web 根目录复制到 `assets/web/`。
 - `entry.type = "web"`。
 - 用户属性转为 Gilder `properties`。
-- 生成 bridge 脚本适配常见 `window.wallpaperPropertyListener.applyUserProperties` 行为。
+- 生成 `assets/web/gilder-bridge.js`，提供基础属性桥接，并在后续 Web runtime 中适配常见 `window.wallpaperPropertyListener.applyUserProperties` 行为。
 
 限制：
 
