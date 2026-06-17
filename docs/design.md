@@ -153,6 +153,7 @@ active。
   `SessionInactive` 决策会暂停渲染。
 - daemon 持久化 `AppState`，记录每个输出的壁纸、暂停状态和用户属性。
 - `PerformanceConfig` 从 `$XDG_CONFIG_HOME/gilder/config.toml` 读取，控制 fullscreen、unfocused、battery 时继续、限帧或暂停。
+- `[outputs.<name>.performance]` 可以覆盖单个输出的 FPS 和 fullscreen/unfocused/battery 策略，适合把副屏、投影输出或高耗电输出配置得更保守。
 - `decide_performance` 将配置、桌面状态和输出状态合成为渲染决策：active、throttled 或 paused。多个条件同时命中时选择最省资源的结果：paused 优先于 throttled，同为 throttled/active 时选择更低 `max_fps`；同等强度时保留更早命中的明确原因。
 
 这让后续 niri/Hyprland 适配器只需要负责提供准确桌面状态，渲染器只需要执行策略结果。
@@ -163,6 +164,19 @@ active。
 在 paused 时关闭对应 background 窗口；GStreamer 渲染器根据 `mode` 和 `max_fps`
 执行暂停或限帧。刷新周期由 `performance.desktop_refresh_interval_ms` 配置，默认
 2000ms，实际运行会钳制到不低于 250ms。
+
+示例：
+
+```toml
+[performance]
+interactive_max_fps = 60
+background_max_fps = 30
+battery_max_fps = 24
+
+[outputs."HDMI-A-1".performance]
+background_max_fps = 12
+battery = "pause"
+```
 
 ## 安全原则
 
