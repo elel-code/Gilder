@@ -66,7 +66,8 @@ Rust 模块组织采用 2018+ 常见布局：`src/foo.rs` 作为模块入口，`
 当前 daemon 已经支持从 `hyprctl -j monitors/clients` 和
 `niri msg --json outputs/workspaces/windows` 构建 `DesktopSnapshot`。如果对应
 session 环境变量或命令不可用，会回退到 `generic-wayland` 占位快照；真实 GDK
-monitor 后端会随 GTK 渲染器接入。
+monitor 后端由 GTK 主线程读取，后台 IPC 线程不会用空的 GDK 结果覆盖已经采集到
+的输出快照。
 
 ## 渲染路径
 
@@ -77,11 +78,13 @@ monitor 后端会随 GTK 渲染器接入。
 - 渲染层只处理 fit/crop/tile/solid background，不在热路径做重复解码。
 - `gtk-renderer` feature 使用 GTK 4 与 gtk4-layer-shell 创建 background layer
   窗口，并通过 CSS background 映射 `cover`、`contain`、`stretch`、`tile`、
-  `center`。该模块已经可编译，后续需要把 daemon 主循环切换到 GTK application
-  并把 IPC 状态变更应用到窗口。
+  `center`。启用该 feature 时，daemon 在主线程运行 GTK application，IPC accept
+  loop 在后台线程运行，状态变更会通过同步队列投递到 GTK 主线程。
 - daemon 会为当前 desktop snapshot 和持久化状态生成 `render_sync`，列出每个
   输出的静态渲染计划、需要移除的输出和加载错误。`.gwp` 会在计划阶段解包到
-  `$XDG_CACHE_HOME/gilder/render-cache/`，GTK 主循环后续只需要消费这些计划。
+  `$XDG_CACHE_HOME/gilder/render-cache/`，GTK 主循环会消费这些计划，为匹配到的
+  GDK monitor 创建或更新 background layer 窗口，并关闭 removals、加载错误和
+  当前快照中已经消失的输出窗口。
 
 视频壁纸：
 
