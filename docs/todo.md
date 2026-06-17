@@ -77,6 +77,7 @@
 
 - [x] 定义合成器输出/桌面状态快照模型。
 - [x] 定义 fullscreen、unfocused、battery 等性能策略决策层。
+- [x] 提供验证用输出状态覆盖，便于稳定采集 unfocused/fullscreen/hidden 性能策略证据。
 - [x] 通用 GDK monitor 后端。
 - [x] Hyprland IPC 后端。
 - [x] niri IPC 后端。

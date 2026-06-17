@@ -75,6 +75,10 @@ active。
 验证和性能采样可以用 `GILDER_POWER_STATE=ac|battery|unknown` 覆盖当前 daemon
 进程看到的电源状态，便于在台式机或 CI 中复现 battery throttling；未设置时仍只读
 真实 sysfs 状态。
+`GILDER_OUTPUT_STATE=active|unfocused|fullscreen|hidden` 可以覆盖当前 daemon
+进程看到的输出可见性、焦点和 fullscreen 状态，用于稳定复现 unfocused
+throttling、fullscreen pause 和 output-hidden pause；未设置时使用合成器/GDK
+采集到的真实输出状态。
 
 ## 渲染路径
 
@@ -168,6 +172,8 @@ active。
   策略，外接电源在线或电池正在充电/已满时视为 AC。
 - `GILDER_POWER_STATE=ac|battery|unknown` 是验证用覆盖入口，可以强制当前 daemon
   进程的 `DesktopSnapshot.power`，用于稳定采集 battery/AC 对比证据。
+- `GILDER_OUTPUT_STATE=active|unfocused|fullscreen|hidden` 是验证用输出状态覆盖入口，
+  用于采集 focused/unfocused/fullscreen/hidden 场景对比证据。
 - 会话状态由 logind 提供；当用户切换到非活跃 session/VT 时，
   `SessionInactive` 决策会暂停渲染。
 - daemon 持久化 `AppState`，记录每个输出的壁纸、暂停状态和用户属性。

@@ -79,6 +79,8 @@ Useful options:
 scripts/wayland-video-surface-smoke.sh --output eDP-1
 scripts/wayland-video-surface-smoke.sh --sample-performance --keep
 scripts/wayland-video-surface-smoke.sh --simulate-power battery --sample-performance --keep
+scripts/wayland-video-surface-smoke.sh --simulate-output-state unfocused --sample-performance --keep
+scripts/wayland-video-surface-smoke.sh --simulate-output-state fullscreen --sample-performance --keep
 scripts/wayland-video-surface-smoke.sh --sample-paused --keep
 scripts/wayland-video-surface-smoke.sh --allow-missing
 scripts/wayland-video-surface-smoke.sh --no-build --keep
@@ -97,6 +99,11 @@ With `--simulate-power battery`, it starts the isolated daemon with
 `GILDER_POWER_STATE=battery`, verifies that status reports `power: battery`,
 checks for a battery performance decision after applying the wallpaper, and
 stores the primary performance sample under `performance-battery/`.
+With `--simulate-output-state unfocused|fullscreen|hidden`, it starts the
+isolated daemon with `GILDER_OUTPUT_STATE`, verifies that status reflects the
+simulated output focus/visibility/fullscreen fields, and checks for the
+matching performance decision. `unfocused` still expects an active video plan
+with throttling, while `fullscreen` and `hidden` expect the paused/remove path.
 
 ## Runtime Packages
 
@@ -170,3 +177,6 @@ between scenarios; GPU sampling remains platform-specific follow-up work.
 For battery policy comparisons on machines that are not actually discharging,
 run the daemon or smoke script with `GILDER_POWER_STATE=battery`; unset it to
 return to sysfs-based power detection.
+For compositor-state policy comparisons where changing the real desktop state
+is awkward, use `GILDER_OUTPUT_STATE=unfocused`, `fullscreen`, or `hidden`; unset
+it to return to compositor/GDK state detection.
