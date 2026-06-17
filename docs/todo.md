@@ -26,7 +26,7 @@
 - [x] 实现 JSON-RPC 错误响应。
 - [x] 添加 `outputs`。
 - [x] 添加 `properties set/get`。
-- [ ] 添加 `watch`。
+- [x] 添加 `watch`。
 - [x] 状态写入 `$XDG_STATE_HOME/gilder/state.json`。
 - [x] 配置读取 `$XDG_CONFIG_HOME/gilder/config.toml`。
 - [x] socket 权限和 stale socket 处理。

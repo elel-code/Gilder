@@ -94,11 +94,28 @@ gilderctl properties unset <key> [--output <name>]
 
 读取、设置或清除壁纸用户属性。不带 `--output` 时操作全局/default 属性；带 `--output` 时操作指定输出的覆盖属性。`set` 的值按 JSON 解析，无法解析为 JSON 时作为字符串保存，因此 `true`、`0.5`、`{"x":1}` 和 `#ffaa00` 都能通过 CLI 传入。
 
+### watch
+
+```sh
+gilderctl watch
+```
+
+订阅 daemon 事件流。连接建立后先返回一次 JSON-RPC success response，然后持续输出
+JSON-RPC notification，每行一个事件：
+
+```json
+{"jsonrpc":"2.0","method":"event","params":{"sequence":1,"type":"snapshot","payload":{"outputs":[],"persisted_state":{"default_wallpaper":null,"outputs":{},"properties":{}},"renderer":"not-implemented"}}}
+```
+
+当前事件类型：
+
+- `snapshot`：订阅建立时发送的当前状态快照。
+- `state.changed`：`set`、`pause`、`resume`、`stop`、`properties set/unset` 成功持久化后发送。
+
 ## 计划命令
 
 - `load`：预加载壁纸包。
 - `config get/set`：读取或修改配置。
-- `watch`：订阅输出变化、状态变化、错误事件。
 - `import`：导入 `.gwpdir` 或 `.gwp` 到用户数据目录。
 
 ## 错误码
