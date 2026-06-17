@@ -82,10 +82,11 @@ gilderctl outputs
 ### set
 
 ```sh
-gilderctl set <wallpaper.gwp|wallpaper.gwpdir> [--output <name>]
+gilderctl set <wallpaper.gwp|wallpaper.gwpdir> [--output <name>] [--variant <id>]
 ```
 
 为指定输出或所有输出设置壁纸。
+`--variant` 会把 manifest 中的资源变体 ID 写入当前壁纸绑定；静态图片和视频渲染计划会使用该 variant 的 `source` 替代 entry 默认 `source`。如果请求的 variant 不存在，`render_sync.errors` 会报告错误并跳过该输出的计划。
 成功响应会返回当前 `renderer` 名称和本次投递给渲染器的 `render_sync`。
 
 ### pause / resume / stop

@@ -37,7 +37,10 @@ Subscribe to snapshot and state.changed events.
 .TP
 .BI "set " "wallpaper.gwp|wallpaper.gwpdir"
 .RB [ "--output " name ]
-Set the default wallpaper or the wallpaper for one output.
+.RB [ "--variant " id ]
+Set the default wallpaper or the wallpaper for one output. With
+.B --variant
+the renderer uses the matching manifest variant source.
 .TP
 .B pause
 .RB [ "--output " name ]

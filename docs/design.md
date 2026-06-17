@@ -138,6 +138,8 @@ active。
 `render_sync`，`[outputs.<name>].fit` 可以覆盖该输出上的 manifest fit mode。IPC
 产生的 persisted state 是运行时覆盖层，壁纸选择优先级为：输出状态壁纸、默认状态
 壁纸、输出配置壁纸、默认配置壁纸。
+`gilderctl set <wallpaper> --variant <id>` 会把 manifest variant 绑定到默认状态或
+指定输出状态，当前静态图片和视频计划会用该 variant 的资源路径替代 entry 默认资源。
 
 ## 性能原则
 

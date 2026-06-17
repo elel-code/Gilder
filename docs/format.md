@@ -110,6 +110,11 @@ example.gwpdir/
 - `properties`：用户可配置项 schema。
 - `runtime`：权限和性能策略。
 
+当前渲染路径会在壁纸绑定携带 variant ID 时使用 `variants[].source` 替代
+`entry.source`。这适用于静态图片和视频 entry；CLI 可以通过
+`gilderctl set <wallpaper> --variant <id>` 绑定指定变体。按输出尺寸自动选择最合适
+variant 属于后续增强。
+
 ## Entry 类型
 
 ### Static Image
