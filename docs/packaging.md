@@ -12,14 +12,16 @@ Install these binaries into a directory visible to the user session:
 - `gilder-convert`
 
 The daemon is normally built with `gtk-renderer` for static wallpaper display.
-Video support also needs `video-renderer` plus host GStreamer plugins.
+Video support also needs `video-renderer` plus host GStreamer plugins. MP4/H.264
+and WebM/VP9/AV1 smoke validation expects `gstreamer1.0-libav` plus the base,
+good, bad, and ugly plugin sets on Ubuntu-like systems.
 Wallpaper Engine video preview extraction in `gilder-convert` can use `ffmpeg`
 from `PATH`; packages may declare it as an optional runtime dependency.
 
 ## Distribution Tarball
 
 `packaging/build-dist.sh` builds and stages a tarball with binaries, man pages,
-shell completions, and the systemd user service:
+shell completions, the systemd user service, docs, and validation helpers:
 
 ```sh
 packaging/build-dist.sh

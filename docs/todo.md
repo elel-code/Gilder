@@ -53,6 +53,7 @@
 - [ ] 将视频 sink 绑定到每个输出的 Wayland/layer-shell surface。
 - [x] 实现 poster 显示。
 - [x] 实现 max_fps 或 pipeline throttling。
+- [x] 添加 MP4/WebM codec smoke 验证脚本。
 - [ ] 验证 MP4/H.264、WebM/VP9、WebM/AV1。
 - [x] 添加 fullscreen 暂停策略接口。
 
