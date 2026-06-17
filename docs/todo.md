@@ -65,6 +65,7 @@
 - [x] 在性能采样证据中输出 render decision CSV 和摘要。
 - [x] 在 decision CSV 中记录计划类型、资源、fit、视频限帧和静音状态。
 - [x] 使用 CSV-aware 汇总器统计性能采样中的决策、计划类型、fit、静音和限帧范围。
+- [x] 支持性能采样断言期望的 mode、reason、action 和计划类型。
 - [x] 单次 render sync 内复用同一路径壁纸包的加载结果。
 - [x] 实现 poster 显示。
 - [x] 实现 max_fps 或 pipeline throttling。

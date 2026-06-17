@@ -174,6 +174,11 @@ modes, muted video counts, and target FPS ranges. Pass `--pid`, `--socket`, or
 `--gilderctl` when testing an isolated daemon such as the Wayland surface smoke
 script. The CSV, summaries, and raw status files are intended to be compared
 between scenarios; GPU sampling remains platform-specific follow-up work.
+Use `--expect-mode`, `--expect-reason`, `--expect-action`, and
+`--expect-plan-kind` to make a sampling run fail when the expected render
+decision is not observed in `decision-summary.txt`. The Wayland video smoke
+passes these expectations automatically for simulated battery, unfocused,
+fullscreen, hidden, and user-paused scenarios.
 For battery policy comparisons on machines that are not actually discharging,
 run the daemon or smoke script with `GILDER_POWER_STATE=battery`; unset it to
 return to sysfs-based power detection.
