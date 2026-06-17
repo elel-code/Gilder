@@ -71,6 +71,7 @@
 - [x] 工作区/fullscreen 状态感知。
 - [x] 从 Linux power_supply 读取电源状态并驱动 battery 性能策略。
 - [x] 从 logind 读取 session active 状态并驱动 inactive 暂停策略。
+- [x] daemon 周期刷新桌面状态并只在变化时投递性能策略更新。
 - [x] 配置中允许禁用特定适配器。
 
 ## M6: Wallpaper Engine 转换器

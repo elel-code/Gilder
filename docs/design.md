@@ -156,10 +156,12 @@ active。
 - `decide_performance` 将配置、桌面状态和输出状态合成为渲染决策：active、throttled 或 paused。
 
 这让后续 niri/Hyprland 适配器只需要负责提供准确桌面状态，渲染器只需要执行策略结果。
-`status`、`outputs` 和状态变更事件都会刷新桌面快照并返回每个输出的性能决策，
-`render_sync.decisions` 也会随同步计划携带同一份输出级决策。GTK 静态渲染器会在
-paused 时关闭对应 background 窗口；后续 GStreamer 渲染器可以直接根据 `mode`
-和 `max_fps` 执行暂停或限帧。
+`status`、`outputs`、状态变更事件和 daemon 周期刷新都会刷新桌面快照并返回每个
+输出的性能决策，`render_sync.decisions` 也会随同步计划携带同一份输出级决策。
+周期刷新只在桌面快照变化时发送 `desktop.changed` watch 事件，并且只在
+`render_sync` 实际变化时投递给渲染器，避免固定频率重建 pipeline。GTK 静态渲染器会
+在 paused 时关闭对应 background 窗口；GStreamer 渲染器根据 `mode` 和 `max_fps`
+执行暂停或限帧。
 
 ## 安全原则
 

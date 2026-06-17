@@ -63,6 +63,7 @@ gilderctl status
 `render_sync` 包含静态图片渲染器下一次同步需要执行的 `plans`、视频渲染器后续要消费的 `video_plans`、需要关闭的 `removals`、包加载/格式错误 `errors`，以及每个输出的 `decisions`。
 视频壁纸有 poster 时，`plans` 会包含同一输出的静态 poster 占位计划，`video_plans` 仍包含实际视频 pipeline 计划。
 `decisions` 会记录输出动作、当前壁纸路径和由桌面状态性能策略产生的 `mode/max_fps/reason`，视频/GStreamer 渲染器会用它执行暂停或限帧。`.gwp` 包会先解包到 `$XDG_CACHE_HOME/gilder/render-cache/`，再生成计划。
+daemon 会周期刷新桌面快照，只有快照变化时才发送 `desktop.changed` 事件；只有 `render_sync` 实际变化时才投递给渲染器。
 启用 `gtk-renderer` feature 的 daemon 会在 GTK 主线程消费同一份 `render_sync`，并把可用输出同步到 layer-shell background 窗口。
 同时启用 `gtk-renderer` 和 `video-renderer` 时，GTK 主线程会尝试用 `gtk4paintablesink` 把视频 paintable 放入对应输出的 layer-shell 窗口；只启用 `video-renderer` 时，daemon 会启动 headless GStreamer worker 消费 `video_plans`，负责视频 pipeline 生命周期控制。
 `renderer_capabilities.video.gstreamer.elements` 会报告 `playbin`、`fakesink`、`videorate`、`capsfilter` 和 `gtk4paintablesink` 是否可用；真实视频 surface 显示需要 `gtk4paintablesink` 为 `available: true`。
@@ -120,9 +121,10 @@ JSON-RPC notification，每行一个事件：
 当前事件类型：
 
 - `snapshot`：订阅建立时发送的当前状态快照。
+- `desktop.changed`：daemon 周期刷新发现桌面快照变化时发送，例如输出、fullscreen、focus、电源或 session 状态变化。
 - `state.changed`：`set`、`pause`、`resume`、`stop`、`properties set/unset` 成功持久化后发送。
 
-`snapshot` 和 `state.changed` 都包含 `render_sync` 和 `renderer_capabilities`，GUI 前端和 daemon 内部渲染器可以用它判断每个输出是否已有可应用的静态或视频壁纸计划，以及当前运行时是否具备视频 surface 所需插件。
+`snapshot`、`desktop.changed` 和 `state.changed` 都包含 `desktop`、`render_sync` 和 `renderer_capabilities`，GUI 前端和 daemon 内部渲染器可以用它判断每个输出是否已有可应用的静态或视频壁纸计划，以及当前运行时是否具备视频 surface 所需插件。
 `renderer` 会随 feature 组合返回 `gtk-layer-shell-static`、`gstreamer-video`、`gtk-layer-shell-static+gtk-gstreamer-video` 或 `not-implemented`；未启用渲染 feature 时只保留 IPC、状态和转换能力。
 
 ## 计划命令
