@@ -50,7 +50,8 @@
 - [x] 将 GStreamer worker 接入 daemon 渲染同步队列。
 - [x] 在 GStreamer runtime 实现 loop、muted。
 - [x] 实现 pause/resume/stop 的 pipeline 控制。
-- [ ] 将视频 sink 绑定到每个输出的 Wayland/layer-shell surface。
+- [x] 将视频 sink 通过 GTK paintable 接入每个输出的 layer-shell window。
+- [ ] 在真实 niri/Hyprland Wayland 会话验证视频 surface 显示。
 - [x] 实现 poster 显示。
 - [x] 实现 max_fps 或 pipeline throttling。
 - [x] 添加 MP4/WebM codec smoke 验证脚本。

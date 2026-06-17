@@ -94,12 +94,15 @@ monitor 后端由 GTK 主线程读取，后台 IPC 线程不会用空的 GDK 结
 - 如果 video entry 提供 poster，或 manifest 的 `preview.poster` 可用，daemon 会同时
   生成一条静态 poster plan；`gtk-renderer` 可以先把它显示在 background layer，
   作为视频 sink 接入前以及加载/暂停时的占位画面。
-- `video-renderer` feature 会启动独立 GStreamer worker，消费同一份
-  `render_sync`，并按输出管理 playbin 生命周期、loop、muted、pause/resume/stop。
-  性能策略合成出的 `target_max_fps` 会通过 `videorate ! capsfilter` 应用到
+- 同时启用 `gtk-renderer` 和 `video-renderer` 时，GTK 主线程会尝试为每个
+  video plan 构建 `playbin + gtk4paintablesink`，把 GStreamer 提供的
+  `GdkPaintable` 放入对应输出的 layer-shell background window；poster 仍作为加载
+  前和插件缺失时的 fallback。
+- 只启用 `video-renderer` 时，daemon 会启动独立 GStreamer worker，消费同一份
+  `render_sync`，并用 headless sink 固化 playbin 生命周期、loop、muted、
+  pause/resume/stop 和 bus polling 控制面。
+- 性能策略合成出的 `target_max_fps` 会通过 `videorate ! capsfilter` 应用到
   playbin 的 `video-filter`。
-  当前实现先使用 headless sink 固化控制面和测试；把视频 sink 绑定到每个输出的
-  Wayland/layer-shell surface 是下一步。
 - 支持 MP4/H.264、WebM/VP9/AV1，实际支持由系统插件决定。
 - 循环、静音、音频丢弃、最大 FPS、poster、空闲暂停必须是 manifest 中的显式策略。
 - 解码和播放控制不阻塞 GTK 主线程。

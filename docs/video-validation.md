@@ -1,10 +1,15 @@
 # Video Codec Validation
 
-Gilder's current video renderer uses GStreamer `playbin` with a headless
-`fakesink` while the Wayland/layer-shell surface sink is still being wired.
-This means codec validation can prove package loading, decode availability,
-pipeline lifecycle, and converter preview generation, but it does not yet prove
-real compositor presentation performance.
+When both `gtk-renderer` and `video-renderer` are enabled, Gilder tries to use
+GStreamer `playbin` with `gtk4paintablesink` so the video sink exposes a
+`GdkPaintable` that GTK can render inside the per-output layer-shell background
+window. If that runtime plugin is missing or fails to initialize, the GTK
+renderer keeps the poster/fallback image visible and reports the error.
+
+The codec smoke path still uses `playbin` with a headless `fakesink` so it can
+run in CI without a Wayland session. This proves package loading, decode
+availability, pipeline lifecycle basics, and converter preview generation, but
+it does not yet prove real compositor presentation performance.
 
 ## Smoke Script
 
@@ -39,11 +44,17 @@ GStreamer plugins may not be installed. CI should run the script in strict mode.
 On Ubuntu-like systems the strict smoke path expects:
 
 - `ffmpeg`
+- `gstreamer1.0-tools`
 - `gstreamer1.0-libav`
 - `gstreamer1.0-plugins-base`
 - `gstreamer1.0-plugins-good`
 - `gstreamer1.0-plugins-bad`
 - `gstreamer1.0-plugins-ugly`
+
+The GTK video surface path also needs a runtime plugin that provides
+`gtk4paintablesink` such as `gst-plugin-gtk4`. Package names differ by
+distribution, so Gilder probes it at runtime instead of making it a Rust build
+dependency.
 
 The exact hardware decode path is left to the host GStreamer installation. The
 smoke test intentionally uses `fakesink` so it can run in CI without a Wayland
@@ -51,8 +62,7 @@ session.
 
 ## Remaining Surface Work
 
-After the video sink is bound to per-output Wayland/layer-shell surfaces, this
-document should be extended with compositor-facing checks:
+The GTK paintable sink code path still needs compositor-facing checks:
 
 - one output, one video wallpaper;
 - multiple outputs with the same source video;
