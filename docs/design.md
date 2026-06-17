@@ -166,6 +166,7 @@ active。
 - `PerformanceConfig` 从 `$XDG_CONFIG_HOME/gilder/config.toml` 读取，控制 fullscreen、unfocused、battery 时继续、限帧或暂停。
 - `[outputs.<name>.performance]` 可以覆盖单个输出的 FPS 和 fullscreen/unfocused/battery 策略，适合把副屏、投影输出或高耗电输出配置得更保守。
 - `decide_performance` 将配置、桌面状态和输出状态合成为渲染决策：active、throttled 或 paused。多个条件同时命中时选择最省资源的结果：paused 优先于 throttled，同为 throttled/active 时选择更低 `max_fps`；同等强度时保留更早命中的明确原因。
+- manifest `runtime.pause_when_fullscreen` 和 `runtime.pause_when_unfocused` 会在包加载后作为额外保守策略合入同一份决策；如果配置、用户暂停、输出隐藏或会话 inactive 已经要求暂停，daemon 不会为了读取 manifest 再加载包。
 
 这让后续 niri/Hyprland 适配器只需要负责提供准确桌面状态，渲染器只需要执行策略结果。
 `status`、`outputs`、状态变更事件和 daemon 周期刷新都会刷新桌面快照并返回每个

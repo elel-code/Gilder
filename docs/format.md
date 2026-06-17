@@ -116,6 +116,10 @@ example.gwpdir/
 会根据输出尺寸和 scale，在能覆盖目标尺寸的 variant 中选择像素面积最小的资源；没有
 可覆盖 variant 时继续使用 entry 默认资源，避免把大屏输出降级到小资源。
 
+`runtime.pause_when_fullscreen` 和 `runtime.pause_when_unfocused` 会参与 daemon 的桌面
+状态性能决策。包内 runtime 策略只能让当前输出更保守，例如从 active/throttled
+变为 paused；用户暂停、输出隐藏、会话 inactive 等更强决策不会被包内策略放宽。
+
 ## Entry 类型
 
 ### Static Image

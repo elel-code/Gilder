@@ -81,6 +81,7 @@
 - [x] 工作区/fullscreen 状态感知。
 - [x] 从 Linux power_supply 读取电源状态并驱动 battery 性能策略。
 - [x] 从 logind 读取 session active 状态并驱动 inactive 暂停策略。
+- [x] 将 manifest runtime fullscreen/unfocused 暂停策略接入桌面状态决策。
 - [x] daemon 周期刷新桌面状态并只在变化时投递性能策略更新。
 - [x] 允许配置桌面状态刷新周期。
 - [x] 组合多种桌面状态时选择最省资源的性能策略。
