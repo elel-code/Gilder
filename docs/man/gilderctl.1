@@ -1,0 +1,64 @@
+.TH GILDERCTL 1 "2026-06-18" "Gilder" "User Commands"
+.SH NAME
+gilderctl \- control a running Gilder daemon
+.SH SYNOPSIS
+.B gilderctl
+.I command
+.RI [ arguments ]
+.SH DESCRIPTION
+.B gilderctl
+sends JSON-RPC requests to the Gilder daemon over the user-session Unix socket.
+By default it connects to
+.I $XDG_RUNTIME_DIR/gilder/gilder.sock
+or to
+.I $GILDER_SOCKET
+when that environment variable is set.
+.SH COMMANDS
+.TP
+.B ping
+Check daemon availability and protocol compatibility.
+.TP
+.B status
+Print daemon state, desktop outputs, persisted state, and current render sync.
+.TP
+.B outputs
+Print the daemon's current desktop output snapshot.
+.TP
+.B watch
+Subscribe to snapshot and state.changed events.
+.TP
+.BI "set " "wallpaper.gwp|wallpaper.gwpdir"
+.RB [ "--output " name ]
+Set the default wallpaper or the wallpaper for one output.
+.TP
+.B pause
+.RB [ "--output " name ]
+Pause all wallpaper outputs or one output.
+.TP
+.B resume
+.RB [ "--output " name ]
+Resume all wallpaper outputs or one output.
+.TP
+.B stop
+.RB [ "--output " name ]
+Remove all wallpaper outputs or one output.
+.TP
+.B properties get
+.RI [ key ]
+.RB [ "--output " name ]
+Read global or output-local properties.
+.TP
+.BI "properties set " "key value-json"
+.RB [ "--output " name ]
+Set a global or output-local property. Values are parsed as JSON when possible.
+.TP
+.BI "properties unset " key
+.RB [ "--output " name ]
+Remove a property.
+.SH ENVIRONMENT
+.TP
+.B GILDER_SOCKET
+Override the daemon socket path.
+.SH SEE ALSO
+.BR gilderd (1),
+.BR gilder-convert (1)

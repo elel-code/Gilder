@@ -1,0 +1,33 @@
+.TH GILDER-CONVERT 1 "2026-06-18" "Gilder" "User Commands"
+.SH NAME
+gilder-convert \- convert and pack Gilder wallpaper packages
+.SH SYNOPSIS
+.B gilder-convert pack
+.I source.gwpdir dest.gwp
+.br
+.B gilder-convert unpack
+.I source.gwp dest.gwpdir
+.br
+.B gilder-convert wallpaper-engine
+.I source-project-dir dest.gwpdir
+.br
+.B gilder-convert wallpaper-engine --pack
+.I source-project-dir dest.gwp
+.SH DESCRIPTION
+.B gilder-convert
+packs and unpacks Gilder wallpaper packages and converts local Wallpaper Engine
+projects into Gilder packages.
+.PP
+Wallpaper Engine conversion currently supports static image, video, and web
+projects. Scene and executable application projects are reported clearly in
+.I metadata/conversion-report.json
+and are not executed.
+.SH OUTPUT
+Converted projects contain
+.I manifest.gilder.json
+plus copied assets, previews, and metadata. Missing previews are generated from
+static source images when possible; video projects without previews receive a
+metadata-based SVG fallback until first-frame extraction is implemented.
+.SH SEE ALSO
+.BR gilderd (1),
+.BR gilderctl (1)

@@ -1,0 +1,31 @@
+.TH GILDERD 1 "2026-06-18" "Gilder" "User Commands"
+.SH NAME
+gilderd \- Wayland wallpaper daemon for Gilder
+.SH SYNOPSIS
+.B gilderd
+.SH DESCRIPTION
+.B gilderd
+is the user-session daemon for Gilder. It owns the local Unix socket, reads the
+Gilder configuration and persisted state, watches desktop output state through
+configured adapters, and dispatches wallpaper render plans to enabled renderers.
+.PP
+The daemon binds
+.I $XDG_RUNTIME_DIR/gilder/gilder.sock
+and only accepts local user-session IPC. It is intended to run as a systemd user
+service or as a compositor autostart command.
+.SH FILES
+.TP
+.I $XDG_CONFIG_HOME/gilder/config.toml
+Configuration file.
+.TP
+.I $XDG_STATE_HOME/gilder/state.json
+Persisted wallpaper state.
+.TP
+.I $XDG_CACHE_HOME/gilder/
+Render cache and unpacked wallpaper archives.
+.TP
+.I $XDG_RUNTIME_DIR/gilder/gilder.sock
+IPC socket.
+.SH SEE ALSO
+.BR gilderctl (1),
+.BR gilder-convert (1)

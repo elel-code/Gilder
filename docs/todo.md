@@ -87,7 +87,7 @@
 
 - [x] 实现 `.gwp` 打包。
 - [x] 实现 `.gwp` 解包或只读读取。
-- [ ] 添加 man page。
-- [ ] 添加 systemd user service 示例。
-- [ ] 添加 shell completions。
+- [x] 添加 man page。
+- [x] 添加 systemd user service 示例。
+- [x] 添加 shell completions。
 - [ ] 准备发行包脚本。
