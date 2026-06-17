@@ -155,7 +155,10 @@ computes a small `summary.txt`, and writes one `gilderctl status` JSON snapshot
 per sample. It also asks `gilderctl status --decisions-csv --from-file` to
 produce `decisions.csv` and `decision-summary.txt`, so active/paused,
 fullscreen, and battery scenarios can be compared by both resource usage and
-the daemon's actual `mode/reason/max_fps` decision. Pass `--pid`, `--socket`, or
+the daemon's actual `mode/reason/max_fps` decision. The summary is generated
+with a CSV-aware parser and includes decision row counts, unique samples and
+outputs, `mode/reason` counts with FPS ranges, action counts, plan kinds, fit
+modes, muted video counts, and target FPS ranges. Pass `--pid`, `--socket`, or
 `--gilderctl` when testing an isolated daemon such as the Wayland surface smoke
 script. The CSV, summaries, and raw status files are intended to be compared
 between scenarios; GPU sampling remains platform-specific follow-up work.
