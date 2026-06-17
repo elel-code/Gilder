@@ -67,7 +67,9 @@ Rust 模块组织采用 2018+ 常见布局：`src/foo.rs` 作为模块入口，`
 `niri msg --json outputs/workspaces/windows` 构建 `DesktopSnapshot`。如果对应
 session 环境变量或命令不可用，会回退到 `generic-wayland` 占位快照；真实 GDK
 monitor 后端由 GTK 主线程读取，后台 IPC 线程不会用空的 GDK 结果覆盖已经采集到
-的输出快照。
+的输出快照。电源状态独立于合成器读取，会从 Linux
+`/sys/class/power_supply` 推断 AC/Battery/Unknown，并注入同一份
+`DesktopSnapshot.power`。
 
 ## 渲染路径
 
@@ -143,6 +145,8 @@ monitor 后端由 GTK 主线程读取，后台 IPC 线程不会用空的 GDK 结
 性能策略独立于 GTK 渲染器和具体合成器适配器：
 
 - 合成器适配器提供 `DesktopSnapshot`，包含输出可见性、focused、fullscreen、工作区和电源状态。
+- 电源状态由 Linux `power_supply` sysfs 提供；系统电池放电时触发 battery
+  策略，外接电源在线或电池正在充电/已满时视为 AC。
 - daemon 持久化 `AppState`，记录每个输出的壁纸、暂停状态和用户属性。
 - `PerformanceConfig` 从 `$XDG_CONFIG_HOME/gilder/config.toml` 读取，控制 fullscreen、unfocused、battery 时继续、限帧或暂停。
 - `decide_performance` 将配置、桌面状态和输出状态合成为渲染决策：active、throttled 或 paused。
