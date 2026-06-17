@@ -71,6 +71,7 @@
 - [x] 实现 max_fps 或 pipeline throttling。
 - [x] 避免重复 render sync 对视频 pipeline 反复设置未变化的 state、mute、fit、限帧和 start offset。
 - [x] 避免重复 render sync 对 GTK 静态窗口反复重建 CSS provider。
+- [x] 避免 GTK 初始同步和 IPC 状态变更把未变化的 render sync 重复投递给渲染器。
 - [x] 添加 MP4/WebM codec smoke 验证脚本。
 - [x] 为 MP4/WebM codec smoke 输出结构化报告并在 CI 上传。
 - [ ] 验证 MP4/H.264、WebM/VP9、WebM/AV1。
