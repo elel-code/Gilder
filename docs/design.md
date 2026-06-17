@@ -79,6 +79,9 @@ monitor 后端会随 GTK 渲染器接入。
   窗口，并通过 CSS background 映射 `cover`、`contain`、`stretch`、`tile`、
   `center`。该模块已经可编译，后续需要把 daemon 主循环切换到 GTK application
   并把 IPC 状态变更应用到窗口。
+- daemon 会为当前 desktop snapshot 和持久化状态生成 `render_sync`，列出每个
+  输出的静态渲染计划、需要移除的输出和加载错误。`.gwp` 会在计划阶段解包到
+  `$XDG_CACHE_HOME/gilder/render-cache/`，GTK 主循环后续只需要消费这些计划。
 
 视频壁纸：
 

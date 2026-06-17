@@ -56,7 +56,8 @@ gilderctl ping
 gilderctl status
 ```
 
-返回 daemon 状态、桌面快照、输出列表、当前壁纸、暂停状态、配置/状态文件位置和性能决策信息。
+返回 daemon 状态、桌面快照、输出列表、当前壁纸、暂停状态、配置/状态文件位置、性能决策信息和 `render_sync`。
+`render_sync` 包含静态渲染器下一次同步需要执行的 `plans`、需要关闭的 `removals` 和包加载/格式错误 `errors`。`.gwp` 包会先解包到 `$XDG_CACHE_HOME/gilder/render-cache/`，再生成计划。
 
 ### outputs
 
@@ -104,13 +105,15 @@ gilderctl watch
 JSON-RPC notification，每行一个事件：
 
 ```json
-{"jsonrpc":"2.0","method":"event","params":{"sequence":1,"type":"snapshot","payload":{"outputs":[],"persisted_state":{"default_wallpaper":null,"outputs":{},"properties":{}},"renderer":"not-implemented"}}}
+{"jsonrpc":"2.0","method":"event","params":{"sequence":1,"type":"snapshot","payload":{"outputs":[],"persisted_state":{"default_wallpaper":null,"outputs":{},"properties":{}},"render_sync":{"plans":[],"removals":[],"errors":[]},"renderer":"not-implemented"}}}
 ```
 
 当前事件类型：
 
 - `snapshot`：订阅建立时发送的当前状态快照。
 - `state.changed`：`set`、`pause`、`resume`、`stop`、`properties set/unset` 成功持久化后发送。
+
+`snapshot` 和 `state.changed` 都包含 `render_sync`，GUI 前端或未来 GTK 主循环可以用它判断每个输出是否已有可应用的静态壁纸计划。
 
 ## 计划命令
 

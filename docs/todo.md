@@ -39,6 +39,7 @@
 - [ ] 为每个输出创建 background layer 窗口。
 - [ ] 实现静态图片解码和显示。
 - [x] 实现 fit mode：cover、contain、stretch、tile、center。
+- [x] 为 daemon 状态生成静态渲染同步计划。
 - [ ] 支持输出热插拔。
 - [ ] 支持按 output 设置不同壁纸。
 
