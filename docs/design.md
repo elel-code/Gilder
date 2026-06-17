@@ -198,11 +198,12 @@ daemon 不会把它再次送入渲染器队列。GTK 静态渲染器会在 pause
 background 窗口；GStreamer 渲染器根据 `mode` 和 `max_fps` 执行暂停或限帧。
 刷新周期由 `performance.desktop_refresh_interval_ms` 配置，默认 2000ms，实际运行会
 钳制到不低于 250ms。
-daemon 会缓存最近一次 `render_sync`，当 config、渲染相关 state（壁纸绑定、
-variant、暂停状态和输出条目）、desktop snapshot、cache 目录和已引用壁纸包的
-manifest/`.gwp` 元数据都未变化时，后续 `status`、watch snapshot 和状态事件会复用
-缓存，避免性能采样期间反复读取 manifest、校验资源或解包。当前不参与渲染的
-properties 内容不会单独让缓存失效。
+daemon 会缓存最近一次 `render_sync`，当渲染相关 config（壁纸绑定、fit、性能策略和
+FPS 上限）、渲染相关 state（壁纸绑定、variant、暂停状态和输出条目）、desktop
+snapshot、cache 目录和已引用壁纸包的 manifest/`.gwp` 元数据都未变化时，后续
+`status`、watch snapshot 和状态事件会复用缓存，避免性能采样期间反复读取
+manifest、校验资源或解包。当前不参与渲染的 properties、adapter 开关和桌面状态刷新
+周期不会单独让缓存失效。
 
 示例：
 
