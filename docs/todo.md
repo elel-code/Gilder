@@ -90,4 +90,4 @@
 - [x] 添加 man page。
 - [x] 添加 systemd user service 示例。
 - [x] 添加 shell completions。
-- [ ] 准备发行包脚本。
+- [x] 准备发行包脚本。

@@ -14,6 +14,25 @@ Install these binaries into a directory visible to the user session:
 The daemon is normally built with `gtk-renderer` for static wallpaper display.
 Video support also needs `video-renderer` plus host GStreamer plugins.
 
+## Distribution Tarball
+
+`packaging/build-dist.sh` builds and stages a tarball with binaries, man pages,
+shell completions, and the systemd user service:
+
+```sh
+packaging/build-dist.sh
+```
+
+By default it builds with `--features gtk-renderer,video-renderer` and writes to
+`dist/gilder-<version>-<system>-<arch>.tar.gz`.
+
+Useful options:
+
+```sh
+packaging/build-dist.sh --features gtk-renderer
+packaging/build-dist.sh --profile debug --no-build --dest /tmp/gilder-dist
+```
+
 ## systemd User Service
 
 The example user service is in `packaging/systemd/gilder.service`.
