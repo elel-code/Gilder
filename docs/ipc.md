@@ -57,7 +57,8 @@ gilderctl status
 ```
 
 返回 daemon 状态、桌面快照、输出列表、当前壁纸、暂停状态、配置/状态文件位置、性能决策信息和 `render_sync`。
-`render_sync` 包含静态渲染器下一次同步需要执行的 `plans`、需要关闭的 `removals` 和包加载/格式错误 `errors`。`.gwp` 包会先解包到 `$XDG_CACHE_HOME/gilder/render-cache/`，再生成计划。
+`render_sync` 包含静态渲染器下一次同步需要执行的 `plans`、需要关闭的 `removals`、包加载/格式错误 `errors`，以及每个输出的 `decisions`。
+`decisions` 会记录输出动作、当前壁纸路径和由桌面状态性能策略产生的 `mode/max_fps/reason`，后续视频/GStreamer 渲染器可以直接用它执行暂停或限帧。`.gwp` 包会先解包到 `$XDG_CACHE_HOME/gilder/render-cache/`，再生成计划。
 启用 `gtk-renderer` feature 的 daemon 会在 GTK 主线程消费同一份 `render_sync`，并把可用输出同步到 layer-shell background 窗口。
 
 ### outputs
@@ -107,7 +108,7 @@ gilderctl watch
 JSON-RPC notification，每行一个事件：
 
 ```json
-{"jsonrpc":"2.0","method":"event","params":{"sequence":1,"type":"snapshot","payload":{"outputs":[],"persisted_state":{"default_wallpaper":null,"outputs":{},"properties":{}},"render_sync":{"plans":[],"removals":[],"errors":[]},"renderer":"not-implemented"}}}
+{"jsonrpc":"2.0","method":"event","params":{"sequence":1,"type":"snapshot","payload":{"outputs":[],"persisted_state":{"default_wallpaper":null,"outputs":{},"properties":{}},"render_sync":{"plans":[],"removals":[],"errors":[],"decisions":[]},"renderer":"not-implemented"}}}
 ```
 
 当前事件类型：

@@ -51,7 +51,7 @@
 - [ ] 实现 pause/resume/stop。
 - [ ] 实现 max_fps 或 pipeline throttling。
 - [ ] 验证 MP4/H.264、WebM/VP9、WebM/AV1。
-- [ ] 添加 fullscreen 暂停策略接口。
+- [x] 添加 fullscreen 暂停策略接口。
 
 ## M5: 合成器适配
 
