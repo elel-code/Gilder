@@ -7,6 +7,15 @@ Gilder 的壁纸格式同时支持目录形态和归档形态：
 
 v1 建议 `.gwp` 使用 ZIP 容器。理由是随机访问成熟、跨平台工具多、易于只读挂载式读取。图片、视频等已压缩资源默认使用 store 或低压缩级别，避免浪费 CPU。
 
+当前 CLI 支持：
+
+```sh
+gilder-convert pack <source.gwpdir> <dest.gwp>
+gilder-convert unpack <source.gwp> <dest.gwpdir>
+```
+
+打包前会先校验 `.gwpdir`，解包时会拒绝路径逃逸的 ZIP entry，并在解包后再次校验 manifest 和资源引用。
+
 ## 目录结构
 
 ```text
@@ -216,4 +225,3 @@ Gilder v1 属性类型：
 ## 版本兼容
 
 `format_version` 只在破坏性变更时递增。运行时遇到更高版本应拒绝加载并给出明确错误；遇到未知字段应忽略并保留。
-

@@ -18,10 +18,15 @@ gilder-convert wallpaper-engine <source-project-dir> <dest.gwpdir>
 
 当前实现支持静态图片、视频和 Web 项目的 `.gwpdir` 输出；Scene 和 application/executable 项目会生成转换报告并拒绝转换。缺失预览图时，转换器暂不从源图片或视频生成 poster/thumbnail。
 
-后续可扩展：
+已支持：
 
 ```sh
 gilder-convert wallpaper-engine --pack <source-project-dir> <dest.gwp>
+```
+
+后续可扩展：
+
+```sh
 gilder-convert wallpaper-engine --transcode video=webm <source> <dest.gwpdir>
 gilder-convert wallpaper-engine --allow-web <source> <dest.gwpdir>
 ```

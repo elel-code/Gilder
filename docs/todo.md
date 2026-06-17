@@ -79,8 +79,8 @@
 
 ## M7: 打包与发布
 
-- [ ] 实现 `.gwp` 打包。
-- [ ] 实现 `.gwp` 解包或只读读取。
+- [x] 实现 `.gwp` 打包。
+- [x] 实现 `.gwp` 解包或只读读取。
 - [ ] 添加 man page。
 - [ ] 添加 systemd user service 示例。
 - [ ] 添加 shell completions。
