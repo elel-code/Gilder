@@ -62,6 +62,7 @@
 - [x] 实现 poster 显示。
 - [x] 实现 max_fps 或 pipeline throttling。
 - [x] 添加 MP4/WebM codec smoke 验证脚本。
+- [x] 为 MP4/WebM codec smoke 输出结构化报告并在 CI 上传。
 - [ ] 验证 MP4/H.264、WebM/VP9、WebM/AV1。
 - [x] 添加 fullscreen 暂停策略接口。
 

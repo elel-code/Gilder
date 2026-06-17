@@ -31,10 +31,17 @@ Useful options:
 
 ```sh
 scripts/video-codec-smoke.sh --work-dir /tmp
+scripts/video-codec-smoke.sh --report-dir /tmp/gilder-video-codec-smoke
 scripts/video-codec-smoke.sh --allow-missing
 scripts/video-codec-smoke.sh --no-convert
 scripts/video-codec-smoke.sh --keep
 ```
+
+Every run writes `metadata.txt`, `results.csv`, and `summary.txt` inside the
+smoke work directory. Use `--keep` for a temporary work directory that should be
+preserved, or `--report-dir <dir>` when CI needs a stable artifact path. The
+GitHub Actions workflow uploads `/tmp/gilder-video-codec-smoke` as the
+`video-codec-smoke` artifact.
 
 `--allow-missing` is intended for developer machines where optional encoders or
 GStreamer plugins may not be installed. CI should run the script in strict mode.
