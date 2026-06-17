@@ -63,6 +63,10 @@ Rust 模块组织采用 2018+ 常见布局：`src/foo.rs` 作为模块入口，`
 - `niri`：可选调用 niri IPC 获取 output/workspace 信息。
 
 合成器适配器不能成为核心渲染路径的硬依赖；没有适配器时仍应能显示壁纸。
+当前 daemon 已经支持从 `hyprctl -j monitors/clients` 和
+`niri msg --json outputs/workspaces/windows` 构建 `DesktopSnapshot`。如果对应
+session 环境变量或命令不可用，会回退到 `generic-wayland` 占位快照；真实 GDK
+monitor 后端会随 GTK 渲染器接入。
 
 ## 渲染路径
 
@@ -120,6 +124,8 @@ Rust 模块组织采用 2018+ 常见布局：`src/foo.rs` 作为模块入口，`
 - `decide_performance` 将配置、桌面状态和输出状态合成为渲染决策：active、throttled 或 paused。
 
 这让后续 niri/Hyprland 适配器只需要负责提供准确桌面状态，渲染器只需要执行策略结果。
+`status`、`outputs` 和状态变更事件都会刷新桌面快照并返回每个输出的性能决策，
+后续 GTK/GStreamer 渲染器可以直接根据 `mode` 和 `max_fps` 执行暂停或限帧。
 
 ## 安全原则
 

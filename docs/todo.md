@@ -57,11 +57,11 @@
 - [x] 定义合成器输出/桌面状态快照模型。
 - [x] 定义 fullscreen、unfocused、battery 等性能策略决策层。
 - [ ] 通用 GDK monitor 后端。
-- [ ] Hyprland IPC 后端。
-- [ ] niri IPC 后端。
-- [ ] 输出名称稳定映射。
-- [ ] 工作区/fullscreen 状态感知。
-- [ ] 配置中允许禁用特定适配器。
+- [x] Hyprland IPC 后端。
+- [x] niri IPC 后端。
+- [x] 输出名称稳定映射。
+- [x] 工作区/fullscreen 状态感知。
+- [x] 配置中允许禁用特定适配器。
 
 ## M6: Wallpaper Engine 转换器
 

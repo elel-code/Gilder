@@ -56,7 +56,7 @@ gilderctl ping
 gilderctl status
 ```
 
-返回 daemon 状态、输出列表、当前壁纸、暂停状态、配置/状态文件位置和性能决策信息。
+返回 daemon 状态、桌面快照、输出列表、当前壁纸、暂停状态、配置/状态文件位置和性能决策信息。
 
 ### outputs
 
@@ -64,7 +64,7 @@ gilderctl status
 gilderctl outputs
 ```
 
-返回 daemon 当前知道的输出列表。早期实现会合并持久化状态中的输出和合成器适配器提供的输出；在真实合成器适配器接入前，列表可能只包含通过 IPC 设置过的输出。
+返回 daemon 当前知道的桌面快照和输出列表。列表会合并持久化状态中的输出和合成器适配器提供的输出。Hyprland session 下读取 `hyprctl -j monitors/clients`；niri session 下读取 `niri msg --json outputs/workspaces/windows`；不可用时回退到 generic snapshot。
 
 ### set
 
