@@ -60,6 +60,7 @@ gilderctl status
 `render_sync` 包含静态图片渲染器下一次同步需要执行的 `plans`、视频渲染器后续要消费的 `video_plans`、需要关闭的 `removals`、包加载/格式错误 `errors`，以及每个输出的 `decisions`。
 `decisions` 会记录输出动作、当前壁纸路径和由桌面状态性能策略产生的 `mode/max_fps/reason`，后续视频/GStreamer 渲染器可以直接用它执行暂停或限帧。`.gwp` 包会先解包到 `$XDG_CACHE_HOME/gilder/render-cache/`，再生成计划。
 启用 `gtk-renderer` feature 的 daemon 会在 GTK 主线程消费同一份 `render_sync`，并把可用输出同步到 layer-shell background 窗口。
+启用 `video-renderer` feature 时，daemon 会启动 GStreamer worker 消费 `video_plans`，负责视频 pipeline 生命周期控制。
 
 ### outputs
 
@@ -116,8 +117,8 @@ JSON-RPC notification，每行一个事件：
 - `snapshot`：订阅建立时发送的当前状态快照。
 - `state.changed`：`set`、`pause`、`resume`、`stop`、`properties set/unset` 成功持久化后发送。
 
-`snapshot` 和 `state.changed` 都包含 `render_sync`，GUI 前端和 GTK 主循环可以用它判断每个输出是否已有可应用的静态壁纸计划。
-启用 `gtk-renderer` feature 时，daemon 内部 GTK 主循环也会消费这些状态变更产生的计划；未启用时响应中的 `renderer` 为 `not-implemented`，只保留 IPC、状态和转换能力。
+`snapshot` 和 `state.changed` 都包含 `render_sync`，GUI 前端和 daemon 内部渲染器可以用它判断每个输出是否已有可应用的静态或视频壁纸计划。
+`renderer` 会随 feature 组合返回 `gtk-layer-shell-static`、`gstreamer-video`、`gtk-layer-shell-static+gstreamer-video` 或 `not-implemented`；未启用渲染 feature 时只保留 IPC、状态和转换能力。
 
 ## 计划命令
 
