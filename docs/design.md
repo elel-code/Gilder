@@ -117,6 +117,9 @@ throttling、fullscreen pause 和 output-hidden pause；未设置时使用合成
   丢弃音频。
 - 性能策略合成出的 `target_max_fps` 会通过 `videorate ! capsfilter` 应用到
   playbin 的 `video-filter`。
+- 渲染器在应用 video plan 时会跳过未变化的 state、mute、fit、target FPS 和
+  start offset，避免周期性 render sync 造成重复 GStreamer property 更新或把视频反复
+  seek 回起始偏移。
 - 支持 MP4/H.264、WebM/VP9/AV1，实际支持由系统插件决定。
 - 循环、静音、音频丢弃、最大 FPS、poster、空闲暂停必须是 manifest 中的显式策略。
 - 解码和播放控制不阻塞 GTK 主线程。
