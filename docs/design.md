@@ -96,6 +96,8 @@ throttling、fullscreen pause 和 output-hidden pause；未设置时使用合成
   `$XDG_CACHE_HOME/gilder/render-cache/`，GTK 主循环会消费这些计划，为匹配到的
   GDK monitor 创建或更新 background layer 窗口，并关闭 removals、加载错误和
   当前快照中已经消失的输出窗口。
+- GTK 静态渲染器会记住每个输出上次应用的静态 plan；当 source、fit、background
+  和输出名都未变化时，后续同步不会重复移除/创建 CSS provider 或重新加载 CSS。
 
 视频壁纸：
 
