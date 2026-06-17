@@ -55,6 +55,10 @@ The GTK video surface path also needs a runtime plugin that provides
 `gtk4paintablesink` such as `gst-plugin-gtk4`. Package names differ by
 distribution, so Gilder probes it at runtime instead of making it a Rust build
 dependency.
+Use `gilderctl status` and check
+`renderer_capabilities.video.gstreamer.elements` to confirm whether
+`gtk4paintablesink` and the core GStreamer elements are available in the running
+daemon environment.
 
 The exact hardware decode path is left to the host GStreamer installation. The
 smoke test intentionally uses `fakesink` so it can run in CI without a Wayland
