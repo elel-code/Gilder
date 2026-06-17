@@ -161,7 +161,8 @@ active。
 周期刷新只在桌面快照变化时发送 `desktop.changed` watch 事件，并且只在
 `render_sync` 实际变化时投递给渲染器，避免固定频率重建 pipeline。GTK 静态渲染器会
 在 paused 时关闭对应 background 窗口；GStreamer 渲染器根据 `mode` 和 `max_fps`
-执行暂停或限帧。
+执行暂停或限帧。刷新周期由 `performance.desktop_refresh_interval_ms` 配置，默认
+2000ms，实际运行会钳制到不低于 250ms。
 
 ## 安全原则
 
