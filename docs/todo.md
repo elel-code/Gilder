@@ -53,6 +53,7 @@
 - [x] 实现视频 entry 加载。
 - [x] 将 GStreamer worker 接入 daemon 渲染同步队列。
 - [x] 在 GStreamer runtime 实现 loop、muted。
+- [x] 将 manifest `runtime.allow_audio` 接入视频静音/音频 sink 策略。
 - [x] 实现 pause/resume/stop 的 pipeline 控制。
 - [x] 将视频 sink 通过 GTK paintable 接入每个输出的 layer-shell window。
 - [x] 在 IPC status/watch 中报告视频 surface 运行时能力。

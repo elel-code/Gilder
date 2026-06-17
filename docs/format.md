@@ -119,6 +119,9 @@ example.gwpdir/
 `runtime.pause_when_fullscreen` 和 `runtime.pause_when_unfocused` 会参与 daemon 的桌面
 状态性能决策。包内 runtime 策略只能让当前输出更保守，例如从 active/throttled
 变为 paused；用户暂停、输出隐藏、会话 inactive 等更强决策不会被包内策略放宽。
+`runtime.allow_audio` 默认为 `false`。视频计划会把 `entry.muted || !runtime.allow_audio`
+作为最终静音状态；只有包显式允许音频且 video entry 未静音时，GStreamer 路径才会
+允许音频输出。
 
 ## Entry 类型
 

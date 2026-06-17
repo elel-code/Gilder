@@ -105,6 +105,9 @@ active。
 - 只启用 `video-renderer` 时，daemon 会启动独立 GStreamer worker，消费同一份
   `render_sync`，并用 headless sink 固化 playbin 生命周期、loop、muted、
   pause/resume/stop 和 bus polling 控制面。
+- 默认音频被丢弃。只有 manifest `runtime.allow_audio = true` 且 video entry
+  `muted = false` 时，GStreamer 才允许音频输出；否则 playbin 使用 `fakesink`
+  丢弃音频。
 - 性能策略合成出的 `target_max_fps` 会通过 `videorate ! capsfilter` 应用到
   playbin 的 `video-filter`。
 - 支持 MP4/H.264、WebM/VP9/AV1，实际支持由系统插件决定。
@@ -167,6 +170,7 @@ active。
 - `[outputs.<name>.performance]` 可以覆盖单个输出的 FPS 和 fullscreen/unfocused/battery 策略，适合把副屏、投影输出或高耗电输出配置得更保守。
 - `decide_performance` 将配置、桌面状态和输出状态合成为渲染决策：active、throttled 或 paused。多个条件同时命中时选择最省资源的结果：paused 优先于 throttled，同为 throttled/active 时选择更低 `max_fps`；同等强度时保留更早命中的明确原因。
 - manifest `runtime.pause_when_fullscreen` 和 `runtime.pause_when_unfocused` 会在包加载后作为额外保守策略合入同一份决策；如果配置、用户暂停、输出隐藏或会话 inactive 已经要求暂停，daemon 不会为了读取 manifest 再加载包。
+- manifest `runtime.allow_audio` 与 video entry 的 `muted` 合成最终视频静音状态，默认不输出音频。
 
 这让后续 niri/Hyprland 适配器只需要负责提供准确桌面状态，渲染器只需要执行策略结果。
 `status`、`outputs`、状态变更事件和 daemon 周期刷新都会刷新桌面快照并返回每个
