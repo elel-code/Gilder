@@ -257,10 +257,15 @@ direction, caps string, media type list, caps features, and aggregated
 `memory_features` such as `memory:DMABuf` or `memory:GLMemory` when GStreamer
 exposes them on the negotiated path. Empty caps reports usually mean the
 pipeline has not negotiated video caps yet.
+`renderer_runtime.video_pipelines[]` also reports `position_ms`, `duration_ms`,
+`frame_limiter_enabled`, and `frame_limiter_max_fps`. These fields are runtime
+playback/limiter evidence: a moving `position_ms` proves the pipeline playhead
+is advancing, and `frame_limiter_max_fps` proves the applied capsfilter limit.
+They are not compositor presentation, frame callback, or dropped-frame counts.
 Use `gilderctl status --video-runtime-csv --from-file <status.json>` to turn a
-saved status snapshot into compact decoder/caps evidence with sink-side memory
-features. The raw status JSON remains the authoritative source for full caps
-strings.
+saved status snapshot into compact decoder/caps/playback evidence with
+sink-side memory features. The raw status JSON remains the authoritative source
+for full caps strings.
 
 The exact hardware decode path is left to the host GStreamer installation. The
 smoke test intentionally uses `fakesink` so it can run in CI without a Wayland
@@ -345,8 +350,11 @@ temperature, power_supply AC/battery details, and daemon-side DRM
 `gpu_busy_percent` samples when the driver exposes them.
 The sampler also writes `video-runtime.csv`, which records each sample's
 decoder policy status, actual decoder classes, caps report count, all memory
-features, and sink-side memory features. Use that table beside CPU, PSS, USS,
-and RSS when checking hard decode or zero-copy behavior.
+features, sink-side memory features, playback position/duration, and actual
+frame limiter state. It also writes `video-runtime-summary.txt`, including
+`video_position_moving_outputs`, `video_position_delta_ms_max`,
+`video_frame_limiter_enabled_rows`, and limiter FPS min/max. Use that table
+beside CPU, PSS, USS, and RSS when checking hard decode or zero-copy behavior.
 Use `--expect-decoder-policy-status`, `--expect-decoder-class`,
 `--expect-memory-feature`, and `--expect-sink-memory-feature` to make the
 sampling run fail when live video runtime evidence does not contain the expected
@@ -354,6 +362,9 @@ decoder policy result, hardware/software class, negotiated caps memory feature,
 or sink-side memory feature. For example, `--expect-decoder-class hardware`
 checks that the running pipeline observed a known hardware decoder, while
 `--expect-sink-memory-feature memory:DMABuf` checks for sink-side DMABuf caps.
+Use `--expect-video-position-progress`, `--expect-frame-limiter-enabled`, and
+`--expect-frame-limiter-max-fps <fps>` to assert that playback moved during the
+sample window and that the runtime frame limiter is active at the expected cap.
 These checks are evidence gates only: hardware decoder evidence and
 DMABuf/GLMemory caps should still be interpreted separately from full zero-copy
 proof.
