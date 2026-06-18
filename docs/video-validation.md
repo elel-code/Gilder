@@ -341,7 +341,8 @@ refresh skips, desktop change deltas, render-sync cache hit/miss deltas, and
 renderer update queue queued/skipped counters. When adaptive monitoring is
 enabled, the same telemetry files also include adaptive refresh deltas, active
 trigger counts, PSI CPU/memory pressure maxima, and thermal-zone maximum
-temperature, plus power_supply AC/battery details.
+temperature, power_supply AC/battery details, and daemon-side DRM
+`gpu_busy_percent` samples when the driver exposes them.
 The sampler also writes `video-runtime.csv`, which records each sample's
 decoder policy status, actual decoder classes, caps report count, all memory
 features, and sink-side memory features. Use that table beside CPU, PSS, USS,
@@ -360,6 +361,10 @@ When available, `samples.csv` also includes `gpu_busy_percent_avg`,
 `gpu_busy_percent_max`, and `gpu_busy_sources` from DRM sysfs
 `gpu_busy_percent` or `nvidia-smi`. These fields are optional and may be empty
 on drivers that do not expose a simple busy counter.
+`telemetry-summary.txt` separately reports `daemon_gpu_busy_samples`,
+`daemon_avg_gpu_busy_percent`, `daemon_max_gpu_busy_percent`, and
+`daemon_gpu_busy_sources_latest` when adaptive monitoring captured GPU busy from
+inside the daemon.
 For memory comparisons, prefer `avg_uss_kib` or its equivalent
 `avg_private_kib` for the process-private footprint and `avg_pss_kib` for the
 shared-memory-adjusted footprint; `avg_rss_kib` includes shared mappings at
