@@ -92,7 +92,7 @@ gilderctl outputs
 ```
 
 返回 daemon 当前知道的桌面快照和输出列表。列表会合并持久化状态中的输出和合成器适配器提供的输出。Hyprland session 下读取 `hyprctl -j monitors/clients`；niri session 下读取 `niri msg --json outputs/workspaces/windows`；不可用时回退到 generic snapshot。
-验证时可以用 `GILDER_DESKTOP_OUTPUTS=eDP-1,HDMI-A-1:1920x1080@1.5` 构造虚拟输出列表，再叠加 `GILDER_OUTPUT_STATE`、`GILDER_POWER_STATE` 和 `GILDER_SESSION_STATE` 采集 headless 性能策略证据。
+验证时可以用 `GILDER_DESKTOP_OUTPUTS=eDP-1,HDMI-A-1:1920x1080@1.5` 构造虚拟输出列表，再叠加 `GILDER_OUTPUT_STATE`、`GILDER_POWER_STATE`、`GILDER_SESSION_STATE` 和 `GILDER_ADAPTIVE_STATE=inactive|cpu-pressure|memory-pressure|temperature|all` 采集 headless 性能策略证据。
 
 ### set
 

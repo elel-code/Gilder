@@ -61,6 +61,17 @@ and
 .BR locked .
 When unset, Gilder reads session active and locked hints from logind when
 available.
+.TP
+.B GILDER_ADAPTIVE_STATE
+Validation override for adaptive system-pressure sampling. Accepted values are
+.BR inactive ,
+.BR cpu-pressure ,
+.BR memory-pressure ,
+.BR temperature ,
+and
+.BR all .
+When unset, Gilder reads PSI, thermal, power_supply, and DRM sysfs samples from
+the host.
 .SH SEE ALSO
 .BR gilderctl (1),
 .BR gilder-convert (1)
