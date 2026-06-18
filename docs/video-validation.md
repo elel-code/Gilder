@@ -198,10 +198,14 @@ Use `--expect-mode`, `--expect-reason`, `--expect-action`, and
 decision is not observed in `decision-summary.txt`. The Wayland video smoke
 passes these expectations automatically for simulated battery, unfocused,
 fullscreen, hidden, session, and user-paused scenarios. Use
-`--expect-render-sync-cache-hit` and `--expect-desktop-refresh-skip` to make a
-sampling run fail when daemon telemetry does not show render-sync cache reuse
-or read-request desktop refresh throttling; the Wayland video smoke enables
-both telemetry expectations for its performance samples.
+`--expect-render-sync-cache-hit`, `--expect-desktop-refresh-skip`, and
+`--expect-render-sync-update-queued` to make a sampling run fail when daemon
+telemetry does not show render-sync cache reuse, read-request desktop refresh
+throttling, or at least one renderer sync dispatch; the Wayland video smoke
+enables these telemetry expectations for its performance samples. Use
+`--expect-render-sync-update-skipped` for targeted repeated-state scenarios
+where the same `render_sync` should be suppressed instead of sent to renderers
+again.
 For battery policy comparisons on machines that are not actually discharging,
 run the daemon or smoke script with `GILDER_POWER_STATE=battery`; unset it to
 return to sysfs-based power detection.
