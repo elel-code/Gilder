@@ -111,9 +111,9 @@
 - [x] 添加 fullscreen 暂停策略接口。
 - [x] 在 codec smoke 中记录实际 GStreamer decoder element，区分软解和硬解 codec 基线。
 - [x] 在 daemon status/watch 中报告运行中视频 pipeline 的实际 decoder element。
-- [ ] 提供视频 decoder 策略配置：`auto`、`hardware-preferred`、`hardware-required`、`software`。
+- [x] 提供视频 decoder 策略配置：`auto`、`hardware-preferred`、`hardware-required`、`software`。
 - [ ] 在 GStreamer autoplug 选择中优先/强制 VAAPI、VDPAU、NVDEC 等硬解 decoder，并保留明确软解回退。
-- [ ] 在 status/watch 中报告 decoder 策略、实际 decoder 类型和硬解/软解分类。
+- [x] 在 status/watch 中报告 decoder 策略、实际 decoder 类型和硬解/软解分类。
 - [ ] 验证 GTK video surface 是否能保持 GPU/DMABuf 路径，区分“硬解但发生 CPU copy”和真正 zero-copy。
 - [ ] 为硬解和 zero-copy 添加本机 smoke：记录 decoder、sink caps/memory features、CPU/GPU/USS/PSS 对比。
 

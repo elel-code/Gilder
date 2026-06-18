@@ -240,6 +240,10 @@ When a video wallpaper is running, also inspect
 live daemon pipeline, while `renderer_capabilities` only reports which runtime
 plugins are available. Empty `actual_decoders` means no known decoder element
 has been observed yet, not that hardware decode is active.
+`renderer_runtime.video_pipelines[].decoder_policy` reports the configured
+intent from `[video].decoder`, and
+`renderer_runtime.video_pipelines[].actual_decoder_reports[].class` classifies
+observed decoder elements as `hardware`, `software`, or `unknown`.
 
 The exact hardware decode path is left to the host GStreamer installation. The
 smoke test intentionally uses `fakesink` so it can run in CI without a Wayland
@@ -247,9 +251,11 @@ session. Current Wayland surface smoke evidence should be treated as a
 software-decoding or auto-selected-decoder baseline unless paired with codec
 smoke evidence that records a hardware decoder element such as VAAPI/VDPAU/NVDEC.
 The generated H.264 surface smoke does not force hardware decode.
-Future hardware decode work should expose an explicit decoder policy:
-`auto`, `hardware-preferred`, `hardware-required`, and `software`. Validation
-must report both the configured policy and the actual selected decoder.
+The explicit decoder policy values are `auto`, `hardware-preferred`,
+`hardware-required`, and `software`; they are currently configuration and
+observability fields. Future hardware decode work still needs to make
+GStreamer autoplug selection consume that policy and report whether the policy
+was satisfied by the actual selected decoder.
 
 Hardware decode is not the same thing as zero-copy presentation. A pipeline may
 decode through VAAPI/VDPAU/NVDEC and still copy frames back through CPU memory
