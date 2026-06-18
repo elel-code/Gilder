@@ -188,3 +188,32 @@
 - [x] 添加 systemd user service 示例。
 - [x] 添加 shell completions。
 - [x] 准备发行包脚本。
+
+## M8: 性能、内存与 zero-copy 优化
+
+- [ ] 为 active、paused、fullscreen、hidden、battery、unfocused 场景建立 CPU/GPU/RSS/PSS/USS/private/shared 基线表。
+- [ ] 为常见场景定义可执行的内存预算和回归阈值，优先使用 PSS、USS 和 private 占用作为判断依据。
+- [ ] 对 paused、hidden、fullscreen 移除渲染计划后的 pipeline/window/resource 释放行为建立验证门槛。
+- [ ] 评估视频 pipeline 共享：同源多输出时避免重复解码，优先复用解码或 texture 产物。
+- [ ] 限制 poster、thumbnail、manifest/package cache 的内存增长，并为缓存淘汰添加 telemetry。
+- [ ] 优化静态大图解码路径，按输出尺寸选择/生成合适变体，避免无意义加载原始超大图。
+- [ ] 接上更强硬解路径验证：按 codec/GPU/driver 记录实际 decoder、caps、sink caps、CPU/GPU/USS/PSS 对比。
+- [ ] 验证 GTK video surface 是否能保持 GPU/DMABuf 路径，区分“硬解但发生 CPU copy”和真正 zero-copy。
+- [ ] 继续采集 compositor presentation/frame callback 统计，补足 GTK/GDK timing 之外的 compositor 侧证据。
+- [ ] 将硬解、DMABuf/GLMemory、sink-side caps 和 compositor presentation 组合成更严格的 zero-copy validation profile。
+- [ ] 扩展 adaptive monitor，让用户可选按 CPU/GPU/内存压力、电池、温度、session/output 状态自动降 FPS、暂停动态壁纸或释放资源。
+- [ ] 为 adaptive 行为加入保守默认值、冷却时间、恢复条件和 status/watch 可解释报告，避免自动化策略不可预期。
+
+## M9: 壁纸类型对齐 Wallpaper Engine
+
+- [ ] 梳理 Wallpaper Engine 类型矩阵：image、video、web、scene、application、audio visualizer、shader/particle、playlist，并标注 Gilder 支持等级。
+- [ ] 扩展 `scene-lite`：补齐常见 2D scene 图层、transform、opacity、动画曲线、时间轴和属性映射。
+- [ ] 设计完整 `scene` runtime：保留可高效渲染的 scene graph，不把复杂场景长期降级为静态 fallback。
+- [ ] 增强 `web` 壁纸 runtime：WebKitGTK sandbox、输入策略、音频策略、资源权限、暂停/恢复和低功耗模式。
+- [ ] 添加 shader 壁纸类型，优先支持 GLSL/WGSL 风格的时间、分辨率、鼠标和用户属性 uniform。
+- [ ] 添加粒子/特效壁纸类型，优先覆盖 Wallpaper Engine 常见粒子发射器、纹理、速度场和 blend 模式。
+- [ ] 添加音频响应壁纸能力，定义可选 PipeWire 音频采样输入和隐私/权限开关。
+- [ ] 添加时钟、系统监控、媒体信息等 Linux 桌面常见信息型壁纸组件，但默认不采集敏感信息。
+- [ ] 支持 playlist/轮播策略：按时间、随机、输出、电源状态和桌面状态选择壁纸。
+- [ ] 扩展 Wallpaper Engine 转换器，为 web/scene/shader/particle/audio 响应能力输出更细的 conversion report 和缺失能力提示。
+- [ ] 为每类新壁纸定义 manifest schema、示例包、转换测试、headless 计划测试和真实 Wayland smoke 验证入口。

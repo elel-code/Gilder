@@ -159,9 +159,15 @@ decision, captures `performance-paused/`, and resumes the output.
 Every run also writes `validation-report.txt` as a single audit entrypoint. It
 summarizes the expected and actual compositor, selected outputs, whether the
 scenario should contain an active video plan, video runtime row counts and phase
-counts, and the relevant performance/video-runtime summary artifact paths. Use
-that file first when reviewing Hyprland, niri, hardware decode, or zero-copy
-evidence, then drill into the referenced CSV and status JSON files.
+counts, the relevant performance/video-runtime summary artifact paths, and the
+prefixed active/paused video runtime evidence for decoder policy/status,
+actual decoders, decoder class, negotiated memory features, sink-side memory
+features, zero-copy evidence level, GTK frame-clock phase counters, and GDK
+frame timing counters. Use that file first when reviewing Hyprland, niri,
+hardware decode, or zero-copy evidence, then drill into the referenced CSV and
+status JSON files. Hardware decoder evidence alone is not treated as zero-copy
+proof; look for DMABuf/GLMemory caps, especially sink-side caps, and compositor
+presentation evidence for stronger validation.
 With `--simulate-power battery`, it starts the isolated daemon with
 `GILDER_POWER_STATE=battery`, verifies that status reports `power: battery`,
 checks for a battery performance decision after applying the wallpaper, and
