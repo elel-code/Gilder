@@ -85,6 +85,7 @@ scripts/wayland-video-surface-smoke.sh --sample-performance --keep
 scripts/wayland-video-surface-smoke.sh --simulate-power battery --sample-performance --keep
 scripts/wayland-video-surface-smoke.sh --simulate-output-state unfocused --sample-performance --keep
 scripts/wayland-video-surface-smoke.sh --simulate-output-state fullscreen --sample-performance --keep
+scripts/wayland-video-surface-smoke.sh --simulate-session locked --sample-performance --keep
 scripts/wayland-video-surface-smoke.sh --sample-paused --keep
 scripts/wayland-video-surface-smoke.sh --allow-missing
 scripts/wayland-video-surface-smoke.sh --no-build --keep
@@ -108,6 +109,10 @@ isolated daemon with `GILDER_OUTPUT_STATE`, verifies that status reflects the
 simulated output focus/visibility/fullscreen fields, and checks for the
 matching performance decision. `unfocused` still expects an active video plan
 with throttling, while `fullscreen` and `hidden` expect the paused/remove path.
+With `--simulate-session inactive|locked`, it starts the isolated daemon with
+`GILDER_SESSION_STATE`, verifies that status reflects the simulated logind
+session state, and expects the paused/remove path with `session-inactive` or
+`session-locked` as the performance reason.
 
 ## Runtime Packages
 
@@ -198,3 +203,6 @@ return to sysfs-based power detection.
 For compositor-state policy comparisons where changing the real desktop state
 is awkward, use `GILDER_OUTPUT_STATE=unfocused`, `fullscreen`, or `hidden`; unset
 it to return to compositor/GDK state detection.
+For session-state policy comparisons where switching VT or locking the real
+session is awkward, use `GILDER_SESSION_STATE=inactive` or `locked`; unset it to
+return to logind state detection.

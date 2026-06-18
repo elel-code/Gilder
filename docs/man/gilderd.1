@@ -44,6 +44,15 @@ Validation override for output desktop state. Accepted values are
 and
 .BR hidden .
 When unset, Gilder uses compositor or GDK output state.
+.TP
+.B GILDER_SESSION_STATE
+Validation override for logind session state. Accepted values are
+.BR active ,
+.BR inactive ,
+and
+.BR locked .
+When unset, Gilder reads session active and locked hints from logind when
+available.
 .SH SEE ALSO
 .BR gilderctl (1),
 .BR gilder-convert (1)
