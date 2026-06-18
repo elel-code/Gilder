@@ -230,12 +230,12 @@ session.
 ## Remaining Surface Work
 
 The GTK paintable sink code path has been validated for one-output and
-multi-output niri video presentation. It still needs compositor-facing checks:
+multi-output niri video presentation, plus niri simulated battery, unfocused,
+and fullscreen policy sampling. It still needs compositor-facing checks:
 
 - Hyprland video presentation;
-- fullscreen pause and resume latency;
-- battery/unfocused throttling behavior;
-- CPU, memory, and GPU usage sampling while active and paused.
+- fullscreen resume latency;
+- longer-duration CPU, memory, and GPU usage sampling while active and paused.
 
 ## Performance Sampling
 
@@ -252,8 +252,13 @@ scripts/wayland-video-surface-smoke.sh --sample-paused --sample-duration 30 --ke
 ```
 
 The script finds a running `gilderd` process, samples `ps` CPU/RSS/VSZ fields,
-computes a small `summary.txt`, and writes one `gilderctl status` JSON snapshot
-per sample. It also asks `gilderctl status --decisions-csv --from-file` to
+and, on Linux, reads `/proc/<pid>/smaps_rollup` for PSS, USS/private, and
+shared memory. RSS is the resident set including shared mappings; PSS is the
+shared memory cost apportioned across processes; USS is the unique/private set
+size, reported here as `Private_Clean + Private_Dirty`. It computes a small
+`summary.txt` with min/average/max memory values and writes one `gilderctl`
+status JSON snapshot per sample. It also asks
+`gilderctl status --decisions-csv --from-file` to
 produce `decisions.csv` and `decision-summary.txt`, so active/paused,
 fullscreen, and battery scenarios can be compared by both resource usage and
 the daemon's actual `mode/reason/max_fps` decision. The summary is generated
@@ -264,6 +269,10 @@ plan kinds, fit modes, muted video counts, and target FPS ranges. It also asks
 `telemetry-summary.txt`, which report desktop refresh deltas, read-request
 refresh skips, desktop change deltas, render-sync cache hit/miss deltas, and
 renderer update queue queued/skipped counters.
+For memory comparisons, prefer `avg_uss_kib` or its equivalent
+`avg_private_kib` for the process-private footprint and `avg_pss_kib` for the
+shared-memory-adjusted footprint; `avg_rss_kib` includes shared mappings at
+full size and is not private usage.
 Pass `--pid`, `--socket`, or `--gilderctl` when testing an isolated daemon such
 as the Wayland surface smoke script. The CSV, summaries, and raw status files
 are intended to be compared between scenarios; GPU sampling remains

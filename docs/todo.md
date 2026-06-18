@@ -64,10 +64,11 @@
 - [x] 在真实 niri Wayland 会话验证视频 surface 显示。
 - [x] 在真实 niri Wayland 会话验证多输出同源视频 surface 显示。
 - [ ] 在真实 Hyprland Wayland 会话验证视频 surface 显示。
-- [x] 添加 CPU/RSS/status 性能采样脚本。
+- [x] 添加 CPU/RSS/PSS/USS/private/status 性能采样脚本。
 - [x] 将 active-video 性能采样接入 Wayland 视频 surface smoke。
 - [x] 将 paused-video 性能采样接入 Wayland 视频 surface smoke。
 - [x] 在性能采样证据中输出 render decision CSV 和摘要。
+- [x] 在性能采样证据中输出 PSS、USS/private 和 shared 内存摘要。
 - [x] 在 decision CSV 中记录计划类型、资源、fit、视频限帧和静音状态。
 - [x] 使用 CSV-aware 汇总器统计性能采样中的决策、计划类型、fit、静音和限帧范围。
 - [x] 支持性能采样断言期望的 mode、reason、action 和计划类型。
@@ -85,6 +86,7 @@
 - [x] 支持性能采样断言 render sync 缓存命中和桌面刷新节流生效。
 - [x] 在 daemon telemetry 中输出渲染器同步投递 queued/skipped 计数，用于审计投递去重。
 - [x] 支持性能采样断言渲染器同步投递 queued/skipped 计数。
+- [x] 在真实 niri Wayland 会话采集 battery/unfocused/fullscreen 视频 surface 策略和内存证据。
 - [x] 添加 headless 桌面状态性能策略 smoke，覆盖 active/battery/unfocused/fullscreen/hidden/session 场景。
 - [x] 将 headless 桌面状态性能策略 smoke 接入 CI 并上传证据。
 - [x] 为 headless 桌面状态性能策略 smoke 输出场景矩阵和顶层摘要。
