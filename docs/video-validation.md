@@ -544,16 +544,18 @@ virtual output and covering active, battery, unfocused, fullscreen, hidden,
 inactive, locked, adaptive throttle, adaptive `pause-unfocused`, adaptive
 focused-output fallback, adaptive `pause-dynamic` static passthrough,
 adaptive `pause-dynamic` slideshow removal, and per-output performance override
-scenarios against the default daemon build. It asserts mode, reason, action, plan kind, and
-expected `max_fps` where the decision should remain renderable. The GitHub Actions
+scenarios against the default daemon build. It asserts mode, reason, action,
+plan kind, planned image resource references/unique resources, and expected
+`max_fps` where the decision should remain renderable. The GitHub Actions
 workflow runs it in strict mode and uploads `/tmp/gilder-desktop-policy-smoke`
 as the `desktop-policy-smoke` artifact. The artifact includes top-level
 `metadata.txt`, `matrix.csv`, `resource-baseline.csv`, and `summary.txt` files,
 plus per-scenario status snapshots, daemon logs, decision summaries, and
 telemetry summaries. `resource-baseline.csv` gives one row per scenario and
 pulls the sampled CPU, GPU, RSS, PSS, private, USS, shared-memory, decision,
-render-sync cache, renderer update, adaptive-action, and renderer video
-telemetry summary values into one table for quick baseline comparison.
+render-sync cache, planned image resource footprint, renderer update,
+adaptive-action, and renderer video telemetry summary values into one table
+for quick baseline comparison.
 The desktop policy smoke also forwards the same
 `--expect-max-*-kib-at-most` memory budget gates to every scenario, which makes
 it useful for CI-side private-memory regression checks once per-scenario
