@@ -99,6 +99,7 @@ Useful options:
 scripts/wayland-video-surface-smoke.sh --preflight --report-dir /tmp/gilder-wayland-video-preflight
 scripts/wayland-video-surface-smoke.sh --output eDP-1
 scripts/wayland-video-surface-smoke.sh --expect-compositor hyprland --visual-hold 20 --keep
+scripts/wayland-video-surface-smoke.sh --expect-compositor hyprland --expect-decoder-class hardware --expect-zero-copy-evidence sink-dmabuf-caps --expect-gtk-frame-clock --keep
 scripts/wayland-video-surface-smoke.sh --all-outputs --visual-hold 20 --keep
 scripts/wayland-video-surface-smoke.sh --sample-performance --keep
 scripts/wayland-video-surface-smoke.sh --visual-hold 20 --keep
@@ -136,9 +137,16 @@ fixed confirmation window before sampling or cleanup. With
 `--sample-performance`, it also runs `performance-snapshot.sh` against the
 isolated daemon and writes
 `performance-active/samples.csv`, `summary.txt`, and status snapshots under the
-same kept work directory. With `--sample-paused`, it captures the active sample,
-pauses the selected output, verifies a `user-paused` performance decision,
-captures `performance-paused/`, and resumes the output.
+same kept work directory. The smoke also accepts video runtime evidence gates
+from `performance-snapshot.sh`: `--expect-decoder-policy-status`,
+`--expect-decoder-class`, `--expect-memory-feature`,
+`--expect-sink-memory-feature`, `--expect-zero-copy-evidence`,
+`--expect-video-position-progress`, `--expect-gtk-frame-clock`, and
+`--expect-gtk-frame-timings`. Supplying any of these options automatically
+enables performance sampling and applies the checks only to scenarios that
+should have an active video plan. With `--sample-paused`, it captures the active
+sample, pauses the selected output, verifies a `user-paused` performance
+decision, captures `performance-paused/`, and resumes the output.
 With `--simulate-power battery`, it starts the isolated daemon with
 `GILDER_POWER_STATE=battery`, verifies that status reports `power: battery`,
 checks for a battery performance decision after applying the wallpaper, and
