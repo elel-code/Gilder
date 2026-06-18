@@ -147,7 +147,10 @@ from `performance-snapshot.sh`: `--expect-decoder-policy-status`,
 and `--expect-gtk-frame-timings`. It also forwards process memory budget gates:
 `--expect-max-rss-kib-at-most`, `--expect-max-pss-kib-at-most`,
 `--expect-max-private-kib-at-most`, `--expect-max-uss-kib-at-most`, and
-`--expect-max-shared-kib-at-most`. Supplying any of these options
+`--expect-max-shared-kib-at-most`, plus planned image-resource byte gates
+`--expect-render-sync-planned-image-resource-reference-bytes-latest-at-most`
+and `--expect-render-sync-planned-unique-image-resource-bytes-latest-at-most`.
+Supplying any of these options
 automatically enables performance sampling. Video runtime checks apply only to
 scenarios that should have an active video plan; process memory checks apply to
 the sampled daemon in every performance scenario. The phase gate checks GTK
@@ -409,7 +412,10 @@ eviction/error deltas so long runs can catch manifest/package cache pressure or
 `.gwp` unpack cache growth. It also reports planned static image, video poster,
 slideshow image, total image-reference, and unique image-resource counts so
 paused/fullscreen/hidden evidence can prove the render plan stopped retaining
-image resources before checking GTK/private memory. Renderer telemetry summary fields
+image resources before checking GTK/private memory. The same summary reports
+planned static image, video poster, slideshow image, image-reference, and unique
+image-resource source-file bytes. These bytes are a retained-plan clue for large
+images/posters; they are not decoded texture memory or process USS. Renderer telemetry summary fields
 include latest/max output window, static surface, slideshow surface, video
 surface, and video pipeline counts, which are used to prove that paused,
 hidden, fullscreen, inactive, and locked states actually release GTK renderer
@@ -442,7 +448,11 @@ live per-output runtime row. Use
 `--expect-render-sync-planned-image-resource-references-latest-at-most <count>`
 and
 `--expect-render-sync-planned-unique-image-resources-latest-at-most <count>` to
-set stricter planned-resource budgets for targeted runs; the script combines
+set stricter planned-resource budgets for targeted runs. Use
+`--expect-render-sync-planned-image-resource-reference-bytes-latest-at-most <bytes>`
+and
+`--expect-render-sync-planned-unique-image-resource-bytes-latest-at-most <bytes>`
+when the budget should account for large source images or posters; the script combines
 explicit user limits with its per-scenario lifecycle limits by taking the
 stricter value.
 The sampler also writes `video-runtime.csv`, which records each sample's
@@ -569,7 +579,7 @@ as the `desktop-policy-smoke` artifact. The artifact includes top-level
 plus per-scenario status snapshots, daemon logs, decision summaries, and
 telemetry summaries. `resource-baseline.csv` gives one row per scenario and
 pulls the sampled CPU, GPU, RSS, PSS, private, USS, shared-memory, decision,
-render-sync cache, planned image resource footprint, renderer update,
+render-sync cache, planned image resource count/byte footprint, renderer update,
 adaptive-action, and renderer video telemetry summary values into one table
 for quick baseline comparison.
 The desktop policy smoke also forwards the same
