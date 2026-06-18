@@ -288,10 +288,13 @@ including max processed/dropped values, stats format, jitter, and the latest
 proportion scaled by 1000. On the GTK video surface path it also records
 `gtk_frame_clock_*` values from passive `gtk::Picture` frame clock after-paint
 observations: count, latest frame counter/time, frame interval, frame clock
-FPS, refresh interval, and GDK's predicted presentation time. It also records
-GDK `FrameTimings` observed/complete counts, frame time, predicted presentation
-time, presentation time, presentation interval, and refresh interval when GDK
-has timing history for the frame. These fields are runtime
+FPS, refresh interval, and GDK's predicted presentation time. The same runtime
+snapshot records frame clock phase counters for `before-paint`, `update`,
+`layout`, `paint`, and `after-paint`, which helps diagnose whether GTK is
+driving the surface through a full frame cycle or only exposing partial timing
+evidence. It also records GDK `FrameTimings` observed/complete counts, frame
+time, predicted presentation time, presentation time, presentation interval,
+and refresh interval when GDK has timing history for the frame. These fields are runtime
 playback/limiter/QoS/GTK frame-clock evidence: a moving `position_ms` proves the
 pipeline playhead is advancing, `frame_limiter_max_fps` proves the applied
 capsfilter limit, `qos_dropped_max` records GStreamer sink QoS drops when the
@@ -394,21 +397,22 @@ columns report the observed action types, scopes, configured fallback actions,
 and max FPS values so smoke tests can distinguish throttle, `pause-unfocused`,
 and `pause-dynamic`. Renderer telemetry columns aggregate video pipeline frame
 behavior from the daemon snapshot, including total QoS messages, max QoS dropped
-count, total GTK frame clock ticks, max GTK frame interval, and max observed GTK
-frame-clock FPS, plus completed GDK frame timing counts and presentation timing
-maxima.
+count, total GTK frame clock ticks and phase tick counts, max GTK frame
+interval, and max observed GTK frame-clock FPS, plus completed GDK frame timing
+counts and presentation timing maxima.
 The sampler also writes `video-runtime.csv`, which records each sample's
 decoder policy status, actual decoder classes, caps report count, all memory
 features, sink-side memory features, zero-copy evidence level, playback
-position/duration, and actual frame limiter state. It also writes
+position/duration, actual frame limiter state, and GTK frame clock phase
+counters. It also writes
 `video-runtime-summary.txt`, including `video_zero_copy_evidence_latest`,
 `video_zero_copy_evidence.<level>` counts, `video_position_moving_outputs`,
 `video_position_delta_ms_max`, `video_frame_limiter_enabled_rows`, limiter FPS
 min/max,
 `video_qos_messages_max`, `video_qos_dropped_max`,
-`video_gtk_frame_clock_ticks_max`, GTK frame clock interval/FPS summaries,
-`video_gtk_frame_timings_complete_max`, and GDK frame timing presentation
-interval/time summaries.
+`video_gtk_frame_clock_ticks_max`, GTK frame clock phase maxima, GTK frame
+clock interval/FPS summaries, `video_gtk_frame_timings_complete_max`, and GDK
+frame timing presentation interval/time summaries.
 Use that table beside CPU, PSS, USS, and RSS when checking hard decode or
 zero-copy behavior.
 Use `--expect-decoder-policy-status`, `--expect-decoder-class`,
@@ -443,6 +447,7 @@ on drivers that do not expose a simple busy counter.
 `daemon_gpu_busy_sources_latest` when adaptive monitoring captured GPU busy from
 inside the daemon. It also reports `renderer_video_qos_messages_max`,
 `renderer_video_qos_dropped_max`, `renderer_video_gtk_frame_clock_ticks_max`,
+`renderer_video_gtk_frame_clock_*_ticks_max` phase counters,
 `renderer_video_gtk_frame_clock_interval_us_max`, and
 `renderer_video_gtk_frame_clock_fps_x1000_max`,
 `renderer_video_gtk_frame_timings_complete_max`, and
