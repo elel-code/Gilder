@@ -62,6 +62,7 @@
 - [x] 添加 Wayland 视频 surface smoke 验证脚本。
 - [x] 为 Wayland 视频 surface smoke 添加低干扰 preflight 和结构化检查报告。
 - [x] 在真实 niri Wayland 会话验证视频 surface 显示。
+- [x] 在真实 niri Wayland 会话验证多输出同源视频 surface 显示。
 - [ ] 在真实 Hyprland Wayland 会话验证视频 surface 显示。
 - [x] 添加 CPU/RSS/status 性能采样脚本。
 - [x] 将 active-video 性能采样接入 Wayland 视频 surface smoke。

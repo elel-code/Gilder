@@ -92,6 +92,7 @@ Useful options:
 ```sh
 scripts/wayland-video-surface-smoke.sh --preflight --report-dir /tmp/gilder-wayland-video-preflight
 scripts/wayland-video-surface-smoke.sh --output eDP-1
+scripts/wayland-video-surface-smoke.sh --all-outputs --visual-hold 20 --keep
 scripts/wayland-video-surface-smoke.sh --sample-performance --keep
 scripts/wayland-video-surface-smoke.sh --visual-hold 20 --keep
 scripts/wayland-video-surface-smoke.sh --simulate-power battery --sample-performance --keep
@@ -114,12 +115,14 @@ rows include package hints for common runtime gaps such as `gtk4paintablesink`
 (`gst-plugin-gtk4` on Arch-like systems).
 
 The smoke is intentionally partly visual: after the script reports success,
-confirm that the selected output shows the generated moving test video. It also
-checks that `gtk4paintablesink` is available and that daemon status contains an
-active `render_sync.video_plans` entry. Use `--visual-hold <sec>` to keep the
-applied wallpaper visible for a fixed confirmation window before sampling or
-cleanup. With `--sample-performance`, it also runs `performance-snapshot.sh`
-against the isolated daemon and writes
+confirm that the selected output shows the generated moving test video. Pass
+`--all-outputs` to apply the same generated video wallpaper to every
+daemon-reported output and assert that each target output has an active
+`render_sync.video_plans` entry. It also checks that `gtk4paintablesink` is
+available. Use `--visual-hold <sec>` to keep the applied wallpaper visible for a
+fixed confirmation window before sampling or cleanup. With
+`--sample-performance`, it also runs `performance-snapshot.sh` against the
+isolated daemon and writes
 `performance-active/samples.csv`, `summary.txt`, and status snapshots under the
 same kept work directory. With `--sample-paused`, it captures the active sample,
 pauses the selected output, verifies a `user-paused` performance decision,
@@ -226,10 +229,10 @@ session.
 
 ## Remaining Surface Work
 
-The GTK paintable sink code path still needs compositor-facing checks:
+The GTK paintable sink code path has been validated for one-output and
+multi-output niri video presentation. It still needs compositor-facing checks:
 
-- one output, one video wallpaper;
-- multiple outputs with the same source video;
+- Hyprland video presentation;
 - fullscreen pause and resume latency;
 - battery/unfocused throttling behavior;
 - CPU, memory, and GPU usage sampling while active and paused.
