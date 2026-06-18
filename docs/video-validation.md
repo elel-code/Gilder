@@ -108,7 +108,9 @@ GStreamer elements needed by the generated MP4/H.264 test wallpaper
 (`playbin`, `gtk4paintablesink`, `qtdemux`, and an H.264 decoder candidate)
 without starting the daemon or changing the current wallpaper. With
 `--report-dir`, it writes stable `metadata.txt`, `checks.csv`, and `summary.txt`
-evidence that can be attached before a visual run.
+evidence that can be attached before a visual run. Missing GStreamer element
+rows include package hints for common runtime gaps such as `gtk4paintablesink`
+(`gst-plugin-gtk4` on Arch-like systems).
 
 The smoke is intentionally partly visual: after the script reports success,
 confirm that the selected output shows the generated moving test video. It also
