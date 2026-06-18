@@ -89,7 +89,7 @@
 - [x] 支持性能采样断言渲染器同步投递 queued/skipped 计数。
 - [x] 设计可选 adaptive system monitor：默认关闭，支持全局/按输出启用和 kill switch。
 - [x] 采样 Linux PSI CPU/内存压力、thermal zone 最高温度和 power_supply 电源细节，并输出到 daemon telemetry。
-- [ ] 继续采样 GPU 和帧行为，并输出到 daemon telemetry。
+- [x] 继续采样 GPU 和视频帧行为，并输出到 daemon telemetry。
 - [x] 在 adaptive telemetry 中采样 DRM `gpu_busy_percent` 的 avg/max/source，并接入 telemetry CSV 和性能采样汇总。
 - [x] 在视频 runtime 中报告 playback position/duration 和实际 frame limiter 状态，并接入 performance 采样汇总与断言。
 - [x] 在视频 runtime 中累计 GStreamer QoS processed/dropped 统计，并接入 performance 采样汇总与断言。

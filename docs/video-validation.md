@@ -359,7 +359,10 @@ temperature, power_supply AC/battery details, and daemon-side DRM
 `gpu_busy_percent` samples when the driver exposes them. Adaptive action
 columns report the observed action types, scopes, configured fallback actions,
 and max FPS values so smoke tests can distinguish throttle, `pause-unfocused`,
-and `pause-dynamic`.
+and `pause-dynamic`. Renderer telemetry columns aggregate video pipeline frame
+behavior from the daemon snapshot, including total QoS messages, max QoS dropped
+count, total GTK frame clock ticks, max GTK frame interval, and max observed GTK
+frame-clock FPS.
 The sampler also writes `video-runtime.csv`, which records each sample's
 decoder policy status, actual decoder classes, caps report count, all memory
 features, sink-side memory features, playback position/duration, and actual
@@ -395,7 +398,12 @@ on drivers that do not expose a simple busy counter.
 `telemetry-summary.txt` separately reports `daemon_gpu_busy_samples`,
 `daemon_avg_gpu_busy_percent`, `daemon_max_gpu_busy_percent`, and
 `daemon_gpu_busy_sources_latest` when adaptive monitoring captured GPU busy from
-inside the daemon.
+inside the daemon. It also reports `renderer_video_qos_messages_max`,
+`renderer_video_qos_dropped_max`, `renderer_video_gtk_frame_clock_ticks_max`,
+`renderer_video_gtk_frame_clock_interval_us_max`, and
+`renderer_video_gtk_frame_clock_fps_x1000_max` from daemon telemetry, which is a
+coarse health signal for video frame behavior before drilling into
+`video-runtime-summary.txt`.
 For memory comparisons, prefer `avg_uss_kib` or its equivalent
 `avg_private_kib` for the process-private footprint and `avg_pss_kib` for the
 shared-memory-adjusted footprint; `avg_rss_kib` includes shared mappings at
