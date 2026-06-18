@@ -15,7 +15,7 @@
 
 | Wallpaper Engine 输入 | 当前 Gilder 类型 | 转换 | 运行时 | 当前行为 | 主要缺口 |
 | --- | --- | --- | --- | --- | --- |
-| Image | `static-image` | 完整 | 完整 | 复制源图、preview/poster、fit 意图；足够大的光栅图可生成 16:9 1080p/2160p variants。 | 更多比例/编码 variant 和运行时大图解码路径还需要更强内存优化。 |
+| Image | `static-image` | 完整 | 完整 | 复制源图、preview/poster、fit 意图；足够大的光栅图可生成 16:9、21:9/ultrawide 和 9:16 portrait variants。 | 更多编码 variant 和运行时大图解码路径还需要更强内存优化。 |
 | Video | `video` | 完整 | 完整 | 复制可播放视频，必要时生成 poster，支持 loop、静音/音频意图、max FPS、decoder policy 和运行时证据。 | 硬解/DMABuf zero-copy 验证和同源多输出解码复用仍未完成。 |
 | Web | `web` | 部分 | fallback | 复制 HTML/CSS/JS 资源，注入兼容 bridge，映射用户属性，保留 fallback poster。 | WebKitGTK runtime、sandbox、输入/audio/FPS bridge 和权限模型未完成。 |
 | Scene | `scene-lite` | 部分 | fallback | 复制 scene 入口元数据和 fallback，记录 SceneScript、shader、复杂效果等 unsupported 项。 | 原生 scene graph、timeline、effect stack、particle system、shader node 和 audio response 未完成。 |
