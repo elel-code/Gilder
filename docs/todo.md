@@ -105,7 +105,7 @@
 - [x] 验证 WebM/AV1。
 - [x] 添加 fullscreen 暂停策略接口。
 - [x] 在 codec smoke 中记录实际 GStreamer decoder element，区分软解和硬解 codec 基线。
-- [ ] 在 daemon status/watch 中报告运行中视频 pipeline 的实际 decoder element。
+- [x] 在 daemon status/watch 中报告运行中视频 pipeline 的实际 decoder element。
 
 ## M5: 合成器适配
 

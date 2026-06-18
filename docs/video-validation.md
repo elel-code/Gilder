@@ -234,6 +234,12 @@ Use `gilderctl status` and check
 `renderer_capabilities.video.gstreamer.elements` to confirm whether
 `gtk4paintablesink` and the core GStreamer elements are available in the running
 daemon environment.
+When a video wallpaper is running, also inspect
+`renderer_runtime.video_pipelines[].actual_decoders` from `gilderctl status` or
+`gilderctl watch --snapshot`. This reports the decoder element selected by the
+live daemon pipeline, while `renderer_capabilities` only reports which runtime
+plugins are available. Empty `actual_decoders` means no known decoder element
+has been observed yet, not that hardware decode is active.
 
 The exact hardware decode path is left to the host GStreamer installation. The
 smoke test intentionally uses `fakesink` so it can run in CI without a Wayland
@@ -262,7 +268,6 @@ compositor-facing checks:
 
 - Hyprland video presentation;
 - real compositor fullscreen resume latency;
-- daemon status/watch reporting of running video pipeline decoder elements;
 - longer-duration CPU, memory, and GPU usage sampling while active and paused.
 
 ## Performance Sampling
