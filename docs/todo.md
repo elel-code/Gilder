@@ -61,6 +61,7 @@
 - [x] 在 IPC status/watch 中报告视频 surface 运行时能力。
 - [x] 添加 Wayland 视频 surface smoke 验证脚本。
 - [x] 为 Wayland 视频 surface smoke 添加低干扰 preflight 和结构化检查报告。
+- [x] 为 Wayland 视频 surface smoke 输出单页 validation report，汇总 compositor、输出、active video plan 和 runtime/performance 证据入口。
 - [x] 为 Wayland 视频 surface smoke 添加 compositor kind 断言，避免 Hyprland/niri/generic 证据混淆。
 - [x] 在真实 niri Wayland 会话验证视频 surface 显示。
 - [x] 在真实 niri Wayland 会话验证多输出同源视频 surface 显示。

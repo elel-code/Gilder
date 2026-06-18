@@ -118,10 +118,11 @@ Use `--preflight` first when validating a real compositor session. It checks
 GStreamer elements needed by the generated MP4/H.264 test wallpaper
 (`playbin`, `gtk4paintablesink`, `qtdemux`, and an H.264 decoder candidate)
 without starting the daemon or changing the current wallpaper. With
-`--report-dir`, it writes stable `metadata.txt`, `checks.csv`, and `summary.txt`
-evidence that can be attached before a visual run. Missing GStreamer element
-rows include package hints for common runtime gaps such as `gtk4paintablesink`
-(`gst-plugin-gtk4` on Arch-like systems).
+`--report-dir`, it writes stable `metadata.txt`, `checks.csv`,
+`validation-report.txt`, and `summary.txt` evidence that can be attached before
+a visual run. Missing GStreamer element rows include package hints for common
+runtime gaps such as `gtk4paintablesink` (`gst-plugin-gtk4` on Arch-like
+systems).
 
 The smoke is intentionally partly visual: after the script reports success,
 confirm that the selected output shows the generated moving test video. Pass
@@ -147,6 +148,12 @@ enables performance sampling and applies the checks only to scenarios that
 should have an active video plan. With `--sample-paused`, it captures the active
 sample, pauses the selected output, verifies a `user-paused` performance
 decision, captures `performance-paused/`, and resumes the output.
+Every run also writes `validation-report.txt` as a single audit entrypoint. It
+summarizes the expected and actual compositor, selected outputs, whether the
+scenario should contain an active video plan, video runtime row counts and phase
+counts, and the relevant performance/video-runtime summary artifact paths. Use
+that file first when reviewing Hyprland, niri, hardware decode, or zero-copy
+evidence, then drill into the referenced CSV and status JSON files.
 With `--simulate-power battery`, it starts the isolated daemon with
 `GILDER_POWER_STATE=battery`, verifies that status reports `power: battery`,
 checks for a battery performance decision after applying the wallpaper, and
