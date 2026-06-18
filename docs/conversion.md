@@ -16,7 +16,7 @@
 gilder-convert wallpaper-engine <source-project-dir> <dest.gwpdir>
 ```
 
-当前实现支持静态图片、视频、Web 和保守 `scene-lite` 项目的 `.gwpdir` 输出；application/executable 项目会生成转换报告并拒绝转换。缺失预览图时，静态图片项目会从源图生成 poster/thumbnail，视频项目会优先通过本机 `ffmpeg` 从首帧生成 poster/thumbnail，失败时回退到 metadata-based SVG fallback；Scene 项目会生成 metadata-based SVG fallback。
+当前实现支持静态图片、视频、Web 和保守 `scene-lite` 项目的 `.gwpdir` 输出；application/executable 项目会生成转换报告并拒绝转换。缺失预览图时，静态图片项目会从源图生成 poster/thumbnail，视频项目会优先通过本机 `ffmpeg` 从首帧生成 poster/thumbnail，失败时回退到 metadata-based SVG fallback；Scene 项目会生成 metadata-based SVG fallback。静态大图在本机同时有 `ffprobe` 和 `ffmpeg` 时，会额外生成 16:9 landscape 1080p/2160p PNG variants，供 daemon 按输出尺寸自动选择，降低常见输出上无意义解码超大原图的概率。
 
 已支持：
 
@@ -68,6 +68,7 @@ gilder-convert wallpaper-engine --allow-web <source> <dest.gwpdir>
 
 - 原图复制到 `assets/`。
 - 预览复制或生成到 `previews/`；缺失 preview 时从源图复制生成 poster 和 thumbnail。
+- 对足够大的光栅图片，若 `ffprobe`/`ffmpeg` 可用，会生成 `variants/landscape-1080p.png` 和 `variants/landscape-2160p.png`；源图不足对应尺寸、工具缺失或解码失败时跳过并写入转换报告 warning。
 - `entry.type = "static-image"`。
 - `fit` 根据源项目 alignment/scaling 映射，无法识别时使用 `cover`。
 
@@ -75,7 +76,7 @@ gilder-convert wallpaper-engine --allow-web <source> <dest.gwpdir>
 
 - 生成 AVIF/WebP variant。
 - 保留原图作为无损源。
-- 为常见比例生成裁剪 variant，如 16:9、21:9、9:16。
+- 为更多常见比例生成裁剪 variant，如 21:9、9:16。
 
 ## 视频转换
 

@@ -207,6 +207,7 @@
 - [x] 为单次 render sync 的 manifest/package 临时缓存添加可配置条目上限、FIFO 淘汰、status/watch telemetry、CSV 和性能采样汇总。
 - [x] 为 `.gwp` 解包 render cache 添加可配置条目上限、当前使用条目保护、最旧优先淘汰和 telemetry/CSV/性能采样汇总。
 - [ ] 为 poster、thumbnail、manifest/package、视频 pipeline 和 GTK surface 缓存定义上限、淘汰策略和 status/watch 可见的 retained memory 线索。
+- [x] 静态图片 Wallpaper Engine 转换时为足够大的光栅源图生成 16:9 1080p/2160p PNG variants，供 render plan 按输出尺寸选择以减少常见场景原始超大图解码。
 - [ ] 优化静态大图解码路径，按输出尺寸选择/生成合适变体，避免无意义加载原始超大图。
 - [ ] 接上更强硬解路径验证：按 codec/GPU/driver 记录实际 decoder、caps、sink caps、CPU/GPU/USS/PSS 对比。
 - [ ] 验证 GTK video surface 是否能保持 GPU/DMABuf 路径，区分“硬解但发生 CPU copy”和真正 zero-copy。

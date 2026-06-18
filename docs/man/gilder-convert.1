@@ -26,7 +26,14 @@ and are not executed.
 Converted projects contain
 .I manifest.gilder.json
 plus copied assets, previews, and metadata. Missing previews are generated from
-static source images when possible. Video projects without previews use
+static source images when possible. Large static raster images use
+.B ffprobe
+and
+.B ffmpeg
+from
+.I PATH
+to generate 16:9 resolution variants when possible. Video projects without
+previews use
 .B ffmpeg
 from
 .I PATH

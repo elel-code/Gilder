@@ -174,6 +174,9 @@ Wallpaper Engine 输入类型、Gilder 当前 kind、运行时支持等级和后
 `gilderctl set <wallpaper> --variant <id>` 绑定指定变体。没有显式 variant 时，daemon
 会根据输出尺寸和 scale，在能覆盖目标尺寸的 variant 中选择像素面积最小的资源；没有
 可覆盖 variant 时继续使用 entry 默认资源，避免把大屏输出降级到小资源。
+Wallpaper Engine 静态图转换器会在 `ffprobe`/`ffmpeg` 可用且源图足够大时生成
+`landscape-1080p` 和 `landscape-2160p` 这类 16:9 PNG variant，作为降低常见输出
+解码内存的保守默认；原图仍保留为 entry source 和无损 fallback。
 
 `runtime.pause_when_fullscreen` 和 `runtime.pause_when_unfocused` 会参与 daemon 的桌面
 状态性能决策。包内 runtime 策略只能让当前输出更保守，例如从 active/throttled
