@@ -417,8 +417,9 @@ again.
 GStreamer, or a Wayland session by setting `GILDER_DESKTOP_OUTPUTS` to a
 virtual output and covering active, battery, unfocused, fullscreen, hidden,
 inactive, locked, adaptive throttle, adaptive `pause-unfocused`, adaptive
-focused-output fallback, and per-output performance override scenarios against
-the default daemon build. It asserts mode, reason, action, plan kind, and
+focused-output fallback, adaptive `pause-dynamic` static passthrough,
+adaptive `pause-dynamic` slideshow removal, and per-output performance override
+scenarios against the default daemon build. It asserts mode, reason, action, plan kind, and
 expected `max_fps` where the decision should remain renderable. The GitHub Actions
 workflow runs it in strict mode and uploads `/tmp/gilder-desktop-policy-smoke`
 as the `desktop-policy-smoke` artifact. The artifact includes top-level

@@ -97,6 +97,7 @@
 - [ ] 继续采集 compositor presentation/frame callback 统计。
 - [x] 将 adaptive monitor 结果作为只会降载的性能策略输入，支持阈值、冷却时间和恢复条件。
 - [x] adaptive monitor 支持用户可选的 `pause-unfocused` 动作，在系统压力下暂停非焦点输出。
+- [x] adaptive monitor 支持用户可选的 `pause-dynamic` 动作，在系统压力下暂停 video/slideshow 动态壁纸。
 - [x] 在 status/watch 中报告 adaptive monitor 的当前采样、触发原因和实际降载动作。
 - [x] 在真实 niri Wayland 会话采集 battery/unfocused/fullscreen 视频 surface 策略和内存证据。
 - [x] 添加 fullscreen -> active 恢复延迟采样入口和结构化证据输出。
@@ -107,6 +108,7 @@
 - [x] 为 headless 桌面状态性能策略 smoke 输出场景矩阵和顶层摘要。
 - [x] headless 桌面状态性能策略 smoke 覆盖按输出 FPS/电池策略覆盖。
 - [x] headless 桌面状态性能策略 smoke 覆盖 adaptive throttle、`pause-unfocused` 和焦点输出回退。
+- [x] headless 桌面状态性能策略 smoke 覆盖 adaptive `pause-dynamic` 静态透传和 slideshow 暂停。
 - [x] 添加 MP4/WebM codec smoke 验证脚本。
 - [x] 为 MP4/WebM codec smoke 输出结构化报告并在 CI 上传。
 - [x] 为 MP4/WebM codec smoke 输出 GStreamer demuxer/decoder element 诊断。

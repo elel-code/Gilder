@@ -207,10 +207,10 @@ throttle 和 `pause-unfocused`；未设置时仍只读真实 PSI、thermal、pow
   CPU/内存压力、thermal zone 最高温度、power_supply 电源细节和可用 DRM
   `gpu_busy_percent` 计数，把压力结果作为保守输入
   合入 `decide_performance` 之后的输出级决策；默认动作是降低 FPS，也可以配置为只在
-  输出非焦点时暂停，焦点输出仍回退为降 FPS。adaptive 决策不能覆盖用户暂停、
-  fullscreen pause、battery pause 等更强策略；同为 throttled 时会保留更低 FPS 的策略。
+  输出非焦点时暂停，焦点输出仍回退为降 FPS，或只暂停 video/slideshow 这类动态壁纸。
+  adaptive 决策不能覆盖用户暂停、fullscreen pause、battery pause 等更强策略；同为 throttled 时会保留更低 FPS 的策略。
   该策略支持阈值、冷却时间、每输出开关、每输出动作覆盖和全局 kill switch，并在
-  `status`/telemetry 中报告当前采样、触发原因和实际降载动作，方便用户审计。视频
+  `status`/telemetry 中报告当前采样、触发原因和 adaptive 动作，方便用户审计。视频
   renderer runtime 会报告播放 position、duration、实际 frame limiter 状态、GStreamer
   QoS processed/dropped 统计和 GTK frame clock tick/interval 统计；compositor
   presentation feedback 或原生 Wayland frame callback 统计仍是后续工作。
@@ -253,7 +253,7 @@ kill_switch = false
 refresh_interval_ms = 2000
 cooldown_ms = 10000
 throttle_max_fps = 15
-action = "throttle" # throttle, pause-unfocused
+action = "throttle" # throttle, pause-unfocused, pause-dynamic
 cpu_pressure_threshold_percent = 75
 memory_pressure_threshold_percent = 20
 temperature_threshold_celsius = 85
