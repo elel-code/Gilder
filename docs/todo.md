@@ -96,6 +96,7 @@
 - [x] 在 GTK 视频 surface runtime 中累计 frame clock tick/interval/FPS 统计，并接入 performance 采样汇总与断言。
 - [ ] 继续采集 compositor presentation/frame callback 统计。
 - [x] 将 adaptive monitor 结果作为只会降载的性能策略输入，支持阈值、冷却时间和恢复条件。
+- [x] adaptive monitor 支持用户可选的 `pause-unfocused` 动作，在系统压力下暂停非焦点输出。
 - [x] 在 status/watch 中报告 adaptive monitor 的当前采样、触发原因和实际降载动作。
 - [x] 在真实 niri Wayland 会话采集 battery/unfocused/fullscreen 视频 surface 策略和内存证据。
 - [x] 添加 fullscreen -> active 恢复延迟采样入口和结构化证据输出。
