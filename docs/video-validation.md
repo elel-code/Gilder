@@ -346,14 +346,17 @@ The sampler also writes `video-runtime.csv`, which records each sample's
 decoder policy status, actual decoder classes, caps report count, all memory
 features, and sink-side memory features. Use that table beside CPU, PSS, USS,
 and RSS when checking hard decode or zero-copy behavior.
+When available, `samples.csv` also includes `gpu_busy_percent_avg`,
+`gpu_busy_percent_max`, and `gpu_busy_sources` from DRM sysfs
+`gpu_busy_percent` or `nvidia-smi`. These fields are optional and may be empty
+on drivers that do not expose a simple busy counter.
 For memory comparisons, prefer `avg_uss_kib` or its equivalent
 `avg_private_kib` for the process-private footprint and `avg_pss_kib` for the
 shared-memory-adjusted footprint; `avg_rss_kib` includes shared mappings at
 full size and is not private usage.
 Pass `--pid`, `--socket`, or `--gilderctl` when testing an isolated daemon such
 as the Wayland surface smoke script. The CSV, summaries, and raw status files
-are intended to be compared between scenarios; GPU sampling remains
-platform-specific follow-up work.
+are intended to be compared between scenarios.
 Use `--expect-mode`, `--expect-reason`, `--expect-action`, `--expect-max-fps`,
 and `--expect-plan-kind` to make a sampling run fail when the expected render
 decision is not observed in `decision-summary.txt`. The Wayland video smoke
