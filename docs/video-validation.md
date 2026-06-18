@@ -144,12 +144,16 @@ from `performance-snapshot.sh`: `--expect-decoder-policy-status`,
 `--expect-sink-memory-feature`, `--expect-zero-copy-evidence`,
 `--expect-video-position-progress`, `--expect-gtk-frame-clock`,
 `--expect-gtk-frame-clock-phase before-paint|update|layout|paint|after-paint|all`,
-and `--expect-gtk-frame-timings`. Supplying any of these options automatically
-enables performance sampling and applies the checks only to scenarios that
-should have an active video plan. The phase gate checks GTK frame-clock phase
-counters from the video runtime summary; it is useful for proving the GTK
-surface entered the expected frame-cycle stages, but it is still not direct
-Wayland compositor presentation feedback. Pass `--require-video-runtime-row` during
+and `--expect-gtk-frame-timings`. It also forwards process memory budget gates:
+`--expect-max-rss-kib-at-most`, `--expect-max-pss-kib-at-most`,
+`--expect-max-private-kib-at-most`, `--expect-max-uss-kib-at-most`, and
+`--expect-max-shared-kib-at-most`. Supplying any of these options
+automatically enables performance sampling. Video runtime checks apply only to
+scenarios that should have an active video plan; process memory checks apply to
+the sampled daemon in every performance scenario. The phase gate checks GTK
+frame-clock phase counters from the video runtime summary; it is useful for
+proving the GTK surface entered the expected frame-cycle stages, but it is
+still not direct Wayland compositor presentation feedback. Pass `--require-video-runtime-row` during
 real compositor validation to fail active phases where the render plan exists
 but `renderer_runtime.video_pipelines` produced no CSV rows. This proves the
 daemon exposed a live video pipeline snapshot for that phase; it does not prove
@@ -470,7 +474,16 @@ drilling into `video-runtime-summary.txt`.
 For memory comparisons, prefer `avg_uss_kib` or its equivalent
 `avg_private_kib` for the process-private footprint and `avg_pss_kib` for the
 shared-memory-adjusted footprint; `avg_rss_kib` includes shared mappings at
-full size and is not private usage.
+full size and is not private usage. Use
+`--expect-max-uss-kib-at-most <kib>`,
+`--expect-max-private-kib-at-most <kib>`, and
+`--expect-max-pss-kib-at-most <kib>` to turn those budgets into hard sampling
+gates. `--expect-max-rss-kib-at-most <kib>` and
+`--expect-max-shared-kib-at-most <kib>` are also available for broader
+auditing, but they should not be used as the only private-footprint signal.
+The PSS/USS/private/shared gates require readable Linux
+`/proc/<pid>/smaps_rollup` data; if that data is missing, the sampler reports
+the expectation as unmet instead of treating zeroes as a valid pass.
 Pass `--pid`, `--socket`, or `--gilderctl` when testing an isolated daemon such
 as the Wayland surface smoke script. The CSV, summaries, and raw status files
 are intended to be compared between scenarios.
@@ -501,6 +514,10 @@ workflow runs it in strict mode and uploads `/tmp/gilder-desktop-policy-smoke`
 as the `desktop-policy-smoke` artifact. The artifact includes top-level
 `metadata.txt`, `matrix.csv`, and `summary.txt` files, plus per-scenario status
 snapshots, daemon logs, decision summaries, and telemetry summaries.
+The desktop policy smoke also forwards the same
+`--expect-max-*-kib-at-most` memory budget gates to every scenario, which makes
+it useful for CI-side private-memory regression checks once per-scenario
+budgets have been established.
 For battery policy comparisons on machines that are not actually discharging,
 run the daemon or smoke script with `GILDER_POWER_STATE=battery`; unset it to
 return to sysfs-based power detection.

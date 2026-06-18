@@ -71,6 +71,8 @@
 - [x] 将 paused-video 性能采样接入 Wayland 视频 surface smoke。
 - [x] 在性能采样证据中输出 render decision CSV 和摘要。
 - [x] 在性能采样证据中输出 PSS、USS/private 和 shared 内存摘要。
+- [x] 支持性能采样断言 RSS/PSS/USS/private/shared 最大内存预算，便于后续建立回归门槛。
+- [x] headless 桌面状态性能策略 smoke 支持向每个场景转发 RSS/PSS/USS/private/shared 内存预算断言。
 - [x] 在 decision CSV 中记录计划类型、资源、fit、视频限帧和静音状态。
 - [x] 使用 CSV-aware 汇总器统计性能采样中的决策、计划类型、fit、静音和限帧范围。
 - [x] 支持性能采样断言期望的 mode、reason、action 和计划类型。
