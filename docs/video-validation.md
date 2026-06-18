@@ -231,7 +231,16 @@ daemon environment.
 
 The exact hardware decode path is left to the host GStreamer installation. The
 smoke test intentionally uses `fakesink` so it can run in CI without a Wayland
-session.
+session. Current smoke evidence should be treated as a software-decoding or
+auto-selected-decoder baseline unless the report explicitly records a hardware
+decoder element such as VAAPI/VDPAU/NVDEC. The generated H.264 surface smoke
+does not force hardware decode.
+
+For muted video wallpapers, Gilder disables `playbin` audio stream selection
+instead of routing decoded audio to `fakesink`, so muted wallpaper playback does
+not spend CPU or memory decoding an unused audio stream. `runtime.allow_audio`
+and entry-level mute settings still allow audio when a package explicitly asks
+for it.
 
 ## Remaining Surface Work
 

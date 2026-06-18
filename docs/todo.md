@@ -89,6 +89,7 @@
 - [x] 在真实 niri Wayland 会话采集 battery/unfocused/fullscreen 视频 surface 策略和内存证据。
 - [x] 添加 fullscreen -> active 恢复延迟采样入口和结构化证据输出。
 - [x] 在真实 niri Wayland 会话采集验证覆盖下的 fullscreen -> active 恢复延迟证据。
+- [x] muted 视频使用 `playbin` flags 禁用 audio stream，避免解码未使用音频。
 - [x] 添加 headless 桌面状态性能策略 smoke，覆盖 active/battery/unfocused/fullscreen/hidden/session 场景。
 - [x] 将 headless 桌面状态性能策略 smoke 接入 CI 并上传证据。
 - [x] 为 headless 桌面状态性能策略 smoke 输出场景矩阵和顶层摘要。
@@ -103,6 +104,7 @@
 - [x] 验证 WebM/VP9。
 - [x] 验证 WebM/AV1。
 - [x] 添加 fullscreen 暂停策略接口。
+- [ ] 在视频 smoke/status 中记录实际 GStreamer decoder element，区分软解和硬解性能基线。
 
 ## M5: 合成器适配
 
