@@ -193,6 +193,9 @@ throttling、fullscreen pause 和 output-hidden pause；未设置时使用合成
 `render_sync.decisions` 也会随同步计划携带同一份输出级决策。读请求会按
 `desktop_refresh_interval_ms` 复用最近的桌面快照，避免状态栏轮询或性能采样过于频繁
 地调用 compositor 适配器；状态修改命令和周期刷新仍会强制采集新的桌面快照。
+`status.telemetry` 会暴露桌面刷新、read 请求快照复用、桌面变化和 `render_sync`
+缓存 hit/miss 计数，便于用性能采样证明确实没有因为轮询反复调用 compositor
+适配器或重复生成渲染计划。
 周期刷新只在桌面快照变化时发送 `desktop.changed` watch 事件，并且只在
 `render_sync` 实际变化时投递给渲染器，避免固定频率重建 pipeline。IPC 状态变更
 仍会广播 `state.changed` 供客户端更新 UI，但如果生成的 `render_sync` 和上一份一致，

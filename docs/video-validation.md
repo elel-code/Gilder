@@ -179,10 +179,14 @@ fullscreen, and battery scenarios can be compared by both resource usage and
 the daemon's actual `mode/reason/max_fps` decision. The summary is generated
 with a CSV-aware parser and includes decision row counts, unique samples and
 outputs, `mode/reason` counts with FPS ranges, action counts, plan kinds, fit
-modes, muted video counts, and target FPS ranges. Pass `--pid`, `--socket`, or
-`--gilderctl` when testing an isolated daemon such as the Wayland surface smoke
-script. The CSV, summaries, and raw status files are intended to be compared
-between scenarios; GPU sampling remains platform-specific follow-up work.
+modes, muted video counts, and target FPS ranges. It also asks
+`gilderctl status --telemetry-csv --from-file` to produce `telemetry.csv` and
+`telemetry-summary.txt`, which report desktop refresh deltas, read-request
+refresh skips, desktop change deltas, and render-sync cache hit/miss deltas.
+Pass `--pid`, `--socket`, or `--gilderctl` when testing an isolated daemon such
+as the Wayland surface smoke script. The CSV, summaries, and raw status files
+are intended to be compared between scenarios; GPU sampling remains
+platform-specific follow-up work.
 Use `--expect-mode`, `--expect-reason`, `--expect-action`, and
 `--expect-plan-kind` to make a sampling run fail when the expected render
 decision is not observed in `decision-summary.txt`. The Wayland video smoke
