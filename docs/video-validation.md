@@ -185,8 +185,8 @@ produce `decisions.csv` and `decision-summary.txt`, so active/paused,
 fullscreen, and battery scenarios can be compared by both resource usage and
 the daemon's actual `mode/reason/max_fps` decision. The summary is generated
 with a CSV-aware parser and includes decision row counts, unique samples and
-outputs, `mode/reason` counts with FPS ranges, action counts, plan kinds, fit
-modes, muted video counts, and target FPS ranges. It also asks
+outputs, `mode/reason` counts with FPS ranges, `max_fps` counts, action counts,
+plan kinds, fit modes, muted video counts, and target FPS ranges. It also asks
 `gilderctl status --telemetry-csv --from-file` to produce `telemetry.csv` and
 `telemetry-summary.txt`, which report desktop refresh deltas, read-request
 refresh skips, desktop change deltas, render-sync cache hit/miss deltas, and
@@ -195,8 +195,8 @@ Pass `--pid`, `--socket`, or `--gilderctl` when testing an isolated daemon such
 as the Wayland surface smoke script. The CSV, summaries, and raw status files
 are intended to be compared between scenarios; GPU sampling remains
 platform-specific follow-up work.
-Use `--expect-mode`, `--expect-reason`, `--expect-action`, and
-`--expect-plan-kind` to make a sampling run fail when the expected render
+Use `--expect-mode`, `--expect-reason`, `--expect-action`, `--expect-max-fps`,
+and `--expect-plan-kind` to make a sampling run fail when the expected render
 decision is not observed in `decision-summary.txt`. The Wayland video smoke
 passes these expectations automatically for simulated battery, unfocused,
 fullscreen, hidden, session, and user-paused scenarios. Use
@@ -211,8 +211,10 @@ again.
 `scripts/desktop-policy-smoke.sh` runs the same assertion path without GTK,
 GStreamer, or a Wayland session by setting `GILDER_DESKTOP_OUTPUTS` to a
 virtual output and covering active, battery, unfocused, fullscreen, hidden,
-inactive, and locked scenarios against the default daemon build. The GitHub
-Actions workflow runs it in strict mode and uploads `/tmp/gilder-desktop-policy-smoke`
+inactive, locked, and per-output performance override scenarios against the
+default daemon build. It asserts mode, reason, action, plan kind, and expected
+`max_fps` where the decision should remain renderable. The GitHub Actions
+workflow runs it in strict mode and uploads `/tmp/gilder-desktop-policy-smoke`
 as the `desktop-policy-smoke` artifact. The artifact includes top-level
 `metadata.txt`, `matrix.csv`, and `summary.txt` files, plus per-scenario status
 snapshots, daemon logs, decision summaries, and telemetry summaries.

@@ -85,6 +85,7 @@
 - [x] 添加 headless 桌面状态性能策略 smoke，覆盖 active/battery/unfocused/fullscreen/hidden/session 场景。
 - [x] 将 headless 桌面状态性能策略 smoke 接入 CI 并上传证据。
 - [x] 为 headless 桌面状态性能策略 smoke 输出场景矩阵和顶层摘要。
+- [x] headless 桌面状态性能策略 smoke 覆盖按输出 FPS/电池策略覆盖。
 - [x] 添加 MP4/WebM codec smoke 验证脚本。
 - [x] 为 MP4/WebM codec smoke 输出结构化报告并在 CI 上传。
 - [ ] 验证 MP4/H.264、WebM/VP9、WebM/AV1。
