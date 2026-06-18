@@ -189,8 +189,10 @@ throttling、fullscreen pause 和 output-hidden pause；未设置时使用合成
 - manifest `runtime.allow_audio` 与 video entry 的 `muted` 合成最终视频静音状态，默认不输出音频。
 
 这让后续 niri/Hyprland 适配器只需要负责提供准确桌面状态，渲染器只需要执行策略结果。
-`status`、`outputs`、状态变更事件和 daemon 周期刷新都会刷新桌面快照并返回每个
-输出的性能决策，`render_sync.decisions` 也会随同步计划携带同一份输出级决策。
+`status`、`outputs`、状态变更事件和 daemon 周期刷新都会返回每个输出的性能决策，
+`render_sync.decisions` 也会随同步计划携带同一份输出级决策。读请求会按
+`desktop_refresh_interval_ms` 复用最近的桌面快照，避免状态栏轮询或性能采样过于频繁
+地调用 compositor 适配器；状态修改命令和周期刷新仍会强制采集新的桌面快照。
 周期刷新只在桌面快照变化时发送 `desktop.changed` watch 事件，并且只在
 `render_sync` 实际变化时投递给渲染器，避免固定频率重建 pipeline。IPC 状态变更
 仍会广播 `state.changed` 供客户端更新 UI，但如果生成的 `render_sync` 和上一份一致，
