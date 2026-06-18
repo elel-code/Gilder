@@ -73,6 +73,7 @@
 - [x] 在性能采样证据中输出 PSS、USS/private 和 shared 内存摘要。
 - [x] 支持性能采样断言 RSS/PSS/USS/private/shared 最大内存预算，便于后续建立回归门槛。
 - [x] headless 桌面状态性能策略 smoke 支持向每个场景转发 RSS/PSS/USS/private/shared 内存预算断言。
+- [x] headless 桌面状态性能策略 smoke 输出每场景 CPU/GPU/RSS/PSS/USS/private/shared 资源基线表。
 - [x] 在 decision CSV 中记录计划类型、资源、fit、视频限帧和静音状态。
 - [x] 使用 CSV-aware 汇总器统计性能采样中的决策、计划类型、fit、静音和限帧范围。
 - [x] 支持性能采样断言期望的 mode、reason、action 和计划类型。
@@ -193,7 +194,7 @@
 
 ## M8: 性能、内存与 zero-copy 优化
 
-- [ ] 为 active、paused、fullscreen、hidden、battery、unfocused 场景建立 CPU/GPU/RSS/PSS/USS/private/shared 基线表。
+- [ ] 为真实 Wayland active、paused、fullscreen、hidden、battery、unfocused 场景建立 CPU/GPU/RSS/PSS/USS/private/shared 基线表。
 - [ ] 为常见场景定义可执行的内存预算和回归阈值，优先使用 PSS、USS 和 private 占用作为判断依据。
 - [ ] 对 paused、hidden、fullscreen 移除渲染计划后的 pipeline/window/resource 释放行为建立验证门槛。
 - [ ] 评估视频 pipeline 共享：同源多输出时避免重复解码，优先复用解码或 texture 产物。
