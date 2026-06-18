@@ -264,13 +264,17 @@ including max processed/dropped values, stats format, jitter, and the latest
 proportion scaled by 1000. On the GTK video surface path it also records
 `gtk_frame_clock_*` values from passive `gtk::Picture` frame clock after-paint
 observations: count, latest frame counter/time, frame interval, frame clock
-FPS, refresh interval, and GDK's predicted presentation time. These fields are runtime
+FPS, refresh interval, and GDK's predicted presentation time. It also records
+GDK `FrameTimings` observed/complete counts, frame time, predicted presentation
+time, presentation time, presentation interval, and refresh interval when GDK
+has timing history for the frame. These fields are runtime
 playback/limiter/QoS/GTK frame-clock evidence: a moving `position_ms` proves the
 pipeline playhead is advancing, `frame_limiter_max_fps` proves the applied
 capsfilter limit, `qos_dropped_max` records GStreamer sink QoS drops when the
 sink reports them, and `gtk_frame_clock_ticks` proves the GTK surface is being
-driven by a frame clock. They are not Wayland `wp_presentation` feedback or
-native compositor frame callback counts.
+driven by a frame clock. Completed GDK frame timings are stronger presentation
+clues than after-paint ticks, but they are still not direct Wayland
+`wp_presentation` protocol feedback or native compositor frame callback counts.
 Use `gilderctl status --video-runtime-csv --from-file <status.json>` to turn a
 saved status snapshot into compact decoder/caps/playback evidence with
 sink-side memory features. The raw status JSON remains the authoritative source
@@ -362,7 +366,8 @@ and max FPS values so smoke tests can distinguish throttle, `pause-unfocused`,
 and `pause-dynamic`. Renderer telemetry columns aggregate video pipeline frame
 behavior from the daemon snapshot, including total QoS messages, max QoS dropped
 count, total GTK frame clock ticks, max GTK frame interval, and max observed GTK
-frame-clock FPS.
+frame-clock FPS, plus completed GDK frame timing counts and presentation timing
+maxima.
 The sampler also writes `video-runtime.csv`, which records each sample's
 decoder policy status, actual decoder classes, caps report count, all memory
 features, sink-side memory features, playback position/duration, and actual
@@ -370,7 +375,9 @@ frame limiter state. It also writes `video-runtime-summary.txt`, including
 `video_position_moving_outputs`, `video_position_delta_ms_max`,
 `video_frame_limiter_enabled_rows`, limiter FPS min/max,
 `video_qos_messages_max`, `video_qos_dropped_max`,
-`video_gtk_frame_clock_ticks_max`, and GTK frame clock interval/FPS summaries.
+`video_gtk_frame_clock_ticks_max`, GTK frame clock interval/FPS summaries,
+`video_gtk_frame_timings_complete_max`, and GDK frame timing presentation
+interval/time summaries.
 Use that table beside CPU, PSS, USS, and RSS when checking hard decode or
 zero-copy behavior.
 Use `--expect-decoder-policy-status`, `--expect-decoder-class`,
@@ -387,7 +394,8 @@ Use `--expect-video-qos` to require at least one QoS message and
 `--expect-qos-dropped-max-at-most <count>` to fail runs where the observed QoS
 dropped counter exceeds the selected threshold.
 Use `--expect-gtk-frame-clock` to require GTK frame clock ticks from a real GTK
-video surface sample.
+video surface sample. Use `--expect-gtk-frame-timings` to require completed GDK
+frame timings from the GTK surface path when the backend exposes them.
 These checks are evidence gates only: hardware decoder evidence and
 DMABuf/GLMemory caps should still be interpreted separately from compositor
 presentation feedback and full zero-copy proof.
@@ -401,9 +409,11 @@ on drivers that do not expose a simple busy counter.
 inside the daemon. It also reports `renderer_video_qos_messages_max`,
 `renderer_video_qos_dropped_max`, `renderer_video_gtk_frame_clock_ticks_max`,
 `renderer_video_gtk_frame_clock_interval_us_max`, and
-`renderer_video_gtk_frame_clock_fps_x1000_max` from daemon telemetry, which is a
-coarse health signal for video frame behavior before drilling into
-`video-runtime-summary.txt`.
+`renderer_video_gtk_frame_clock_fps_x1000_max`,
+`renderer_video_gtk_frame_timings_complete_max`, and
+`renderer_video_gtk_frame_timings_presentation_interval_us_max` from daemon
+telemetry, which is a coarse health signal for video frame behavior before
+drilling into `video-runtime-summary.txt`.
 For memory comparisons, prefer `avg_uss_kib` or its equivalent
 `avg_private_kib` for the process-private footprint and `avg_pss_kib` for the
 shared-memory-adjusted footprint; `avg_rss_kib` includes shared mappings at

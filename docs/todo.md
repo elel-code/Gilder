@@ -94,6 +94,7 @@
 - [x] 在视频 runtime 中报告 playback position/duration 和实际 frame limiter 状态，并接入 performance 采样汇总与断言。
 - [x] 在视频 runtime 中累计 GStreamer QoS processed/dropped 统计，并接入 performance 采样汇总与断言。
 - [x] 在 GTK 视频 surface runtime 中累计 frame clock tick/interval/FPS 统计，并接入 performance 采样汇总与断言。
+- [x] 在 GTK 视频 surface runtime 中累计 GDK frame timings observed/complete/presentation 线索，并接入 performance 采样汇总与断言。
 - [ ] 继续采集 compositor presentation/frame callback 统计。
 - [x] 将 adaptive monitor 结果作为只会降载的性能策略输入，支持阈值、冷却时间和恢复条件。
 - [x] adaptive monitor 支持用户可选的 `pause-unfocused` 动作，在系统压力下暂停非焦点输出。
