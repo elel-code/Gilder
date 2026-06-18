@@ -97,6 +97,7 @@
 - [x] 在视频 runtime 中累计 GStreamer QoS processed/dropped 统计，并接入 performance 采样汇总与断言。
 - [x] 在 GTK 视频 surface runtime 中累计 frame clock tick/interval/FPS 统计，并接入 performance 采样汇总与断言。
 - [x] 在 GTK 视频 surface runtime 中累计 frame clock before-paint/update/layout/paint/after-paint phase 统计，并接入 telemetry/runtime CSV 和 performance 汇总。
+- [x] performance/Wayland smoke 支持断言 GTK frame clock 指定 phase 或 all phases，作为真实 surface 验证 gate。
 - [x] 在 GTK 视频 surface runtime 中累计 GDK frame timings observed/complete/presentation 线索，并接入 performance 采样汇总与断言。
 - [ ] 继续采集 compositor presentation/frame callback 统计。
 - [x] 将 adaptive monitor 结果作为只会降载的性能策略输入，支持阈值、冷却时间和恢复条件。

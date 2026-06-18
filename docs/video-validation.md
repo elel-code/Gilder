@@ -99,7 +99,7 @@ Useful options:
 scripts/wayland-video-surface-smoke.sh --preflight --report-dir /tmp/gilder-wayland-video-preflight
 scripts/wayland-video-surface-smoke.sh --output eDP-1
 scripts/wayland-video-surface-smoke.sh --expect-compositor hyprland --require-video-runtime-row --visual-hold 20 --keep
-scripts/wayland-video-surface-smoke.sh --expect-compositor hyprland --require-video-runtime-row --expect-decoder-class hardware --expect-zero-copy-evidence sink-dmabuf-caps --expect-gtk-frame-clock --keep
+scripts/wayland-video-surface-smoke.sh --expect-compositor hyprland --require-video-runtime-row --expect-decoder-class hardware --expect-zero-copy-evidence sink-dmabuf-caps --expect-gtk-frame-clock --expect-gtk-frame-clock-phase all --keep
 scripts/wayland-video-surface-smoke.sh --all-outputs --visual-hold 20 --keep
 scripts/wayland-video-surface-smoke.sh --sample-performance --keep
 scripts/wayland-video-surface-smoke.sh --visual-hold 20 --keep
@@ -142,10 +142,14 @@ same kept work directory. The smoke also accepts video runtime evidence gates
 from `performance-snapshot.sh`: `--expect-decoder-policy-status`,
 `--expect-decoder-class`, `--expect-memory-feature`,
 `--expect-sink-memory-feature`, `--expect-zero-copy-evidence`,
-`--expect-video-position-progress`, `--expect-gtk-frame-clock`, and
-`--expect-gtk-frame-timings`. Supplying any of these options automatically
+`--expect-video-position-progress`, `--expect-gtk-frame-clock`,
+`--expect-gtk-frame-clock-phase before-paint|update|layout|paint|after-paint|all`,
+and `--expect-gtk-frame-timings`. Supplying any of these options automatically
 enables performance sampling and applies the checks only to scenarios that
-should have an active video plan. Pass `--require-video-runtime-row` during
+should have an active video plan. The phase gate checks GTK frame-clock phase
+counters from the video runtime summary; it is useful for proving the GTK
+surface entered the expected frame-cycle stages, but it is still not direct
+Wayland compositor presentation feedback. Pass `--require-video-runtime-row` during
 real compositor validation to fail active phases where the render plan exists
 but `renderer_runtime.video_pipelines` produced no CSV rows. This proves the
 daemon exposed a live video pipeline snapshot for that phase; it does not prove
@@ -433,8 +437,11 @@ Use `--expect-video-qos` to require at least one QoS message and
 `--expect-qos-dropped-max-at-most <count>` to fail runs where the observed QoS
 dropped counter exceeds the selected threshold.
 Use `--expect-gtk-frame-clock` to require GTK frame clock ticks from a real GTK
-video surface sample. Use `--expect-gtk-frame-timings` to require completed GDK
-frame timings from the GTK surface path when the backend exposes them.
+video surface sample. Use
+`--expect-gtk-frame-clock-phase before-paint|update|layout|paint|after-paint|all`
+to require specific frame clock phase ticks from the same sample. Use
+`--expect-gtk-frame-timings` to require completed GDK frame timings from the GTK
+surface path when the backend exposes them.
 These checks are evidence gates only: hardware decoder evidence and
 DMABuf/GLMemory caps should still be interpreted separately from compositor
 presentation feedback and full zero-copy proof.
