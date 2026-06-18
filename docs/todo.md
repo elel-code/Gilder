@@ -196,7 +196,7 @@
 
 - [ ] 为真实 Wayland active、paused、fullscreen、hidden、battery、unfocused 场景建立 CPU/GPU/RSS/PSS/USS/private/shared 基线表。
 - [ ] 为常见场景定义可执行的内存预算和回归阈值，优先使用 PSS、USS 和 private 占用作为判断依据。
-- [ ] 为 active -> paused/hidden/fullscreen -> active 场景输出内存 delta，区分瞬时峰值、恢复后 retained USS/private 和共享库 RSS。
+- [x] 为 active -> paused/hidden/fullscreen -> active 场景输出内存 delta，区分瞬时峰值、恢复后 retained USS/private 和共享库 RSS。
 - [ ] 对 paused、hidden、fullscreen 移除渲染计划后的 pipeline/window/resource 释放行为建立验证门槛。
 - [ ] 评估视频 pipeline 共享：同源多输出时避免重复解码，优先复用解码或 texture 产物。
 - [ ] 限制 poster、thumbnail、manifest/package cache 的内存增长，并为缓存淘汰添加 telemetry。

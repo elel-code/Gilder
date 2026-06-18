@@ -484,6 +484,16 @@ auditing, but they should not be used as the only private-footprint signal.
 The PSS/USS/private/shared gates require readable Linux
 `/proc/<pid>/smaps_rollup` data; if that data is missing, the sampler reports
 the expectation as unmet instead of treating zeroes as a valid pass.
+`summary.txt` also records `first_*_kib`, `last_*_kib`,
+`retained_*_delta_kib`, and `peak_over_first_*_kib` for RSS, PSS, private,
+USS, and shared memory. Retained delta is the last sample minus the first
+sample and is the quickest way to spot memory that remains after a paused,
+hidden, fullscreen, or fullscreen-resumed sampling window. Peak-over-first is
+kept separate so transient decode/GTK allocation spikes are not confused with
+end-of-window private retention. `desktop-policy-smoke.sh` forwards these
+fields into `resource-baseline.csv`, and `wayland-video-surface-smoke.sh`
+includes them in `validation-report.txt` for active, paused, and
+fullscreen-resumed performance directories.
 Pass `--pid`, `--socket`, or `--gilderctl` when testing an isolated daemon such
 as the Wayland surface smoke script. The CSV, summaries, and raw status files
 are intended to be compared between scenarios.
