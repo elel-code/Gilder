@@ -263,6 +263,13 @@ enabled = true
 throttle_max_fps = 9
 ```
 
+`[video].decoder` 由视频 renderer 在构建 GStreamer pipeline 前消费。第一版策略通过调整
+已知 H.264/VP9/AV1 decoder 的 feature rank 影响 `playbin`/`decodebin` autoplug：
+`hardware-preferred` 提高 VAAPI/VDPAU/NVDEC 等硬解 decoder rank 并保留软解 fallback；
+`hardware-required` 禁用已知软解 fallback；`software` 禁用已知硬解 decoder；
+`auto` 恢复宿主 GStreamer 原始 rank。运行时仍需通过 `actual_decoder_reports`、
+`decoder_policy_status` 和 `caps_reports` 验证实际路径。
+
 ## 安全原则
 
 - `.gwp` 和 `.gwpdir` 不允许 manifest 路径逃逸包根目录。

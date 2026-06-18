@@ -244,6 +244,13 @@ has been observed yet, not that hardware decode is active.
 intent from `[video].decoder`, and
 `renderer_runtime.video_pipelines[].actual_decoder_reports[].class` classifies
 observed decoder elements as `hardware`, `software`, or `unknown`.
+`renderer_runtime.video_pipelines[].decoder_policy_status` reports whether the
+observed decoder satisfies that policy: `not-applicable` for `auto`,
+`not-observed` before a known decoder appears, `satisfied` when the selected
+class matches the policy, `software-fallback` when `hardware-preferred` fell
+back to software, `violated` when a required class was contradicted, and
+`unknown-decoder` when GStreamer selected a decoder outside Gilder's current
+diagnostic classification.
 `renderer_runtime.video_pipelines[].caps_reports` records negotiated
 `current_caps()` from live video pads. Each report includes the element, pad,
 direction, caps string, media type list, caps features, and aggregated
@@ -258,10 +265,13 @@ software-decoding or auto-selected-decoder baseline unless paired with codec
 smoke evidence that records a hardware decoder element such as VAAPI/VDPAU/NVDEC.
 The generated H.264 surface smoke does not force hardware decode.
 The explicit decoder policy values are `auto`, `hardware-preferred`,
-`hardware-required`, and `software`; they are currently configuration and
-observability fields. Future hardware decode work still needs to make
-GStreamer autoplug selection consume that policy and report whether the policy
-was satisfied by the actual selected decoder.
+`hardware-required`, and `software`. Gilder currently applies these by adjusting
+the GStreamer feature rank for its known H.264/VP9/AV1 hardware and software
+decoder sets before constructing the pipeline. `hardware-preferred` raises known
+hardware decoder rank while keeping software fallback available;
+`hardware-required` raises known hardware decoders and disables known software
+fallbacks; `software` disables known hardware decoders and raises known software
+decoders; `auto` restores the host's original ranks.
 
 Hardware decode is not the same thing as zero-copy presentation. A pipeline may
 decode through VAAPI/VDPAU/NVDEC and still copy frames back through CPU memory
