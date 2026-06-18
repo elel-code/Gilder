@@ -213,7 +213,9 @@ GStreamer, or a Wayland session by setting `GILDER_DESKTOP_OUTPUTS` to a
 virtual output and covering active, battery, unfocused, fullscreen, hidden,
 inactive, and locked scenarios against the default daemon build. The GitHub
 Actions workflow runs it in strict mode and uploads `/tmp/gilder-desktop-policy-smoke`
-as the `desktop-policy-smoke` artifact.
+as the `desktop-policy-smoke` artifact. The artifact includes top-level
+`metadata.txt`, `matrix.csv`, and `summary.txt` files, plus per-scenario status
+snapshots, daemon logs, decision summaries, and telemetry summaries.
 For battery policy comparisons on machines that are not actually discharging,
 run the daemon or smoke script with `GILDER_POWER_STATE=battery`; unset it to
 return to sysfs-based power detection.
