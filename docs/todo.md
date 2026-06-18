@@ -206,6 +206,7 @@
 - [ ] 限制 poster、thumbnail、manifest/package cache 的内存增长，并为缓存淘汰添加 telemetry。
 - [x] 为单次 render sync 的 manifest/package 临时缓存添加可配置条目上限、FIFO 淘汰、status/watch telemetry、CSV 和性能采样汇总。
 - [x] 为 `.gwp` 解包 render cache 添加可配置条目上限、当前使用条目保护、最旧优先淘汰和 telemetry/CSV/性能采样汇总。
+- [x] 在 render sync telemetry、CSV 和性能采样汇总中报告计划层静态图、视频 poster、slideshow 图片资源 footprint，并支持 planned image resource 上限断言。
 - [ ] 为 poster、thumbnail、manifest/package、视频 pipeline 和 GTK surface 缓存定义上限、淘汰策略和 status/watch 可见的 retained memory 线索。
 - [x] 静态图片 Wallpaper Engine 转换时为足够大的光栅源图生成 16:9、21:9/ultrawide 和 9:16 portrait PNG variants，供 render plan 按输出尺寸选择以减少常见场景原始超大图解码。
 - [ ] 优化静态大图解码路径，按输出尺寸选择/生成合适变体，避免无意义加载原始超大图。

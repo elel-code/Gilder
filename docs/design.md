@@ -225,7 +225,8 @@ throttle 和 `pause-unfocused`；未设置时仍只读真实 PSI、thermal、pow
 地调用 compositor 适配器；状态修改命令和周期刷新仍会强制采集新的桌面快照。
 `status.telemetry` 会暴露桌面刷新、read 请求快照复用、桌面变化和 `render_sync`
 缓存 hit/miss 计数、单次 render sync 的 package/archive cache 统计、archive cache
-淘汰计数，以及渲染器同步更新 queued/skipped 计数，便于用性能采样证明确实没有因为轮询
+淘汰计数、计划层静态图/poster/slideshow 图片资源 footprint，以及渲染器同步更新
+queued/skipped 计数，便于用性能采样证明确实没有因为轮询
 反复调用 compositor 适配器、重复生成渲染计划、无限保留旧 `.gwp` 解包缓存或重复投递未变化的同步。
 周期刷新只在桌面快照变化时发送 `desktop.changed` watch 事件，并且只在
 `render_sync` 实际变化时投递给渲染器，避免固定频率重建 pipeline。IPC 状态变更

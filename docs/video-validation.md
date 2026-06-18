@@ -406,7 +406,10 @@ renderer update queue queued/skipped counters. The telemetry summary also
 reports latest package/archive cache entries, package/archive cache max entries,
 package cache evictions, archive reuse/extraction counts, and archive
 eviction/error deltas so long runs can catch manifest/package cache pressure or
-`.gwp` unpack cache growth. Renderer telemetry summary fields
+`.gwp` unpack cache growth. It also reports planned static image, video poster,
+slideshow image, total image-reference, and unique image-resource counts so
+paused/fullscreen/hidden evidence can prove the render plan stopped retaining
+image resources before checking GTK/private memory. Renderer telemetry summary fields
 include latest/max output window, static surface, slideshow surface, video
 surface, and video pipeline counts, which are used to prove that paused,
 hidden, fullscreen, inactive, and locked states actually release GTK renderer
