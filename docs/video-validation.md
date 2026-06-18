@@ -257,6 +257,10 @@ direction, caps string, media type list, caps features, and aggregated
 `memory_features` such as `memory:DMABuf` or `memory:GLMemory` when GStreamer
 exposes them on the negotiated path. Empty caps reports usually mean the
 pipeline has not negotiated video caps yet.
+Use `gilderctl status --video-runtime-csv --from-file <status.json>` to turn a
+saved status snapshot into compact decoder/caps evidence with sink-side memory
+features. The raw status JSON remains the authoritative source for full caps
+strings.
 
 The exact hardware decode path is left to the host GStreamer installation. The
 smoke test intentionally uses `fakesink` so it can run in CI without a Wayland
@@ -338,6 +342,10 @@ renderer update queue queued/skipped counters. When adaptive monitoring is
 enabled, the same telemetry files also include adaptive refresh deltas, active
 trigger counts, PSI CPU/memory pressure maxima, and thermal-zone maximum
 temperature, plus power_supply AC/battery details.
+The sampler also writes `video-runtime.csv`, which records each sample's
+decoder policy status, actual decoder classes, caps report count, all memory
+features, and sink-side memory features. Use that table beside CPU, PSS, USS,
+and RSS when checking hard decode or zero-copy behavior.
 For memory comparisons, prefer `avg_uss_kib` or its equivalent
 `avg_private_kib` for the process-private footprint and `avg_pss_kib` for the
 shared-memory-adjusted footprint; `avg_rss_kib` includes shared mappings at
