@@ -277,8 +277,8 @@ clues than after-paint ticks, but they are still not direct Wayland
 `wp_presentation` protocol feedback or native compositor frame callback counts.
 Use `gilderctl status --video-runtime-csv --from-file <status.json>` to turn a
 saved status snapshot into compact decoder/caps/playback evidence with
-sink-side memory features. The raw status JSON remains the authoritative source
-for full caps strings.
+sink-side memory features and `zero_copy_evidence_level`. The raw status JSON
+remains the authoritative source for full caps strings.
 
 The exact hardware decode path is left to the host GStreamer installation. The
 smoke test intentionally uses `fakesink` so it can run in CI without a Wayland
@@ -297,11 +297,16 @@ decoders; `auto` restores the host's original ranks.
 
 Hardware decode is not the same thing as zero-copy presentation. A pipeline may
 decode through VAAPI/VDPAU/NVDEC and still copy frames back through CPU memory
-before GTK/Wayland presentation. Zero-copy validation must inspect the live
-`caps_reports`, especially sink-side memory features such as DMABuf/GLMemory
-where available, and pair that with CPU, GPU, PSS, USS, and frame behavior
-evidence. Seeing a hardware decoder or a configured hardware policy alone is not
-zero-copy proof.
+before GTK/Wayland presentation. Gilder now derives
+`renderer_runtime.video_pipelines[].zero_copy_evidence.level` from the observed
+decoder class and negotiated caps. The levels are ordered as `missing`,
+`software-decode`, `hardware-decode`, `gpu-memory-caps`, `dmabuf-caps`,
+`sink-gpu-memory-caps`, and `sink-dmabuf-caps`. They are evidence levels only:
+zero-copy validation must still inspect the live `caps_reports`, especially
+sink-side memory features such as DMABuf/GLMemory where available, and pair that
+with CPU, GPU, PSS, USS, frame behavior, and compositor presentation evidence.
+Seeing a hardware decoder or a configured hardware policy alone is not zero-copy
+proof.
 
 For muted video wallpapers, Gilder disables `playbin` audio stream selection
 instead of routing decoded audio to `fakesink`, so muted wallpaper playback does
@@ -370,10 +375,12 @@ frame-clock FPS, plus completed GDK frame timing counts and presentation timing
 maxima.
 The sampler also writes `video-runtime.csv`, which records each sample's
 decoder policy status, actual decoder classes, caps report count, all memory
-features, sink-side memory features, playback position/duration, and actual
-frame limiter state. It also writes `video-runtime-summary.txt`, including
-`video_position_moving_outputs`, `video_position_delta_ms_max`,
-`video_frame_limiter_enabled_rows`, limiter FPS min/max,
+features, sink-side memory features, zero-copy evidence level, playback
+position/duration, and actual frame limiter state. It also writes
+`video-runtime-summary.txt`, including `video_zero_copy_evidence_latest`,
+`video_zero_copy_evidence.<level>` counts, `video_position_moving_outputs`,
+`video_position_delta_ms_max`, `video_frame_limiter_enabled_rows`, limiter FPS
+min/max,
 `video_qos_messages_max`, `video_qos_dropped_max`,
 `video_gtk_frame_clock_ticks_max`, GTK frame clock interval/FPS summaries,
 `video_gtk_frame_timings_complete_max`, and GDK frame timing presentation
@@ -381,12 +388,16 @@ interval/time summaries.
 Use that table beside CPU, PSS, USS, and RSS when checking hard decode or
 zero-copy behavior.
 Use `--expect-decoder-policy-status`, `--expect-decoder-class`,
-`--expect-memory-feature`, and `--expect-sink-memory-feature` to make the
-sampling run fail when live video runtime evidence does not contain the expected
-decoder policy result, hardware/software class, negotiated caps memory feature,
-or sink-side memory feature. For example, `--expect-decoder-class hardware`
-checks that the running pipeline observed a known hardware decoder, while
-`--expect-sink-memory-feature memory:DMABuf` checks for sink-side DMABuf caps.
+`--expect-memory-feature`, `--expect-sink-memory-feature`, and
+`--expect-zero-copy-evidence` to make the sampling run fail when live video
+runtime evidence does not contain the expected decoder policy result,
+hardware/software class, negotiated caps memory feature, sink-side memory
+feature, or zero-copy evidence level. For example,
+`--expect-decoder-class hardware` checks that the running pipeline observed a
+known hardware decoder, `--expect-sink-memory-feature memory:DMABuf` checks for
+sink-side DMABuf caps, and
+`--expect-zero-copy-evidence sink-dmabuf-caps` checks that the derived evidence
+classifier reached the strongest current DMABuf sink-side level.
 Use `--expect-video-position-progress`, `--expect-frame-limiter-enabled`, and
 `--expect-frame-limiter-max-fps <fps>` to assert that playback moved during the
 sample window and that the runtime frame limiter is active at the expected cap.

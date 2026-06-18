@@ -128,6 +128,7 @@
 - [x] 在 status/watch 中报告 decoder 策略、实际 decoder 类型和硬解/软解分类。
 - [x] 在 status/watch 中报告 decoder 策略是否被实际选中的 decoder 满足。
 - [x] 在 status/watch 中报告运行中视频 pad 的 negotiated caps 和 memory features。
+- [x] 在 status/watch、CSV 和性能采样中报告 zero-copy 证据分级，区分软解、硬解、GPU memory caps、DMABuf caps 和 sink-side 线索。
 - [ ] 验证 GTK video surface 是否能保持 GPU/DMABuf 路径，区分“硬解但发生 CPU copy”和真正 zero-copy。
 - [x] 本机 smoke/performance 采样记录 decoder、decoder 策略状态、caps memory features 和 sink memory features。
 - [x] 本机 performance 采样支持断言 decoder 策略状态、decoder class、caps memory feature 和 sink memory feature。

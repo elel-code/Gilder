@@ -212,8 +212,9 @@ throttle 和 `pause-unfocused`；未设置时仍只读真实 PSI、thermal、pow
   该策略支持阈值、冷却时间、每输出开关、每输出动作覆盖和全局 kill switch，并在
   `status`/telemetry 中报告当前采样、触发原因和 adaptive 动作，方便用户审计。视频
   renderer runtime 会报告播放 position、duration、实际 frame limiter 状态、GStreamer
-  QoS processed/dropped 统计和 GTK frame clock tick/interval 统计；compositor
-  presentation feedback 或原生 Wayland frame callback 统计仍是后续工作。
+  QoS processed/dropped 统计、GTK frame clock tick/interval 统计，以及从实际 decoder
+  和 caps memory features 推导的 zero-copy 证据分级；compositor presentation
+  feedback 或原生 Wayland frame callback 统计仍是后续工作。
   `GILDER_ADAPTIVE_STATE` 仅作为验证入口，用于构造高于当前阈值的 CPU/内存压力或温度
   样本，让 headless smoke 可以确定性覆盖 adaptive 动作。
 
