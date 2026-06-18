@@ -166,6 +166,9 @@ allow_audio = false
 - `properties`：用户可配置项 schema。
 - `runtime`：权限和性能策略。
 
+Wallpaper Engine 输入类型、Gilder 当前 kind、运行时支持等级和后续缺口见
+[`docs/wallpaper-types.md`](wallpaper-types.md)。
+
 当前渲染路径会在壁纸绑定携带 variant ID 时使用 `variants[].source` 替代
 `entry.source`。这适用于静态图片和视频 entry；CLI 可以通过
 `gilderctl set <wallpaper> --variant <id>` 绑定指定变体。没有显式 variant 时，daemon

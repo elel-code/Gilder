@@ -46,6 +46,9 @@ gilder-convert wallpaper-engine --allow-web <source> <dest.gwpdir>
 
 ## 类型映射
 
+完整类型/能力矩阵见 [`docs/wallpaper-types.md`](wallpaper-types.md)。该矩阵区分
+“可转换为 Gilder 包”和“已有原生运行时”，避免把 fallback 误判为完整兼容。
+
 | Wallpaper Engine 类型 | Gilder 类型 | 支持等级 | 策略 |
 | --- | --- | --- | --- |
 | Image / Scene from image | `static-image` 或 `scene-lite` | 高/中 | 纯图片无损复制；含效果时转 scene-lite 子集或静态 fallback |
