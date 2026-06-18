@@ -72,6 +72,7 @@
 - [x] 在性能采样证据中输出 render decision CSV 和摘要。
 - [x] 在性能采样证据中输出 PSS、USS/private 和 shared 内存摘要。
 - [x] 支持性能采样断言 RSS/PSS/USS/private/shared 最大内存预算，便于后续建立回归门槛。
+- [x] 支持性能采样断言 retained/peak-over-first PSS、USS/private 和 shared 内存 delta，便于验证暂停/隐藏/恢复后的保留占用。
 - [x] headless 桌面状态性能策略 smoke 支持向每个场景转发 RSS/PSS/USS/private/shared 内存预算断言。
 - [x] headless 桌面状态性能策略 smoke 输出每场景 CPU/GPU/RSS/PSS/USS/private/shared 资源基线表。
 - [x] 在 decision CSV 中记录计划类型、资源、fit、视频限帧和静音状态。

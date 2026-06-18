@@ -490,10 +490,17 @@ USS, and shared memory. Retained delta is the last sample minus the first
 sample and is the quickest way to spot memory that remains after a paused,
 hidden, fullscreen, or fullscreen-resumed sampling window. Peak-over-first is
 kept separate so transient decode/GTK allocation spikes are not confused with
-end-of-window private retention. `desktop-policy-smoke.sh` forwards these
-fields into `resource-baseline.csv`, and `wayland-video-surface-smoke.sh`
-includes them in `validation-report.txt` for active, paused, and
-fullscreen-resumed performance directories.
+end-of-window private retention. Use
+`--expect-retained-private-delta-kib-at-most <kib>`,
+`--expect-retained-uss-delta-kib-at-most <kib>`,
+`--expect-retained-pss-delta-kib-at-most <kib>`,
+`--expect-peak-over-first-private-kib-at-most <kib>`,
+`--expect-peak-over-first-uss-kib-at-most <kib>`, and
+`--expect-peak-over-first-pss-kib-at-most <kib>` to turn these relative
+private-footprint budgets into gates in desktop policy and Wayland smoke runs.
+`desktop-policy-smoke.sh` forwards these fields into `resource-baseline.csv`,
+and `wayland-video-surface-smoke.sh` includes them in `validation-report.txt`
+for active, paused, and fullscreen-resumed performance directories.
 Pass `--pid`, `--socket`, or `--gilderctl` when testing an isolated daemon such
 as the Wayland surface smoke script. The CSV, summaries, and raw status files
 are intended to be compared between scenarios.
