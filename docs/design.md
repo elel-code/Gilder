@@ -115,11 +115,13 @@ PSI、thermal、power_supply 和 DRM 采样。
   loop、muted、fit、start offset 和性能策略合成后的目标 FPS。
 - 如果 video entry 提供 poster，或 manifest 的 `preview.poster` 可用，daemon 会同时
   生成一条静态 poster plan；`gtk-renderer` 可以先把它显示在 background layer，
-  作为视频 sink 接入前以及加载/暂停时的占位画面。
+  作为视频 sink 接入前以及加载失败时的占位画面。视频 pipeline 成功接管输出后，
+  GTK renderer 会释放实际 static CSS surface，但保留 poster plan 作为错误 fallback。
 - 同时启用 `gtk-renderer` 和 `video-renderer` 时，GTK 主线程会尝试为每个
   video plan 构建 `playbin + gtk4paintablesink`，把 GStreamer 提供的
   `GdkPaintable` 放入对应输出的 layer-shell background window；poster 仍作为加载
-  前和插件缺失时的 fallback。
+  前、插件缺失和 pipeline 后续错误时的 fallback，不应在 active video 期间长期保留
+  为额外 static surface。
 - 只启用 `video-renderer` 时，daemon 会启动独立 GStreamer worker，消费同一份
   `render_sync`，并用 headless sink 固化 playbin 生命周期、loop、muted、
   pause/resume/stop 和 bus polling 控制面。
