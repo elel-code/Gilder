@@ -45,6 +45,7 @@ Useful options:
 ```sh
 scripts/video-codec-smoke.sh --work-dir /tmp
 scripts/video-codec-smoke.sh --report-dir /tmp/gilder-video-codec-smoke
+scripts/video-codec-smoke.sh --preflight --report-dir /tmp/gilder-video-codec-preflight
 scripts/video-codec-smoke.sh --install-missing --work-dir /tmp
 scripts/video-codec-smoke.sh --allow-missing
 scripts/video-codec-smoke.sh --no-convert
@@ -59,6 +60,11 @@ VP9, or AV1 decoder. Use `--keep` for a temporary work directory that should be
 preserved, or `--report-dir <dir>` when CI needs a stable artifact path. The
 GitHub Actions workflow uploads `/tmp/gilder-video-codec-smoke` as the
 `video-codec-smoke` artifact.
+
+Use `--preflight` when validating a host before generating samples. It checks
+the required tools, ffmpeg encoders, GStreamer playback/sink elements, demuxers,
+and decoder candidates, then writes the same structured report files without
+running GStreamer decode or `gilder-convert`.
 
 `--install-missing` runs the matching codec dependency helper before strict
 smoke checks on Ubuntu/Debian or Arch-like hosts so `ffmpeg`,
@@ -144,6 +150,7 @@ On Arch-like systems the equivalent codec smoke packages are typically:
 - `ffmpeg`
 - `gstreamer`
 - `gst-libav`
+- `gst-plugin-dav1d`
 - `gst-plugins-base`
 - `gst-plugins-good`
 - `gst-plugins-bad`
@@ -193,8 +200,11 @@ missing codecs should be recorded as skips instead of failures.
 If `gst-launch-1.0` exists but decode still fails, inspect
 `gstreamer-elements.csv`. Missing `qtdemux` points to MP4/QuickTime demuxer
 packages, missing `matroskademux` points to WebM/Matroska demuxer packages, and
-missing decoder candidates such as `avdec_h264`, `avdec_vp9`, or `dav1ddec`
-point to codec plugin packages.
+missing decoder candidates such as `avdec_h264`, `avdec_vp9`, `dav1ddec`,
+or `avdec_av1` point to codec plugin packages. Arch-like hosts may also expose
+`av1dec` from the AOM plugin, but that decoder can fail the generated WebM/AV1
+sample caps; use `gst-plugin-dav1d` or another plugin that provides `dav1ddec`
+or `avdec_av1` for this smoke.
 
 The GTK video surface path also needs a runtime plugin that provides
 `gtk4paintablesink` such as `gst-plugin-gtk4`. Package names differ by
