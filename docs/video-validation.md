@@ -19,18 +19,17 @@ Run the codec smoke:
 scripts/video-codec-smoke.sh
 ```
 
-Standalone Ubuntu CI jobs should install the smoke runtime dependencies first:
+Standalone Ubuntu CI jobs can let the smoke script install missing runtime
+dependencies:
 
 ```sh
-scripts/install-video-codec-smoke-deps-ubuntu.sh
-scripts/video-codec-smoke.sh --work-dir /tmp
+scripts/video-codec-smoke.sh --install-missing --work-dir /tmp
 ```
 
 Use a stable report directory when the CI job should upload artifacts:
 
 ```sh
-scripts/install-video-codec-smoke-deps-ubuntu.sh
-scripts/video-codec-smoke.sh --report-dir /tmp/gilder-video-codec-smoke
+scripts/video-codec-smoke.sh --install-missing --report-dir /tmp/gilder-video-codec-smoke
 ```
 
 The script generates tiny synthetic samples and validates:
@@ -46,6 +45,7 @@ Useful options:
 ```sh
 scripts/video-codec-smoke.sh --work-dir /tmp
 scripts/video-codec-smoke.sh --report-dir /tmp/gilder-video-codec-smoke
+scripts/video-codec-smoke.sh --install-missing --work-dir /tmp
 scripts/video-codec-smoke.sh --allow-missing
 scripts/video-codec-smoke.sh --no-convert
 scripts/video-codec-smoke.sh --keep
@@ -57,8 +57,12 @@ preserved, or `--report-dir <dir>` when CI needs a stable artifact path. The
 GitHub Actions workflow uploads `/tmp/gilder-video-codec-smoke` as the
 `video-codec-smoke` artifact.
 
-`--allow-missing` is intended for developer machines where optional encoders or
-GStreamer plugins may not be installed. CI should run the script in strict mode.
+`--install-missing` is intended for Ubuntu-like CI runners and runs
+`scripts/install-video-codec-smoke-deps-ubuntu.sh` before strict smoke checks so
+`ffmpeg`, `gst-launch-1.0`, and the expected GStreamer plugin packages are
+available. `--allow-missing` is intended for developer machines where optional
+encoders or GStreamer plugins may not be installed. CI should run the script in
+strict mode.
 
 ## Wayland Surface Smoke
 
@@ -118,18 +122,19 @@ On Ubuntu-like systems the strict smoke path expects:
 - `gstreamer1.0-plugins-ugly`
 
 The GitHub Actions workflow installs the full CI dependency set through
-`scripts/install-ci-deps-ubuntu.sh`; codec-only CI jobs can use
-`scripts/install-video-codec-smoke-deps-ubuntu.sh`. Do not run strict codec
-smoke on a fresh Ubuntu CI image without one of these installers, because
-`gst-launch-1.0` is provided by `gstreamer1.0-tools`.
+`scripts/install-ci-deps-ubuntu.sh`; codec-only CI jobs can pass
+`--install-missing` or run `scripts/install-video-codec-smoke-deps-ubuntu.sh`
+first. Do not run strict codec smoke on a fresh Ubuntu CI image without one of
+these installers, because `gst-launch-1.0` is provided by `gstreamer1.0-tools`.
 As a guardrail, `scripts/video-codec-smoke.sh` will auto-run the codec
-dependency installer when strict mode is used on a GitHub Actions Ubuntu runner
-and `ffmpeg` or `gst-launch-1.0` is missing. Local runs still fail explicitly
-unless `--allow-missing` is passed.
+dependency installer when strict mode is used on a GitHub Actions or generic
+`CI=true` Ubuntu runner and `ffmpeg` or `gst-launch-1.0` is missing. Local runs
+still fail explicitly unless `--install-missing` or `--allow-missing` is passed.
 If CI fails with `FAIL: gst-launch-1.0 is not available`, the dependency install
 step did not run or did not complete before the codec smoke command. Use
-`--allow-missing` only for optional smoke jobs where missing codecs should be
-recorded as skips instead of failures.
+`scripts/video-codec-smoke.sh --install-missing --work-dir /tmp` for strict
+codec smoke jobs, and use `--allow-missing` only for optional smoke jobs where
+missing codecs should be recorded as skips instead of failures.
 
 The GTK video surface path also needs a runtime plugin that provides
 `gtk4paintablesink` such as `gst-plugin-gtk4`. Package names differ by
