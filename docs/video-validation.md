@@ -258,10 +258,14 @@ direction, caps string, media type list, caps features, and aggregated
 exposes them on the negotiated path. Empty caps reports usually mean the
 pipeline has not negotiated video caps yet.
 `renderer_runtime.video_pipelines[]` also reports `position_ms`, `duration_ms`,
-`frame_limiter_enabled`, and `frame_limiter_max_fps`. These fields are runtime
-playback/limiter evidence: a moving `position_ms` proves the pipeline playhead
-is advancing, and `frame_limiter_max_fps` proves the applied capsfilter limit.
-They are not compositor presentation, frame callback, or dropped-frame counts.
+`frame_limiter_enabled`, `frame_limiter_max_fps`, and `frame_stats`.
+`frame_stats` accumulates GStreamer QoS messages observed during bus polling,
+including max processed/dropped values, stats format, jitter, and the latest
+proportion scaled by 1000. These fields are runtime playback/limiter/QoS
+evidence: a moving `position_ms` proves the pipeline playhead is advancing,
+`frame_limiter_max_fps` proves the applied capsfilter limit, and
+`qos_dropped_max` records GStreamer sink QoS drops when the sink reports them.
+They are not compositor presentation or Wayland frame callback counts.
 Use `gilderctl status --video-runtime-csv --from-file <status.json>` to turn a
 saved status snapshot into compact decoder/caps/playback evidence with
 sink-side memory features. The raw status JSON remains the authoritative source
@@ -353,8 +357,9 @@ decoder policy status, actual decoder classes, caps report count, all memory
 features, sink-side memory features, playback position/duration, and actual
 frame limiter state. It also writes `video-runtime-summary.txt`, including
 `video_position_moving_outputs`, `video_position_delta_ms_max`,
-`video_frame_limiter_enabled_rows`, and limiter FPS min/max. Use that table
-beside CPU, PSS, USS, and RSS when checking hard decode or zero-copy behavior.
+`video_frame_limiter_enabled_rows`, limiter FPS min/max,
+`video_qos_messages_max`, and `video_qos_dropped_max`. Use that table beside
+CPU, PSS, USS, and RSS when checking hard decode or zero-copy behavior.
 Use `--expect-decoder-policy-status`, `--expect-decoder-class`,
 `--expect-memory-feature`, and `--expect-sink-memory-feature` to make the
 sampling run fail when live video runtime evidence does not contain the expected
@@ -365,6 +370,9 @@ checks that the running pipeline observed a known hardware decoder, while
 Use `--expect-video-position-progress`, `--expect-frame-limiter-enabled`, and
 `--expect-frame-limiter-max-fps <fps>` to assert that playback moved during the
 sample window and that the runtime frame limiter is active at the expected cap.
+Use `--expect-video-qos` to require at least one QoS message and
+`--expect-qos-dropped-max-at-most <count>` to fail runs where the observed QoS
+dropped counter exceeds the selected threshold.
 These checks are evidence gates only: hardware decoder evidence and
 DMABuf/GLMemory caps should still be interpreted separately from full zero-copy
 proof.
