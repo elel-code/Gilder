@@ -172,6 +172,7 @@ resource and status evidence while the scenario is running:
 ```sh
 scripts/performance-snapshot.sh --label active-video --duration 30 --interval 1 --keep
 scripts/performance-snapshot.sh --label paused-video --duration 30 --interval 1 --keep
+scripts/desktop-policy-smoke.sh --keep
 scripts/wayland-video-surface-smoke.sh --sample-performance --sample-duration 30 --keep
 scripts/wayland-video-surface-smoke.sh --sample-paused --sample-duration 30 --keep
 ```
@@ -206,6 +207,10 @@ enables these telemetry expectations for its performance samples. Use
 `--expect-render-sync-update-skipped` for targeted repeated-state scenarios
 where the same `render_sync` should be suppressed instead of sent to renderers
 again.
+`scripts/desktop-policy-smoke.sh` runs the same assertion path without GTK,
+GStreamer, or a Wayland session by setting `GILDER_DESKTOP_OUTPUTS` to a
+virtual output and covering active, battery, unfocused, fullscreen, hidden,
+inactive, and locked scenarios against the default daemon build.
 For battery policy comparisons on machines that are not actually discharging,
 run the daemon or smoke script with `GILDER_POWER_STATE=battery`; unset it to
 return to sysfs-based power detection.

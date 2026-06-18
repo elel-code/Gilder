@@ -45,6 +45,14 @@ and
 .BR hidden .
 When unset, Gilder uses compositor or GDK output state.
 .TP
+.B GILDER_DESKTOP_OUTPUTS
+Validation override for the daemon output list. The value is a comma-separated
+list of output names, optionally with geometry as
+.IR name:widthxheight@scale .
+For example,
+.B eDP-1,HDMI-A-1:1920x1080@1.5
+creates two virtual outputs for headless policy smoke tests.
+.TP
 .B GILDER_SESSION_STATE
 Validation override for logind session state. Accepted values are
 .BR active ,

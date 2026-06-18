@@ -80,6 +80,7 @@
 - [x] 支持性能采样断言 render sync 缓存命中和桌面刷新节流生效。
 - [x] 在 daemon telemetry 中输出渲染器同步投递 queued/skipped 计数，用于审计投递去重。
 - [x] 支持性能采样断言渲染器同步投递 queued/skipped 计数。
+- [x] 添加 headless 桌面状态性能策略 smoke，覆盖 active/battery/unfocused/fullscreen/hidden/session 场景。
 - [x] 添加 MP4/WebM codec smoke 验证脚本。
 - [x] 为 MP4/WebM codec smoke 输出结构化报告并在 CI 上传。
 - [ ] 验证 MP4/H.264、WebM/VP9、WebM/AV1。
@@ -90,6 +91,7 @@
 - [x] 定义合成器输出/桌面状态快照模型。
 - [x] 定义 fullscreen、unfocused、battery 等性能策略决策层。
 - [x] 提供验证用输出状态覆盖，便于稳定采集 unfocused/fullscreen/hidden 性能策略证据。
+- [x] 提供验证用输出列表覆盖，便于无 compositor 环境采集桌面状态策略证据。
 - [x] 通用 GDK monitor 后端。
 - [x] Hyprland IPC 后端。
 - [x] niri IPC 后端。
