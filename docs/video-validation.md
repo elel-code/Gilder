@@ -98,6 +98,7 @@ Useful options:
 ```sh
 scripts/wayland-video-surface-smoke.sh --preflight --report-dir /tmp/gilder-wayland-video-preflight
 scripts/wayland-video-surface-smoke.sh --output eDP-1
+scripts/wayland-video-surface-smoke.sh --expect-compositor hyprland --visual-hold 20 --keep
 scripts/wayland-video-surface-smoke.sh --all-outputs --visual-hold 20 --keep
 scripts/wayland-video-surface-smoke.sh --sample-performance --keep
 scripts/wayland-video-surface-smoke.sh --visual-hold 20 --keep
@@ -123,7 +124,11 @@ rows include package hints for common runtime gaps such as `gtk4paintablesink`
 
 The smoke is intentionally partly visual: after the script reports success,
 confirm that the selected output shows the generated moving test video. Pass
-`--all-outputs` to apply the same generated video wallpaper to every
+`--expect-compositor hyprland|niri|generic-wayland|none` during full smoke runs
+to make the captured `desktop.compositor` value a hard evidence gate; this is
+recommended for the pending Hyprland validation so a generic fallback or niri
+session cannot accidentally be filed as Hyprland evidence. Pass `--all-outputs`
+to apply the same generated video wallpaper to every
 daemon-reported output and assert that each target output has an active
 `render_sync.video_plans` entry. It also checks that `gtk4paintablesink` is
 available. Use `--visual-hold <sec>` to keep the applied wallpaper visible for a
