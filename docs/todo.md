@@ -204,6 +204,7 @@
 - [x] 让 performance/Wayland smoke 可断言 static/slideshow/video surface lifecycle，补齐 output window 之外的 renderer resource gate。
 - [ ] 评估视频 pipeline 共享：同源多输出时避免重复解码，优先复用解码或 texture 产物。
 - [ ] 限制 poster、thumbnail、manifest/package cache 的内存增长，并为缓存淘汰添加 telemetry。
+- [x] 为单次 render sync 的 manifest/package 临时缓存添加可配置条目上限、FIFO 淘汰、status/watch telemetry、CSV 和性能采样汇总。
 - [x] 为 `.gwp` 解包 render cache 添加可配置条目上限、当前使用条目保护、最旧优先淘汰和 telemetry/CSV/性能采样汇总。
 - [ ] 为 poster、thumbnail、manifest/package、视频 pipeline 和 GTK surface 缓存定义上限、淘汰策略和 status/watch 可见的 retained memory 线索。
 - [ ] 优化静态大图解码路径，按输出尺寸选择/生成合适变体，避免无意义加载原始超大图。
