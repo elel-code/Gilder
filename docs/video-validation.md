@@ -558,7 +558,8 @@ inactive, locked, adaptive CPU-pressure throttle, adaptive GPU-busy throttle,
 adaptive `pause-unfocused`, adaptive focused-output fallback, adaptive
 `pause-dynamic` static passthrough, adaptive CPU-pressure `pause-dynamic`
 slideshow removal, adaptive low-battery `pause-dynamic` slideshow removal, and
-per-output performance override scenarios against the default daemon build. It
+per-output performance override scenarios, including battery `pause-dynamic`
+static passthrough and slideshow removal, against the default daemon build. It
 asserts mode, reason, action,
 plan kind, planned image resource references/unique resources, and expected
 `max_fps` where the decision should remain renderable. The GitHub Actions

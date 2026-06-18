@@ -17,6 +17,18 @@ service or as a compositor autostart command.
 .TP
 .I $XDG_CONFIG_HOME/gilder/config.toml
 Configuration file.
+.B [performance].battery
+and
+.B [outputs.<name>.performance].battery
+accept
+.BR continue ,
+.BR throttle ,
+.BR pause ,
+and
+.BR pause-dynamic .
+.B pause-dynamic
+keeps static wallpapers visible on battery power and removes video/slideshow
+render resources after the wallpaper manifest is known.
 .TP
 .I $XDG_STATE_HOME/gilder/state.json
 Persisted wallpaper state.

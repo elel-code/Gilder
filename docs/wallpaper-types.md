@@ -29,7 +29,7 @@
 | 静态图片显示 | `static-image` entry | 完整 | Manifest 加载测试、GTK 静态 smoke、fit-mode render plan 测试。 |
 | 视频循环播放 | `video` entry + GStreamer | 完整 | Codec smoke、Wayland video surface smoke、video runtime CSV。 |
 | 视频音频意图 | `runtime.allow_audio` + `entry.muted` | 部分 | Converter 测试和 `playbin` flags 测试；PipeWire 采集/输出策略仍是后续工作。 |
-| Slideshow / 普通动态图片 | `slideshow` entry | 完整 | Render plan 测试、GTK 定时切换、adaptive `pause-dynamic` 测试。 |
+| Slideshow / 普通动态图片 | `slideshow` entry | 完整 | Render plan 测试、GTK 定时切换、adaptive 和 battery `pause-dynamic` 测试。 |
 | Web 壁纸资源 | `web` entry | 部分 | Converter 测试和 manifest 校验。 |
 | Web runtime bridge | `assets/web/gilder-bridge.js` | fallback | 后续 WebKitGTK smoke 和属性更新测试。 |
 | Scene fallback | `scene-lite` entry fallback | 部分 | Converter 测试和静态 fallback render plan 测试。 |
