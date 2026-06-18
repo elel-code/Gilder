@@ -173,6 +173,7 @@ resource and status evidence while the scenario is running:
 scripts/performance-snapshot.sh --label active-video --duration 30 --interval 1 --keep
 scripts/performance-snapshot.sh --label paused-video --duration 30 --interval 1 --keep
 scripts/desktop-policy-smoke.sh --keep
+scripts/desktop-policy-smoke.sh --report-dir /tmp/gilder-desktop-policy-smoke
 scripts/wayland-video-surface-smoke.sh --sample-performance --sample-duration 30 --keep
 scripts/wayland-video-surface-smoke.sh --sample-paused --sample-duration 30 --keep
 ```
@@ -210,7 +211,9 @@ again.
 `scripts/desktop-policy-smoke.sh` runs the same assertion path without GTK,
 GStreamer, or a Wayland session by setting `GILDER_DESKTOP_OUTPUTS` to a
 virtual output and covering active, battery, unfocused, fullscreen, hidden,
-inactive, and locked scenarios against the default daemon build.
+inactive, and locked scenarios against the default daemon build. The GitHub
+Actions workflow runs it in strict mode and uploads `/tmp/gilder-desktop-policy-smoke`
+as the `desktop-policy-smoke` artifact.
 For battery policy comparisons on machines that are not actually discharging,
 run the daemon or smoke script with `GILDER_POWER_STATE=battery`; unset it to
 return to sysfs-based power detection.
