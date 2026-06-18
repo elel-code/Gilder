@@ -244,6 +244,12 @@ has been observed yet, not that hardware decode is active.
 intent from `[video].decoder`, and
 `renderer_runtime.video_pipelines[].actual_decoder_reports[].class` classifies
 observed decoder elements as `hardware`, `software`, or `unknown`.
+`renderer_runtime.video_pipelines[].caps_reports` records negotiated
+`current_caps()` from live video pads. Each report includes the element, pad,
+direction, caps string, media type list, caps features, and aggregated
+`memory_features` such as `memory:DMABuf` or `memory:GLMemory` when GStreamer
+exposes them on the negotiated path. Empty caps reports usually mean the
+pipeline has not negotiated video caps yet.
 
 The exact hardware decode path is left to the host GStreamer installation. The
 smoke test intentionally uses `fakesink` so it can run in CI without a Wayland
@@ -259,9 +265,11 @@ was satisfied by the actual selected decoder.
 
 Hardware decode is not the same thing as zero-copy presentation. A pipeline may
 decode through VAAPI/VDPAU/NVDEC and still copy frames back through CPU memory
-before GTK/Wayland presentation. Zero-copy validation must inspect the live sink
-caps and memory features, such as DMABuf/GLMemory where available, and pair that
-with CPU, GPU, PSS, USS, and frame behavior evidence.
+before GTK/Wayland presentation. Zero-copy validation must inspect the live
+`caps_reports`, especially sink-side memory features such as DMABuf/GLMemory
+where available, and pair that with CPU, GPU, PSS, USS, and frame behavior
+evidence. Seeing a hardware decoder or a configured hardware policy alone is not
+zero-copy proof.
 
 For muted video wallpapers, Gilder disables `playbin` audio stream selection
 instead of routing decoded audio to `fakesink`, so muted wallpaper playback does
