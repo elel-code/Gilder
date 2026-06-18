@@ -414,6 +414,13 @@ behavior from the daemon snapshot, including total QoS messages, max QoS dropped
 count, total GTK frame clock ticks and phase tick counts, max GTK frame
 interval, and max observed GTK frame-clock FPS, plus completed GDK frame timing
 counts and presentation timing maxima.
+Use `--expect-renderer-video-pipeline-lifecycle` in Wayland smoke runs when the
+sampled scenario should prove lifecycle behavior: active and fullscreen-resumed
+performance windows must report at least one renderer video pipeline, while
+paused, hidden, fullscreen, inactive, and locked windows must end with zero
+renderer video pipelines. This gate uses daemon telemetry and complements
+`--require-video-runtime-row`, which only proves that an active phase exposed a
+live per-output runtime row.
 The sampler also writes `video-runtime.csv`, which records each sample's
 decoder policy status, actual decoder classes, caps report count, all memory
 features, sink-side memory features, zero-copy evidence level, playback

@@ -142,6 +142,7 @@
 - [x] 本机 performance 采样支持断言 decoder 策略状态、decoder class、caps memory feature 和 sink memory feature。
 - [x] Wayland 视频 surface smoke 支持直接断言 decoder、caps、zero-copy evidence 和 GTK/GDK frame timing 证据。
 - [x] Wayland 视频 surface smoke 支持要求 active phase 必须记录 live video runtime row，避免只有 render plan、没有 pipeline 证据。
+- [x] Wayland 视频 surface smoke 支持 renderer video pipeline lifecycle gate，验证 active/resumed 创建 pipeline、paused/hidden/fullscreen 释放 pipeline。
 - [x] 为硬解和 zero-copy 添加本机 smoke：记录 decoder、sink caps/memory features、CPU/GPU/USS/PSS 对比。
 
 ## M5: 合成器适配
