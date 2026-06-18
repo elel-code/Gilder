@@ -98,8 +98,8 @@ Useful options:
 ```sh
 scripts/wayland-video-surface-smoke.sh --preflight --report-dir /tmp/gilder-wayland-video-preflight
 scripts/wayland-video-surface-smoke.sh --output eDP-1
-scripts/wayland-video-surface-smoke.sh --expect-compositor hyprland --visual-hold 20 --keep
-scripts/wayland-video-surface-smoke.sh --expect-compositor hyprland --expect-decoder-class hardware --expect-zero-copy-evidence sink-dmabuf-caps --expect-gtk-frame-clock --keep
+scripts/wayland-video-surface-smoke.sh --expect-compositor hyprland --require-video-runtime-row --visual-hold 20 --keep
+scripts/wayland-video-surface-smoke.sh --expect-compositor hyprland --require-video-runtime-row --expect-decoder-class hardware --expect-zero-copy-evidence sink-dmabuf-caps --expect-gtk-frame-clock --keep
 scripts/wayland-video-surface-smoke.sh --all-outputs --visual-hold 20 --keep
 scripts/wayland-video-surface-smoke.sh --sample-performance --keep
 scripts/wayland-video-surface-smoke.sh --visual-hold 20 --keep
@@ -145,8 +145,12 @@ from `performance-snapshot.sh`: `--expect-decoder-policy-status`,
 `--expect-video-position-progress`, `--expect-gtk-frame-clock`, and
 `--expect-gtk-frame-timings`. Supplying any of these options automatically
 enables performance sampling and applies the checks only to scenarios that
-should have an active video plan. With `--sample-paused`, it captures the active
-sample, pauses the selected output, verifies a `user-paused` performance
+should have an active video plan. Pass `--require-video-runtime-row` during
+real compositor validation to fail active phases where the render plan exists
+but `renderer_runtime.video_pipelines` produced no CSV rows. This proves the
+daemon exposed a live video pipeline snapshot for that phase; it does not prove
+hardware decode or zero-copy on its own. With `--sample-paused`, it captures the
+active sample, pauses the selected output, verifies a `user-paused` performance
 decision, captures `performance-paused/`, and resumes the output.
 Every run also writes `validation-report.txt` as a single audit entrypoint. It
 summarizes the expected and actual compositor, selected outputs, whether the
