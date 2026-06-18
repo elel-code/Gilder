@@ -54,12 +54,18 @@ scripts/video-codec-smoke.sh --keep
 
 Every run writes `metadata.txt`, `results.csv`, `gstreamer-elements.csv`, and
 `summary.txt` inside the smoke work directory. `gstreamer-elements.csv` records
-the required container demuxers and decoder candidates for each codec case, so
-strict failures can distinguish a missing MP4/WebM demuxer from a missing H.264,
-VP9, or AV1 decoder. Use `--keep` for a temporary work directory that should be
-preserved, or `--report-dir <dir>` when CI needs a stable artifact path. The
-GitHub Actions workflow uploads `/tmp/gilder-video-codec-smoke` as the
-`video-codec-smoke` artifact.
+the required container demuxers, decoder candidates, and actual decoder
+selected by `playbin` for each codec case. Actual decoder rows use
+`role=actual-decoder` and `status=selected`, so strict reports can distinguish a
+missing MP4/WebM demuxer, missing H.264/VP9/AV1 decoder candidates, and the
+software or hardware decoder that was actually used. Use `--keep` for a
+temporary work directory that should be preserved, or `--report-dir <dir>` when
+CI needs a stable artifact path. The GitHub Actions workflow uploads
+`/tmp/gilder-video-codec-smoke` as the `video-codec-smoke` artifact.
+For example, `/tmp/gilder-video-codecs.uYc031/gstreamer-elements.csv` recorded
+`avdec_h264`, `vp9dec`, and `dav1ddec` as the selected decoders for the current
+local MP4/H.264, WebM/VP9, and WebM/AV1 smoke samples, which is a software
+decode baseline on this host.
 
 Use `--preflight` when validating a host before generating samples. It checks
 the required tools, ffmpeg encoders, GStreamer playback/sink elements, demuxers,
@@ -231,10 +237,10 @@ daemon environment.
 
 The exact hardware decode path is left to the host GStreamer installation. The
 smoke test intentionally uses `fakesink` so it can run in CI without a Wayland
-session. Current smoke evidence should be treated as a software-decoding or
-auto-selected-decoder baseline unless the report explicitly records a hardware
-decoder element such as VAAPI/VDPAU/NVDEC. The generated H.264 surface smoke
-does not force hardware decode.
+session. Current Wayland surface smoke evidence should be treated as a
+software-decoding or auto-selected-decoder baseline unless paired with codec
+smoke evidence that records a hardware decoder element such as VAAPI/VDPAU/NVDEC.
+The generated H.264 surface smoke does not force hardware decode.
 
 For muted video wallpapers, Gilder disables `playbin` audio stream selection
 instead of routing decoded audio to `fakesink`, so muted wallpaper playback does
@@ -256,6 +262,7 @@ compositor-facing checks:
 
 - Hyprland video presentation;
 - real compositor fullscreen resume latency;
+- daemon status/watch reporting of running video pipeline decoder elements;
 - longer-duration CPU, memory, and GPU usage sampling while active and paused.
 
 ## Performance Sampling
