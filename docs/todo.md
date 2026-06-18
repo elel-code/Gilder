@@ -88,8 +88,8 @@
 - [x] 在 daemon telemetry 中输出渲染器同步投递 queued/skipped 计数，用于审计投递去重。
 - [x] 支持性能采样断言渲染器同步投递 queued/skipped 计数。
 - [x] 设计可选 adaptive system monitor：默认关闭，支持全局/按输出启用和 kill switch。
-- [x] 采样 Linux PSI CPU/内存压力，并输出到 daemon telemetry。
-- [ ] 继续采样 GPU、温度、电源细节和帧行为，并输出到 daemon telemetry。
+- [x] 采样 Linux PSI CPU/内存压力和 thermal zone 最高温度，并输出到 daemon telemetry。
+- [ ] 继续采样 GPU、电源细节和帧行为，并输出到 daemon telemetry。
 - [x] 将 adaptive monitor 结果作为只会降载的性能策略输入，支持阈值、冷却时间和恢复条件。
 - [x] 在 status/watch 中报告 adaptive monitor 的当前采样、触发原因和实际降载动作。
 - [x] 在真实 niri Wayland 会话采集 battery/unfocused/fullscreen 视频 surface 策略和内存证据。
