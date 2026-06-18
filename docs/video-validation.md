@@ -247,6 +247,15 @@ session. Current Wayland surface smoke evidence should be treated as a
 software-decoding or auto-selected-decoder baseline unless paired with codec
 smoke evidence that records a hardware decoder element such as VAAPI/VDPAU/NVDEC.
 The generated H.264 surface smoke does not force hardware decode.
+Future hardware decode work should expose an explicit decoder policy:
+`auto`, `hardware-preferred`, `hardware-required`, and `software`. Validation
+must report both the configured policy and the actual selected decoder.
+
+Hardware decode is not the same thing as zero-copy presentation. A pipeline may
+decode through VAAPI/VDPAU/NVDEC and still copy frames back through CPU memory
+before GTK/Wayland presentation. Zero-copy validation must inspect the live sink
+caps and memory features, such as DMABuf/GLMemory where available, and pair that
+with CPU, GPU, PSS, USS, and frame behavior evidence.
 
 For muted video wallpapers, Gilder disables `playbin` audio stream selection
 instead of routing decoded audio to `fakesink`, so muted wallpaper playback does

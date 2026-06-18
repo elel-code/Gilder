@@ -158,7 +158,7 @@ allow_audio = false
 - `title`：展示名称。
 - `authors`：作者列表。
 - `license`：许可证或 `unknown`。
-- `kind`：`static-image`、`video`、`web`、`scene-lite`。
+- `kind`：`static-image`、`video`、`slideshow`、`web`、`scene-lite`。
 - `tags`：搜索和管理用标签。
 - `preview`：缩略图和 fallback poster。
 - `entry`：默认运行入口。
@@ -234,7 +234,9 @@ daemon 会把 video entry 转成 `render_sync.video_plans`，其中 `manifest_ma
 }
 ```
 
-Slideshow 是 v1 的普通动态壁纸，不需要脚本运行时。
+Slideshow 是 v1 的普通动态壁纸，不需要脚本运行时。daemon 会把 slideshow entry
+转成 `render_sync.slideshow_plans`，GTK renderer 会按 `interval_ms` 切换源图；
+`transition = "crossfade"` 当前作为格式意图保留，早期运行时先执行稳定的即时切换。
 
 ### Web
 

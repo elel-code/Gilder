@@ -75,6 +75,7 @@
 - [x] 单次 render sync 内复用同一路径壁纸包的加载结果。
 - [x] 实现 poster 显示。
 - [x] 实现 max_fps 或 pipeline throttling。
+- [x] 实现 slideshow 普通动态壁纸运行计划和 GTK 定时切换。
 - [x] 避免重复 render sync 对视频 pipeline 反复设置未变化的 state、mute、fit、限帧和 start offset。
 - [x] 避免重复 render sync 对 GTK 静态窗口反复重建 CSS provider。
 - [x] 避免 GTK 初始同步和 IPC 状态变更把未变化的 render sync 重复投递给渲染器。
@@ -86,6 +87,10 @@
 - [x] 支持性能采样断言 render sync 缓存命中和桌面刷新节流生效。
 - [x] 在 daemon telemetry 中输出渲染器同步投递 queued/skipped 计数，用于审计投递去重。
 - [x] 支持性能采样断言渲染器同步投递 queued/skipped 计数。
+- [ ] 设计可选 adaptive system monitor：默认关闭，支持全局/按输出启用和 kill switch。
+- [ ] 采样 CPU、GPU、内存压力、温度、电源和帧行为，并输出到 daemon telemetry。
+- [ ] 将 adaptive monitor 结果作为只会降载的性能策略输入，支持阈值、冷却时间和恢复条件。
+- [ ] 在 status/watch 中报告 adaptive monitor 的当前采样、触发原因和实际降载动作。
 - [x] 在真实 niri Wayland 会话采集 battery/unfocused/fullscreen 视频 surface 策略和内存证据。
 - [x] 添加 fullscreen -> active 恢复延迟采样入口和结构化证据输出。
 - [x] 在真实 niri Wayland 会话采集验证覆盖下的 fullscreen -> active 恢复延迟证据。
@@ -106,6 +111,11 @@
 - [x] 添加 fullscreen 暂停策略接口。
 - [x] 在 codec smoke 中记录实际 GStreamer decoder element，区分软解和硬解 codec 基线。
 - [x] 在 daemon status/watch 中报告运行中视频 pipeline 的实际 decoder element。
+- [ ] 提供视频 decoder 策略配置：`auto`、`hardware-preferred`、`hardware-required`、`software`。
+- [ ] 在 GStreamer autoplug 选择中优先/强制 VAAPI、VDPAU、NVDEC 等硬解 decoder，并保留明确软解回退。
+- [ ] 在 status/watch 中报告 decoder 策略、实际 decoder 类型和硬解/软解分类。
+- [ ] 验证 GTK video surface 是否能保持 GPU/DMABuf 路径，区分“硬解但发生 CPU copy”和真正 zero-copy。
+- [ ] 为硬解和 zero-copy 添加本机 smoke：记录 decoder、sink caps/memory features、CPU/GPU/USS/PSS 对比。
 
 ## M5: 合成器适配
 

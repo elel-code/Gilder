@@ -64,10 +64,11 @@ gilderctl status --telemetry-csv --from-file status-001.json
 ```
 
 返回 daemon 状态、桌面快照、输出列表、当前壁纸、暂停状态、配置/状态文件位置、性能决策信息、renderer 能力诊断、daemon telemetry 和 `render_sync`。
-`render_sync` 包含静态图片渲染器下一次同步需要执行的 `plans`、视频渲染器后续要消费的 `video_plans`、需要关闭的 `removals`、包加载/格式错误 `errors`，以及每个输出的 `decisions`。
+`render_sync` 包含静态图片渲染器下一次同步需要执行的 `plans`、视频渲染器后续要消费的 `video_plans`、slideshow 渲染器要消费的 `slideshow_plans`、需要关闭的 `removals`、包加载/格式错误 `errors`，以及每个输出的 `decisions`。
 视频壁纸有 poster 时，`plans` 会包含同一输出的静态 poster 占位计划，`video_plans` 仍包含实际视频 pipeline 计划。
 `decisions` 会记录输出动作、当前壁纸路径和由桌面状态性能策略产生的 `mode/max_fps/reason`，视频/GStreamer 渲染器会用它执行暂停或限帧。`.gwp` 包会先解包到 `$XDG_CACHE_HOME/gilder/render-cache/`，再生成计划。
-`--decisions-csv` 会把 `render_sync.decisions` 与同输出的静态/视频计划合并为 `output_name,action,mode,reason,max_fps,wallpaper,plan_kind,source,fit,target_max_fps,muted` CSV，便于性能采样脚本和人工对比 active/paused/fullscreen/battery 场景中的实际资源、fit、视频限帧和静音策略；`--from-file` 可以重放已经保存的 `gilderctl status` JSON-RPC 响应。
+`slideshow_plans` 包含源图列表、切换间隔、transition、fit 和桌面状态策略合成后的 `target_max_fps`；当前 GTK renderer 会按间隔切换图片，`crossfade` 先作为格式字段保留。
+`--decisions-csv` 会把 `render_sync.decisions` 与同输出的静态/视频/slideshow 计划合并为 `output_name,action,mode,reason,max_fps,wallpaper,plan_kind,source,fit,target_max_fps,muted` CSV，便于性能采样脚本和人工对比 active/paused/fullscreen/battery 场景中的实际资源、fit、视频限帧和静音策略；`--from-file` 可以重放已经保存的 `gilderctl status` JSON-RPC 响应。
 `telemetry` 会报告桌面快照刷新次数、read 请求复用快照次数、桌面变化次数、`render_sync` 缓存 hit/miss，以及渲染器同步更新 queued/skipped 计数；`--telemetry-csv` 会输出 `desktop_refreshes,desktop_refresh_skips,desktop_changes,last_desktop_refresh_age_ms,render_sync_cache_hits,render_sync_cache_misses,render_sync_updates_queued,render_sync_updates_skipped`，便于确认状态栏轮询和性能采样没有持续触发 compositor 适配器、重复生成渲染计划或重复投递未变化的渲染同步。
 `scripts/performance-snapshot.sh` 可以用 `--expect-render-sync-cache-hit`、`--expect-desktop-refresh-skip`、`--expect-render-sync-update-queued` 和 `--expect-render-sync-update-skipped` 把这些 telemetry 变成失败条件，适合 CI 或真实会话 smoke 证明缓存、刷新节流和渲染器同步投递去重仍然生效。
 daemon 会周期刷新桌面快照，只有快照变化时才发送 `desktop.changed` 事件；`status` 和 `outputs` 会按 `performance.desktop_refresh_interval_ms` 复用最近的桌面快照，避免轮询客户端过于频繁地调用 compositor 适配器；`desktop.changed` 和 `state.changed` 会继续携带当前 `render_sync` 供客户端观察，但只有 `render_sync` 实际变化时才投递给内部渲染器。
