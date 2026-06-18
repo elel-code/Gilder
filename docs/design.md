@@ -200,10 +200,10 @@ PSI、thermal、power_supply 和 DRM 采样。
 - 会话状态由 logind 提供；当用户切换到非活跃 session/VT 时，
   `SessionInactive` 决策会暂停渲染；锁屏时 `SessionLocked` 决策也会暂停渲染。
 - daemon 持久化 `AppState`，记录每个输出的壁纸、暂停状态和用户属性。
-- `PerformanceConfig` 从 `$XDG_CONFIG_HOME/gilder/config.toml` 读取，控制 fullscreen、unfocused、battery 时继续、限帧、暂停或仅暂停动态壁纸。
-- `[outputs.<name>.performance]` 可以覆盖单个输出的 FPS 和 fullscreen/unfocused/battery 策略，适合把副屏、投影输出或高耗电输出配置得更保守。
+- `PerformanceConfig` 从 `$XDG_CONFIG_HOME/gilder/config.toml` 读取，控制 fullscreen、hidden、session、unfocused、battery 时继续、限帧、暂停或仅暂停动态壁纸。
+- `[outputs.<name>.performance]` 可以覆盖单个输出的 FPS 和 fullscreen/hidden/session/unfocused/battery 策略，适合把副屏、投影输出或高耗电输出配置得更保守。
 - `decide_performance` 将配置、桌面状态和输出状态合成为渲染决策：active、throttled 或 paused。多个条件同时命中时选择最省资源的结果：paused 优先于 throttled，同为 throttled/active 时选择更低 `max_fps`；同等强度时保留更早命中的明确原因。
-- `battery = "pause-dynamic"` 是可选电池策略：daemon 在未加载 manifest 前不提前移除输出；确认壁纸是 video/slideshow 后才把该输出转为 paused/remove，静态壁纸仍按原桌面状态渲染。
+- `battery = "pause-dynamic"`、`fullscreen = "pause-dynamic"`、`unfocused = "pause-dynamic"`、`hidden = "pause-dynamic"` 和 `session = "pause-dynamic"` 是可选动态壁纸释放策略：daemon 在未加载 manifest 前不提前移除输出；确认壁纸是 video/slideshow 后才把该输出转为 paused/remove，静态壁纸仍按原桌面状态渲染。
 - manifest `runtime.pause_when_fullscreen` 和 `runtime.pause_when_unfocused` 会在包加载后作为额外保守策略合入同一份决策；如果配置、用户暂停、输出隐藏或会话 inactive 已经要求暂停，daemon 不会为了读取 manifest 再加载包。
 - manifest `runtime.allow_audio` 与 video entry 的 `muted` 合成最终视频静音状态，默认不输出音频。
 - adaptive system monitor 是用户可选策略层，默认关闭。开启后会采样 Linux PSI
@@ -258,6 +258,11 @@ archive cache 条目；生成计划时当前正在使用的 archive cache 条目
 interactive_max_fps = 60
 background_max_fps = 30
 battery_max_fps = 24
+fullscreen = "pause" # continue, throttle, pause, pause-dynamic
+hidden = "pause" # continue, pause, pause-dynamic
+session = "pause" # continue, pause, pause-dynamic
+unfocused = "throttle" # continue, throttle, pause, pause-dynamic
+battery = "throttle" # continue, throttle, pause, pause-dynamic
 
 [adaptive]
 enabled = false
@@ -285,6 +290,8 @@ fit = "contain"
 
 [outputs."HDMI-A-1".performance]
 background_max_fps = 12
+unfocused = "pause-dynamic" # continue, throttle, pause, pause-dynamic
+hidden = "pause-dynamic" # continue, pause, pause-dynamic
 battery = "pause-dynamic" # continue, throttle, pause, pause-dynamic
 
 [outputs."HDMI-A-1".adaptive]

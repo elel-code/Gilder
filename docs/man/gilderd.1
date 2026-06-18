@@ -29,6 +29,24 @@ and
 .B pause-dynamic
 keeps static wallpapers visible on battery power and removes video/slideshow
 render resources after the wallpaper manifest is known.
+.B [performance].fullscreen
+and
+.B [outputs.<name>.performance].fullscreen
+also accept
+.BR pause-dynamic .
+.B [performance].unfocused
+and
+.B [outputs.<name>.performance].unfocused
+also accept
+.BR pause-dynamic .
+.B [performance].hidden
+,
+.B [performance].session
+and their per-output overrides accept
+.BR continue ,
+.BR pause ,
+and
+.BR pause-dynamic .
 .TP
 .I $XDG_STATE_HOME/gilder/state.json
 Persisted wallpaper state.
