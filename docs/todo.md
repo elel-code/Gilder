@@ -60,6 +60,7 @@
 - [x] 将视频 sink 通过 GTK paintable 接入每个输出的 layer-shell window。
 - [x] 在 IPC status/watch 中报告视频 surface 运行时能力。
 - [x] 添加 Wayland 视频 surface smoke 验证脚本。
+- [x] 为 Wayland 视频 surface smoke 添加低干扰 preflight 和结构化检查报告。
 - [ ] 在真实 niri/Hyprland Wayland 会话验证视频 surface 显示。
 - [x] 添加 CPU/RSS/status 性能采样脚本。
 - [x] 将 active-video 性能采样接入 Wayland 视频 surface smoke。

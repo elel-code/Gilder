@@ -83,6 +83,7 @@ temporary work directory.
 Useful options:
 
 ```sh
+scripts/wayland-video-surface-smoke.sh --preflight --report-dir /tmp/gilder-wayland-video-preflight
 scripts/wayland-video-surface-smoke.sh --output eDP-1
 scripts/wayland-video-surface-smoke.sh --sample-performance --keep
 scripts/wayland-video-surface-smoke.sh --simulate-power battery --sample-performance --keep
@@ -93,6 +94,14 @@ scripts/wayland-video-surface-smoke.sh --sample-paused --keep
 scripts/wayland-video-surface-smoke.sh --allow-missing
 scripts/wayland-video-surface-smoke.sh --no-build --keep
 ```
+
+Use `--preflight` first when validating a real compositor session. It checks
+`WAYLAND_DISPLAY`, `XDG_RUNTIME_DIR`, required tools, built binaries, and the
+GStreamer elements needed by the generated MP4/H.264 test wallpaper
+(`playbin`, `gtk4paintablesink`, `qtdemux`, and an H.264 decoder candidate)
+without starting the daemon or changing the current wallpaper. With
+`--report-dir`, it writes stable `metadata.txt`, `checks.csv`, and `summary.txt`
+evidence that can be attached before a visual run.
 
 The smoke is intentionally partly visual: after the script reports success,
 confirm that the selected output shows the generated moving test video. It also
