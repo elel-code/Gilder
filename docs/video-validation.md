@@ -402,7 +402,10 @@ plan kinds, fit modes, muted video counts, and target FPS ranges. It also asks
 `gilderctl status --telemetry-csv --from-file` to produce `telemetry.csv` and
 `telemetry-summary.txt`, which report desktop refresh deltas, read-request
 refresh skips, desktop change deltas, render-sync cache hit/miss deltas, and
-renderer update queue queued/skipped counters. When adaptive monitoring is
+renderer update queue queued/skipped counters. The telemetry summary also
+reports latest package/archive cache entries, archive cache max entries,
+archive reuse/extraction counts, and archive eviction/error deltas so long
+runs can catch `.gwp` unpack cache growth. When adaptive monitoring is
 enabled, the same telemetry files also include adaptive refresh deltas, active
 trigger counts, PSI CPU/memory pressure maxima, and thermal-zone maximum
 temperature, power_supply AC/battery details, and daemon-side DRM
