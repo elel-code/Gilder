@@ -98,6 +98,7 @@ scripts/wayland-video-surface-smoke.sh --visual-hold 20 --keep
 scripts/wayland-video-surface-smoke.sh --simulate-power battery --sample-performance --keep
 scripts/wayland-video-surface-smoke.sh --simulate-output-state unfocused --sample-performance --keep
 scripts/wayland-video-surface-smoke.sh --simulate-output-state fullscreen --sample-performance --keep
+scripts/wayland-video-surface-smoke.sh --measure-fullscreen-resume --sample-performance --keep
 scripts/wayland-video-surface-smoke.sh --simulate-session locked --sample-performance --keep
 scripts/wayland-video-surface-smoke.sh --sample-paused --keep
 scripts/wayland-video-surface-smoke.sh --allow-missing
@@ -136,6 +137,11 @@ isolated daemon with `GILDER_OUTPUT_STATE`, verifies that status reflects the
 simulated output focus/visibility/fullscreen fields, and checks for the
 matching performance decision. `unfocused` still expects an active video plan
 with throttling, while `fullscreen` and `hidden` expect the paused/remove path.
+With `--measure-fullscreen-resume`, it starts fullscreen through a
+file-backed `GILDER_OUTPUT_STATE_FILE`, applies the video wallpaper while the
+fullscreen policy removes the video plan, rewrites the override to `active`,
+and records the time until status reports an interactive video plan again in
+`fullscreen-resume-latency.csv` and `fullscreen-resume-latency.txt`.
 With `--simulate-session inactive|locked`, it starts the isolated daemon with
 `GILDER_SESSION_STATE`, verifies that status reflects the simulated logind
 session state, and expects the paused/remove path with `session-inactive` or
@@ -231,10 +237,16 @@ session.
 
 The GTK paintable sink code path has been validated for one-output and
 multi-output niri video presentation, plus niri simulated battery, unfocused,
-and fullscreen policy sampling. It still needs compositor-facing checks:
+fullscreen policy sampling, and file-backed fullscreen -> active resume
+measurement. A recent niri validation run wrote evidence under
+`/tmp/gilder-wayland-video.lLD2VR`: `fullscreen-resume-latency.txt` reported
+`latency_ms: 642`, and `performance-resumed/summary.txt` reported resumed
+video averages of `avg_cpu_percent: 7.77`, `avg_pss_kib: 204560`, and
+`avg_uss_kib: 178865` over a 3-sample window. It still needs
+compositor-facing checks:
 
 - Hyprland video presentation;
-- fullscreen resume latency;
+- real compositor fullscreen resume latency;
 - longer-duration CPU, memory, and GPU usage sampling while active and paused.
 
 ## Performance Sampling
@@ -306,6 +318,9 @@ return to sysfs-based power detection.
 For compositor-state policy comparisons where changing the real desktop state
 is awkward, use `GILDER_OUTPUT_STATE=unfocused`, `fullscreen`, or `hidden`; unset
 it to return to compositor/GDK state detection.
+For same-daemon transition measurements, use `GILDER_OUTPUT_STATE_FILE` or the
+Wayland smoke's `--measure-fullscreen-resume` option so the validation can
+switch fullscreen back to active without restarting `gilderd`.
 For session-state policy comparisons where switching VT or locking the real
 session is awkward, use `GILDER_SESSION_STATE=inactive` or `locked`; unset it to
 return to logind state detection.

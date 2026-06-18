@@ -87,6 +87,8 @@
 - [x] 在 daemon telemetry 中输出渲染器同步投递 queued/skipped 计数，用于审计投递去重。
 - [x] 支持性能采样断言渲染器同步投递 queued/skipped 计数。
 - [x] 在真实 niri Wayland 会话采集 battery/unfocused/fullscreen 视频 surface 策略和内存证据。
+- [x] 添加 fullscreen -> active 恢复延迟采样入口和结构化证据输出。
+- [x] 在真实 niri Wayland 会话采集验证覆盖下的 fullscreen -> active 恢复延迟证据。
 - [x] 添加 headless 桌面状态性能策略 smoke，覆盖 active/battery/unfocused/fullscreen/hidden/session 场景。
 - [x] 将 headless 桌面状态性能策略 smoke 接入 CI 并上传证据。
 - [x] 为 headless 桌面状态性能策略 smoke 输出场景矩阵和顶层摘要。
