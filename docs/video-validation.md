@@ -346,6 +346,16 @@ The sampler also writes `video-runtime.csv`, which records each sample's
 decoder policy status, actual decoder classes, caps report count, all memory
 features, and sink-side memory features. Use that table beside CPU, PSS, USS,
 and RSS when checking hard decode or zero-copy behavior.
+Use `--expect-decoder-policy-status`, `--expect-decoder-class`,
+`--expect-memory-feature`, and `--expect-sink-memory-feature` to make the
+sampling run fail when live video runtime evidence does not contain the expected
+decoder policy result, hardware/software class, negotiated caps memory feature,
+or sink-side memory feature. For example, `--expect-decoder-class hardware`
+checks that the running pipeline observed a known hardware decoder, while
+`--expect-sink-memory-feature memory:DMABuf` checks for sink-side DMABuf caps.
+These checks are evidence gates only: hardware decoder evidence and
+DMABuf/GLMemory caps should still be interpreted separately from full zero-copy
+proof.
 When available, `samples.csv` also includes `gpu_busy_percent_avg`,
 `gpu_busy_percent_max`, and `gpu_busy_sources` from DRM sysfs
 `gpu_busy_percent` or `nvidia-smi`. These fields are optional and may be empty
