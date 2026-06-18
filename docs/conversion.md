@@ -118,6 +118,8 @@ gilder-convert wallpaper-engine --allow-web <source> <dest.gwpdir>
 - 默认禁止访问包根之外的本地文件。
 - 音频可视化、媒体集成、RGB 硬件接口先记录为 unsupported feature；检测到 Web
   或 Scene 音频意图时会写入转换报告，但不会打开 `runtime.allow_audio`。
+- Web runtime 本身会记录为 `web-runtime`，检测到网络、音频 listener 或媒体集成时会额外
+  记录 `web-permissions`，用于提醒后续需要 sandbox、权限和低功耗策略。
 - `directory` 属性可迁移为普通 `file`/`directory` schema，但运行时能力后置实现。
 
 ## Scene 转换
@@ -143,7 +145,9 @@ Scene 转换策略按优先级：
 
 1. 当前先生成保守 `entry.type = "scene-lite"`，复制 Scene 入口文件到 `assets/`。
 2. 如果项目提供 preview，则作为 `fallback`；缺失时生成 SVG fallback。
-3. SceneScript、shader、复杂粒子和音频响应记录为 unsupported，不执行也不翻译。
+3. Scene runtime 本身记录为 `scene-runtime`；SceneScript、shader、复杂粒子、timeline、
+   parallax 和音频响应会分别记录为 `scenescript`、`custom-shader`、
+   `complex-particles`、`timeline-animation`、`parallax` 和 `audio-runtime`。
 4. 后续如果能识别主要视频或图片，可降级为 `video` 或 `static-image`。
 
 ## 用户属性映射
@@ -176,13 +180,24 @@ Scene 转换策略按优先级：
 ```json
 {
   "source_type": "scene",
-  "detected_features": ["image-layer", "timeline", "scenescript"],
-  "converted_features": ["image-layer", "timeline"],
-  "unsupported_features": ["scenescript"],
-  "warnings": ["SceneScript was not executed or converted."],
+  "detected_features": ["audio-response", "image-layer", "scenescript", "shader", "timeline"],
+  "converted_features": ["scene-lite"],
+  "unsupported_features": [
+    "audio-runtime",
+    "custom-shader",
+    "scene-runtime",
+    "scenescript",
+    "timeline-animation"
+  ],
+  "warnings": ["Converted Scene project to scene-lite metadata and fallback only."],
   "errors": []
 }
 ```
+
+`detected_features` 现在会同时扫描 `project.json` 和可读取的入口文件内容。Web 项目会识别
+`wallpaperPropertyListener`、`wallpaperRegisterAudioListener`、网络 URL 和媒体集成线索；
+Scene 项目会识别 layer/image、timeline/keyframe、SceneScript、shader、particle、
+parallax、playlist 和音频响应线索。该检测用于报告迁移缺口，不能替代后续原生 runtime。
 
 ## 版权与分发
 
