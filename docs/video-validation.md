@@ -459,7 +459,10 @@ Renderer telemetry summary fields
 include latest/max output window, static surface, slideshow surface, video
 surface, and video pipeline counts, which are used to prove that paused,
 hidden, fullscreen, inactive, and locked states actually release GTK renderer
-resources. When adaptive monitoring is
+resources. They also include renderer static-surface and slideshow source
+resource reference/byte footprints, which show whether GTK CSS providers or
+slideshow surfaces still point at large source images; these are source-file
+clues, not decoded texture memory or process USS. When adaptive monitoring is
 enabled, the same telemetry files also include adaptive refresh deltas, active
 trigger counts, PSI CPU/memory pressure maxima, and thermal-zone maximum
 temperature, power_supply AC/battery details, and daemon-side DRM
@@ -628,8 +631,9 @@ plus per-scenario status snapshots, daemon logs, decision summaries, and
 telemetry summaries. `resource-baseline.csv` gives one row per scenario and
 pulls the sampled CPU, GPU, RSS, PSS, private, USS, shared-memory, decision,
 render-sync cache, planned image resource count/byte footprint, renderer update,
-package-cache retained resource footprint, adaptive-action, and renderer video
-telemetry summary values into one table for quick baseline comparison.
+package-cache retained resource footprint, renderer static/slideshow resource
+footprint, adaptive-action, and renderer video telemetry summary values into one
+table for quick baseline comparison.
 The desktop policy smoke also forwards the same
 `--expect-max-*-kib-at-most` memory budget gates to every scenario, which makes
 it useful for CI-side private-memory regression checks once per-scenario

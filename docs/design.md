@@ -228,10 +228,11 @@ PSI、thermal、power_supply 和 DRM 采样。
 地调用 compositor 适配器；状态修改命令和周期刷新仍会强制采集新的桌面快照。
 `status.telemetry` 会暴露桌面刷新、read 请求快照复用、桌面变化和 `render_sync`
 缓存 hit/miss 计数、单次 render sync 的 package/archive cache 统计、archive cache
-淘汰计数、计划层静态图/poster/slideshow 图片资源数量和源文件字节 footprint，以及渲染器同步更新
-queued/skipped 计数。计划层字节不是解码后的纹理内存或 USS，但能在性能采样中暴露
-大图、大 poster 或 slideshow 图片是否仍被计划引用，便于用性能采样证明确实没有因为轮询
-反复调用 compositor 适配器、重复生成渲染计划、无限保留旧 `.gwp` 解包缓存或重复投递未变化的同步。
+淘汰计数、计划层静态图/poster/slideshow 图片资源数量和源文件字节 footprint、GTK renderer
+当前 static CSS provider/slideshow surface 指向的源资源数量和字节 footprint，以及渲染器同步更新
+queued/skipped 计数。计划层和 renderer 源文件字节不是解码后的纹理内存或 USS，但能在性能采样中暴露
+大图、大 poster 或 slideshow 图片是否仍被计划引用或被 GTK surface 持有，便于用性能采样证明确实没有因为轮询
+反复调用 compositor 适配器、重复生成渲染计划、无限保留旧 `.gwp` 解包缓存、GTK surface 残留或重复投递未变化的同步。
 周期刷新只在桌面快照变化时发送 `desktop.changed` watch 事件，并且只在
 `render_sync` 实际变化时投递给渲染器，避免固定频率重建 pipeline。IPC 状态变更
 仍会广播 `state.changed` 供客户端更新 UI，但如果生成的 `render_sync` 和上一份一致，
