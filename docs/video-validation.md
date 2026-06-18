@@ -430,9 +430,18 @@ sampled scenario should prove lifecycle behavior: active and fullscreen-resumed
 performance windows must report at least one renderer output window, video
 surface, and video pipeline, while paused, hidden, fullscreen, inactive, and
 locked windows must end with zero output windows, zero static/slideshow/video
-surfaces, and zero renderer video pipelines. This gate uses daemon telemetry
-and complements `--require-video-runtime-row`, which only proves that an active
-phase exposed a live per-output runtime row.
+surfaces, zero renderer video pipelines, and zero planned image resource
+references. Renderable video windows are allowed at most one planned poster
+reference per selected output and one unique planned poster resource for the
+generated smoke wallpaper. This gate uses daemon telemetry and complements
+`--require-video-runtime-row`, which only proves that an active phase exposed a
+live per-output runtime row. Use
+`--expect-render-sync-planned-image-resource-references-latest-at-most <count>`
+and
+`--expect-render-sync-planned-unique-image-resources-latest-at-most <count>` to
+set stricter planned-resource budgets for targeted runs; the script combines
+explicit user limits with its per-scenario lifecycle limits by taking the
+stricter value.
 The sampler also writes `video-runtime.csv`, which records each sample's
 decoder policy status, actual decoder classes, caps report count, all memory
 features, sink-side memory features, zero-copy evidence level, playback
@@ -518,8 +527,9 @@ end-of-window private retention. Use
 `--expect-peak-over-first-pss-kib-at-most <kib>` to turn these relative
 private-footprint budgets into gates in desktop policy and Wayland smoke runs.
 `desktop-policy-smoke.sh` forwards these fields into `resource-baseline.csv`,
-and `wayland-video-surface-smoke.sh` includes them in `validation-report.txt`
-for active, paused, and fullscreen-resumed performance directories.
+and `wayland-video-surface-smoke.sh` includes the process memory and renderer
+telemetry summaries in `validation-report.txt` for active, paused, and
+fullscreen-resumed performance directories.
 Pass `--pid`, `--socket`, or `--gilderctl` when testing an isolated daemon such
 as the Wayland surface smoke script. The CSV, summaries, and raw status files
 are intended to be compared between scenarios.
