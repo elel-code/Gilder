@@ -32,6 +32,17 @@ from
 .I PATH
 to generate first-frame poster and thumbnail images, then fall back to a
 metadata-based SVG preview if extraction is unavailable or fails.
+.PP
+.B pack
+accepts directory packages with either
+.I manifest.gilder.json
+or
+.I manifest.gilder.toml
+and writes canonical
+.I manifest.gilder.json
+into
+.I .gwp
+archives.
 .SH SEE ALSO
 .BR gilderd (1),
 .BR gilderctl (1)

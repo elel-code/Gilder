@@ -2,10 +2,18 @@
 
 Gilder 的壁纸格式同时支持目录形态和归档形态：
 
-- `.gwpdir`：开发、转换和调试用的普通目录。
-- `.gwp`：发布用归档文件，根目录内容与 `.gwpdir` 完全一致。
+- `.gwpdir`：开发、转换和调试用的普通目录，可使用 JSON 或 TOML manifest。
+- `.gwp`：发布用归档文件，使用规范化后的 JSON manifest。
 
 v1 建议 `.gwp` 使用 ZIP 容器。理由是随机访问成熟、跨平台工具多、易于只读挂载式读取。图片、视频等已压缩资源默认使用 store 或低压缩级别，避免浪费 CPU。
+
+manifest 语法约定：
+
+- `manifest.gilder.json`：规范格式，转换器默认输出，`.gwp` 发布包必须包含。
+- `manifest.gilder.toml`：`.gwpdir` 作者友好格式，适合手写和 Linux 配置风格。
+- 如果 `.gwpdir` 同时存在 JSON 和 TOML，loader 优先读取 JSON。
+- `gilder-convert pack` 会校验 `.gwpdir`，然后把读取到的 manifest 序列化为
+  `manifest.gilder.json` 写入 `.gwp`；TOML 作者文件不会作为运行 manifest 打包。
 
 当前 CLI 支持：
 
@@ -20,7 +28,7 @@ gilder-convert unpack <source.gwp> <dest.gwpdir>
 
 ```text
 example.gwpdir/
-  manifest.gilder.json
+  manifest.gilder.json        # canonical, or manifest.gilder.toml for authoring
   assets/
     main.avif
     loop.webm
@@ -34,7 +42,8 @@ example.gwpdir/
 
 必需文件：
 
-- `manifest.gilder.json`
+- `.gwpdir`：`manifest.gilder.json` 或 `manifest.gilder.toml`。
+- `.gwp`：`manifest.gilder.json`。
 
 保留目录：
 
@@ -43,6 +52,8 @@ example.gwpdir/
 - `metadata/`：来源、转换报告、许可证说明等非运行关键数据。
 
 ## Manifest 示例
+
+JSON 是规范格式：
 
 ```json
 {
@@ -91,6 +102,51 @@ example.gwpdir/
     "allow_audio": false
   }
 }
+```
+
+同一数据也可以在 `.gwpdir` 中写成 TOML：
+
+```toml
+format = "gilder.wallpaper"
+format_version = 1
+id = "org.example.neon-rain"
+version = "1.0.0"
+title = "Neon Rain"
+authors = ["Example Author"]
+license = "unknown"
+kind = "video"
+tags = ["city", "rain", "loop"]
+
+[preview]
+thumbnail = "previews/thumbnail.jpg"
+poster = "previews/poster.jpg"
+
+[entry]
+type = "video"
+source = "assets/loop.webm"
+poster = "previews/poster.jpg"
+loop = true
+muted = true
+fit = "cover"
+max_fps = 60
+
+[[variants]]
+id = "uhd"
+source = "assets/loop.webm"
+width = 3840
+height = 2160
+scale = 1.0
+
+[properties.fit]
+type = "choice"
+default = "cover"
+choices = ["cover", "contain", "stretch", "tile"]
+
+[runtime]
+pause_when_fullscreen = true
+pause_when_unfocused = false
+allow_network = false
+allow_audio = false
 ```
 
 ## 基本字段

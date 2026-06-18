@@ -41,6 +41,9 @@ gilder-convert wallpaper-engine --allow-web <source> <dest.gwpdir>
 6. 生成 `metadata/source.json` 和 `metadata/conversion-report.json`。
 7. 校验包内路径、文件存在性、manifest schema。
 
+转换器默认生成规范 JSON manifest。手写或二次编辑 `.gwpdir` 时可以改用
+`manifest.gilder.toml`，但 `.gwp` 打包会重新写出规范化的 `manifest.gilder.json`。
+
 ## 类型映射
 
 | Wallpaper Engine 类型 | Gilder 类型 | 支持等级 | 策略 |

@@ -13,6 +13,8 @@
 ## M1: 格式与加载器
 
 - [x] 为 `manifest.gilder.json` 定义 Rust 数据结构。
+- [x] 支持 `.gwpdir` 使用 `manifest.gilder.toml` 作为作者友好 manifest。
+- [x] `.gwp` 打包时将 manifest 规范化为 `manifest.gilder.json`。
 - [x] 引入 `serde`、`serde_json`、`camino` 或等价路径处理。
 - [x] 实现 `.gwpdir` 加载。
 - [x] 实现路径逃逸校验。
