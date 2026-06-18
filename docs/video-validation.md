@@ -551,10 +551,12 @@ verified in telemetry.
 `scripts/desktop-policy-smoke.sh` runs the same assertion path without GTK,
 GStreamer, or a Wayland session by setting `GILDER_DESKTOP_OUTPUTS` to a
 virtual output and covering active, battery, unfocused, fullscreen, hidden,
-inactive, locked, adaptive throttle, adaptive `pause-unfocused`, adaptive
-focused-output fallback, adaptive `pause-dynamic` static passthrough,
-adaptive `pause-dynamic` slideshow removal, and per-output performance override
-scenarios against the default daemon build. It asserts mode, reason, action,
+inactive, locked, adaptive CPU-pressure throttle, adaptive GPU-busy throttle,
+adaptive `pause-unfocused`, adaptive focused-output fallback, adaptive
+`pause-dynamic` static passthrough, adaptive CPU-pressure `pause-dynamic`
+slideshow removal, adaptive low-battery `pause-dynamic` slideshow removal, and
+per-output performance override scenarios against the default daemon build. It
+asserts mode, reason, action,
 plan kind, planned image resource references/unique resources, and expected
 `max_fps` where the decision should remain renderable. The GitHub Actions
 workflow runs it in strict mode and uploads `/tmp/gilder-desktop-policy-smoke`
@@ -582,6 +584,7 @@ switch fullscreen back to active without restarting `gilderd`.
 For session-state policy comparisons where switching VT or locking the real
 session is awkward, use `GILDER_SESSION_STATE=inactive` or `locked`; unset it to
 return to logind state detection.
-For adaptive policy comparisons where real PSI/thermal pressure is not stable,
-use `GILDER_ADAPTIVE_STATE=cpu-pressure`, `memory-pressure`, `temperature`, or
-`all`; use `inactive` to force a non-triggering adaptive sample.
+For adaptive policy comparisons where real PSI/thermal/GPU/battery pressure is
+not stable, use `GILDER_ADAPTIVE_STATE=cpu-pressure`, `memory-pressure`,
+`temperature`, `gpu-busy`, `low-battery`, or `all`; use `inactive` to force a
+non-triggering adaptive sample.

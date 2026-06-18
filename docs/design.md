@@ -84,10 +84,10 @@ throttling、fullscreen pause 和 output-hidden pause；未设置时使用合成
 fullscreen -> active 这类状态转换并测量恢复延迟。
 `GILDER_SESSION_STATE=active|inactive|locked` 可以覆盖当前 daemon 进程看到的
 logind session 状态，用于稳定复现 session-inactive 和 session-locked 暂停策略。
-`GILDER_ADAPTIVE_STATE=inactive|cpu-pressure|memory-pressure|temperature|all` 可以覆盖
-adaptive monitor 的系统压力样本，用于在 CI/headless smoke 中稳定复现 adaptive
-throttle 和 `pause-unfocused`；未设置时仍只读真实 PSI、thermal、power_supply 和 DRM
-采样。
+`GILDER_ADAPTIVE_STATE=inactive|cpu-pressure|memory-pressure|temperature|gpu-busy|low-battery|all`
+可以覆盖 adaptive monitor 的系统压力样本，用于在 CI/headless smoke 中稳定复现
+adaptive throttle、`pause-unfocused` 和 `pause-dynamic`；未设置时仍只读真实
+PSI、thermal、power_supply 和 DRM 采样。
 
 ## 渲染路径
 
@@ -204,8 +204,8 @@ throttle 和 `pause-unfocused`；未设置时仍只读真实 PSI、thermal、pow
 - manifest `runtime.pause_when_fullscreen` 和 `runtime.pause_when_unfocused` 会在包加载后作为额外保守策略合入同一份决策；如果配置、用户暂停、输出隐藏或会话 inactive 已经要求暂停，daemon 不会为了读取 manifest 再加载包。
 - manifest `runtime.allow_audio` 与 video entry 的 `muted` 合成最终视频静音状态，默认不输出音频。
 - adaptive system monitor 是用户可选策略层，默认关闭。开启后会采样 Linux PSI
-  CPU/内存压力、thermal zone 最高温度、power_supply 电源细节和可用 DRM
-  `gpu_busy_percent` 计数，把压力结果作为保守输入
+  CPU/内存压力、thermal zone 最高温度、power_supply 电源/电池容量细节和可用 DRM
+  `gpu_busy_percent` 计数，按阈值把 CPU、GPU、内存、温度和低电量结果作为保守输入
   合入 `decide_performance` 之后的输出级决策；默认动作是降低 FPS，也可以配置为只在
   输出非焦点时暂停，焦点输出仍回退为降 FPS，或只暂停 video/slideshow 这类动态壁纸。
   adaptive 决策不能覆盖用户暂停、fullscreen pause、battery pause 等更强策略；同为 throttled 时会保留更低 FPS 的策略。
@@ -215,8 +215,8 @@ throttle 和 `pause-unfocused`；未设置时仍只读真实 PSI、thermal、pow
   QoS processed/dropped 统计、GTK frame clock tick/interval 统计，以及从实际 decoder
   和 caps memory features 推导的 zero-copy 证据分级；compositor presentation
   feedback 或原生 Wayland frame callback 统计仍是后续工作。
-  `GILDER_ADAPTIVE_STATE` 仅作为验证入口，用于构造高于当前阈值的 CPU/内存压力或温度
-  样本，让 headless smoke 可以确定性覆盖 adaptive 动作。
+  `GILDER_ADAPTIVE_STATE` 仅作为验证入口，用于构造高于当前阈值的 CPU/内存压力、温度、
+  GPU busy 或低电量样本，让 headless smoke 可以确定性覆盖 adaptive 动作。
 
 这让后续 niri/Hyprland 适配器只需要负责提供准确桌面状态，渲染器只需要执行策略结果。
 `status`、`outputs`、状态变更事件和 daemon 周期刷新都会返回每个输出的性能决策，
@@ -265,6 +265,8 @@ action = "throttle" # throttle, pause-unfocused, pause-dynamic
 cpu_pressure_threshold_percent = 75
 memory_pressure_threshold_percent = 20
 temperature_threshold_celsius = 85
+gpu_busy_threshold_percent = 90
+battery_capacity_threshold_percent = 20
 
 [video]
 decoder = "auto" # auto, hardware-preferred, hardware-required, software

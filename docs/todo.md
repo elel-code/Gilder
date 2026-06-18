@@ -107,6 +107,7 @@
 - [x] 将 adaptive monitor 结果作为只会降载的性能策略输入，支持阈值、冷却时间和恢复条件。
 - [x] adaptive monitor 支持用户可选的 `pause-unfocused` 动作，在系统压力下暂停非焦点输出。
 - [x] adaptive monitor 支持用户可选的 `pause-dynamic` 动作，在系统压力下暂停 video/slideshow 动态壁纸。
+- [x] adaptive monitor 支持 GPU busy 和低电量阈值触发，并在 headless smoke 中覆盖 throttle 与 `pause-dynamic` 释放资源。
 - [x] 在 status/watch 中报告 adaptive monitor 的当前采样、触发原因和实际降载动作。
 - [x] 在真实 niri Wayland 会话采集 battery/unfocused/fullscreen 视频 surface 策略和内存证据。
 - [x] 添加 fullscreen -> active 恢复延迟采样入口和结构化证据输出。
@@ -216,8 +217,8 @@
 - [ ] 验证 GTK video surface 是否能保持 GPU/DMABuf 路径，区分“硬解但发生 CPU copy”和真正 zero-copy。
 - [ ] 继续采集 compositor presentation/frame callback 统计，补足 GTK/GDK timing 之外的 compositor 侧证据。
 - [ ] 将硬解、DMABuf/GLMemory、sink-side caps 和 compositor presentation 组合成更严格的 zero-copy validation profile。
-- [ ] 扩展 adaptive monitor，让用户可选按 CPU/GPU/内存压力、电池、温度、session/output 状态自动降 FPS、暂停动态壁纸或释放资源。
-- [ ] 为 adaptive 行为加入保守默认值、冷却时间、恢复条件和 status/watch 可解释报告，避免自动化策略不可预期。
+- [x] 扩展 adaptive monitor，让用户可选按 CPU/GPU/内存压力、电池、温度、session/output 状态自动降 FPS、暂停动态壁纸或释放资源。
+- [x] 为 adaptive 行为加入保守默认值、冷却时间、恢复条件和 status/watch 可解释报告，避免自动化策略不可预期。
 
 ## M9: 壁纸类型对齐 Wallpaper Engine
 
