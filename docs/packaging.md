@@ -13,13 +13,14 @@ Install these binaries into a directory visible to the user session:
 
 The daemon is normally built with `gtk-renderer` for static wallpaper display.
 Video support also needs `video-renderer` plus host GStreamer plugins. MP4/H.264
-and WebM/VP9/AV1 smoke validation expects `gstreamer1.0-tools`,
-`gstreamer1.0-libav`, and the base, good, bad, and ugly plugin sets on
-Ubuntu-like systems. Ubuntu CI jobs that only need codec smoke can install
-those runtime packages with `scripts/install-video-codec-smoke-deps-ubuntu.sh`;
-the full project CI dependency helper is `scripts/install-ci-deps-ubuntu.sh`.
-Arch-like systems can use `scripts/install-wayland-video-smoke-deps-arch.sh`
-before running the interactive Wayland video surface smoke.
+and WebM/VP9/AV1 smoke validation expects GStreamer tools, libav integration,
+and the base, good, bad, and ugly plugin sets. Ubuntu CI jobs that only need
+codec smoke can install those runtime packages with
+`scripts/install-video-codec-smoke-deps-ubuntu.sh`; Arch-like systems can use
+`scripts/install-video-codec-smoke-deps-arch.sh`. The full project CI
+dependency helper is `scripts/install-ci-deps-ubuntu.sh`. Arch-like systems can
+use `scripts/install-wayland-video-smoke-deps-arch.sh` before running the
+interactive Wayland video surface smoke.
 Real GTK/layer-shell video display additionally needs a runtime plugin that
 provides `gtk4paintablesink`, such as `gst-plugin-gtk4`; Gilder probes it at
 runtime and keeps the poster visible when it is unavailable.
@@ -50,7 +51,8 @@ Validation helpers are installed under
 `share/doc/gilder/scripts/wayland-video-surface-smoke.sh`, with
 `share/doc/gilder/scripts/performance-snapshot.sh` for compositor-session
 resource sampling. Dependency helpers are installed alongside them for
-Ubuntu-like codec smoke and Arch-like Wayland video smoke environments.
+Ubuntu/Debian and Arch-like codec smoke plus Arch-like Wayland video smoke
+environments.
 
 ## systemd User Service
 

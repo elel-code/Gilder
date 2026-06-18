@@ -19,8 +19,8 @@ Run the codec smoke:
 scripts/video-codec-smoke.sh
 ```
 
-Standalone Ubuntu CI jobs can let the smoke script install missing runtime
-dependencies:
+Standalone CI jobs on supported Linux distributions can let the smoke script
+install missing runtime dependencies:
 
 ```sh
 scripts/video-codec-smoke.sh --install-missing --work-dir /tmp
@@ -60,12 +60,13 @@ preserved, or `--report-dir <dir>` when CI needs a stable artifact path. The
 GitHub Actions workflow uploads `/tmp/gilder-video-codec-smoke` as the
 `video-codec-smoke` artifact.
 
-`--install-missing` is intended for Ubuntu-like CI runners and runs
-`scripts/install-video-codec-smoke-deps-ubuntu.sh` before strict smoke checks so
-`ffmpeg`, `gst-launch-1.0`, and the expected GStreamer plugin packages are
-available. `--allow-missing` is intended for developer machines where optional
-encoders or GStreamer plugins may not be installed. CI should run the script in
-strict mode.
+`--install-missing` runs the matching codec dependency helper before strict
+smoke checks on Ubuntu/Debian or Arch-like hosts so `ffmpeg`,
+`gst-launch-1.0`, and the expected GStreamer plugin packages are available.
+The current helpers are `scripts/install-video-codec-smoke-deps-ubuntu.sh` and
+`scripts/install-video-codec-smoke-deps-arch.sh`. `--allow-missing` is intended
+for developer machines where optional encoders or GStreamer plugins may not be
+installed. CI should run the script in strict mode.
 
 ## Wayland Surface Smoke
 
@@ -138,22 +139,31 @@ On Ubuntu-like systems the strict smoke path expects:
 - `gstreamer1.0-plugins-bad`
 - `gstreamer1.0-plugins-ugly`
 
-On Arch-like systems the equivalent runtime packages are typically:
+On Arch-like systems the equivalent codec smoke packages are typically:
 
 - `ffmpeg`
 - `gstreamer`
 - `gst-libav`
-- `gst-plugin-gtk4`
 - `gst-plugins-base`
 - `gst-plugins-good`
 - `gst-plugins-bad`
 - `gst-plugins-ugly`
+
+For Arch-like codec smoke, run:
+
+```sh
+scripts/install-video-codec-smoke-deps-arch.sh
+```
+
+The interactive GTK Wayland video surface path also needs:
+
+- `gst-plugin-gtk4`
 - `gtk4`
 - `gtk4-layer-shell`
 - `pkgconf`
 - `wayland-protocols`
 
-For Arch-like systems, run:
+For Arch-like Wayland surface smoke, run:
 
 ```sh
 scripts/install-wayland-video-smoke-deps-arch.sh
@@ -167,14 +177,14 @@ scripts/wayland-video-surface-smoke.sh --preflight --report-dir /tmp/gilder-wayl
 
 The GitHub Actions workflow installs the full CI dependency set through
 `scripts/install-ci-deps-ubuntu.sh`; codec-only CI jobs can pass
-`--install-missing` or run `scripts/install-video-codec-smoke-deps-ubuntu.sh`
-first. Do not run strict codec smoke on a fresh Ubuntu CI image without one of
-these installers, because `gst-launch-1.0` is provided by `gstreamer1.0-tools`.
-As a guardrail, `scripts/video-codec-smoke.sh` will auto-run the codec
+`--install-missing` or run the distro-specific codec dependency helper first.
+Do not run strict codec smoke on a fresh Ubuntu CI image without one of these
+installers, because `gst-launch-1.0` is provided by `gstreamer1.0-tools`. As a
+guardrail, `scripts/video-codec-smoke.sh` will auto-run the matching codec
 dependency installer when strict mode is used on a GitHub Actions or generic
-`CI=true` Ubuntu runner and `ffmpeg`, `gst-launch-1.0`, or `gst-inspect-1.0` is
-missing. Local runs still fail explicitly unless `--install-missing` or
-`--allow-missing` is passed.
+`CI=true` Ubuntu/Debian or Arch-like runner and `ffmpeg`, `gst-launch-1.0`, or
+`gst-inspect-1.0` is missing. Local runs still fail explicitly unless
+`--install-missing` or `--allow-missing` is passed.
 If CI fails with `FAIL: gst-launch-1.0 is not available`, the dependency install
 step did not run or did not complete before the codec smoke command. Use
 `scripts/video-codec-smoke.sh --install-missing --work-dir /tmp` for strict
