@@ -142,11 +142,28 @@ On Arch-like systems the equivalent runtime packages are typically:
 
 - `ffmpeg`
 - `gstreamer`
+- `gst-libav`
+- `gst-plugin-gtk4`
 - `gst-plugins-base`
 - `gst-plugins-good`
 - `gst-plugins-bad`
 - `gst-plugins-ugly`
-- `gst-libav`
+- `gtk4`
+- `gtk4-layer-shell`
+- `pkgconf`
+- `wayland-protocols`
+
+For Arch-like systems, run:
+
+```sh
+scripts/install-wayland-video-smoke-deps-arch.sh
+```
+
+Then re-run:
+
+```sh
+scripts/wayland-video-surface-smoke.sh --preflight --report-dir /tmp/gilder-wayland-video-preflight
+```
 
 The GitHub Actions workflow installs the full CI dependency set through
 `scripts/install-ci-deps-ubuntu.sh`; codec-only CI jobs can pass
