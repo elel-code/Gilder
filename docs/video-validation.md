@@ -187,7 +187,8 @@ outputs, `mode/reason` counts with FPS ranges, action counts, plan kinds, fit
 modes, muted video counts, and target FPS ranges. It also asks
 `gilderctl status --telemetry-csv --from-file` to produce `telemetry.csv` and
 `telemetry-summary.txt`, which report desktop refresh deltas, read-request
-refresh skips, desktop change deltas, and render-sync cache hit/miss deltas.
+refresh skips, desktop change deltas, render-sync cache hit/miss deltas, and
+renderer update queue queued/skipped counters.
 Pass `--pid`, `--socket`, or `--gilderctl` when testing an isolated daemon such
 as the Wayland surface smoke script. The CSV, summaries, and raw status files
 are intended to be compared between scenarios; GPU sampling remains

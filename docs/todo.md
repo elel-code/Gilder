@@ -78,6 +78,7 @@
 - [x] status/outputs 读请求按桌面刷新周期复用桌面快照，避免轮询时频繁调用 compositor 适配器。
 - [x] 在 status 和性能采样中输出 daemon telemetry，用于审计桌面刷新节流和 render sync 缓存命中。
 - [x] 支持性能采样断言 render sync 缓存命中和桌面刷新节流生效。
+- [x] 在 daemon telemetry 中输出渲染器同步投递 queued/skipped 计数，用于审计投递去重。
 - [x] 添加 MP4/WebM codec smoke 验证脚本。
 - [x] 为 MP4/WebM codec smoke 输出结构化报告并在 CI 上传。
 - [ ] 验证 MP4/H.264、WebM/VP9、WebM/AV1。
