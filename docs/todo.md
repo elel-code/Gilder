@@ -88,6 +88,7 @@
 - [x] headless 桌面状态性能策略 smoke 覆盖按输出 FPS/电池策略覆盖。
 - [x] 添加 MP4/WebM codec smoke 验证脚本。
 - [x] 为 MP4/WebM codec smoke 输出结构化报告并在 CI 上传。
+- [x] 为 MP4/WebM codec smoke 输出 GStreamer demuxer/decoder element 诊断。
 - [ ] 验证 MP4/H.264、WebM/VP9、WebM/AV1。
 - [x] 添加 fullscreen 暂停策略接口。
 

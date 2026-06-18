@@ -51,8 +51,11 @@ scripts/video-codec-smoke.sh --no-convert
 scripts/video-codec-smoke.sh --keep
 ```
 
-Every run writes `metadata.txt`, `results.csv`, and `summary.txt` inside the
-smoke work directory. Use `--keep` for a temporary work directory that should be
+Every run writes `metadata.txt`, `results.csv`, `gstreamer-elements.csv`, and
+`summary.txt` inside the smoke work directory. `gstreamer-elements.csv` records
+the required container demuxers and decoder candidates for each codec case, so
+strict failures can distinguish a missing MP4/WebM demuxer from a missing H.264,
+VP9, or AV1 decoder. Use `--keep` for a temporary work directory that should be
 preserved, or `--report-dir <dir>` when CI needs a stable artifact path. The
 GitHub Actions workflow uploads `/tmp/gilder-video-codec-smoke` as the
 `video-codec-smoke` artifact.
@@ -126,6 +129,16 @@ On Ubuntu-like systems the strict smoke path expects:
 - `gstreamer1.0-plugins-bad`
 - `gstreamer1.0-plugins-ugly`
 
+On Arch-like systems the equivalent runtime packages are typically:
+
+- `ffmpeg`
+- `gstreamer`
+- `gst-plugins-base`
+- `gst-plugins-good`
+- `gst-plugins-bad`
+- `gst-plugins-ugly`
+- `gst-libav`
+
 The GitHub Actions workflow installs the full CI dependency set through
 `scripts/install-ci-deps-ubuntu.sh`; codec-only CI jobs can pass
 `--install-missing` or run `scripts/install-video-codec-smoke-deps-ubuntu.sh`
@@ -133,13 +146,19 @@ first. Do not run strict codec smoke on a fresh Ubuntu CI image without one of
 these installers, because `gst-launch-1.0` is provided by `gstreamer1.0-tools`.
 As a guardrail, `scripts/video-codec-smoke.sh` will auto-run the codec
 dependency installer when strict mode is used on a GitHub Actions or generic
-`CI=true` Ubuntu runner and `ffmpeg` or `gst-launch-1.0` is missing. Local runs
-still fail explicitly unless `--install-missing` or `--allow-missing` is passed.
+`CI=true` Ubuntu runner and `ffmpeg`, `gst-launch-1.0`, or `gst-inspect-1.0` is
+missing. Local runs still fail explicitly unless `--install-missing` or
+`--allow-missing` is passed.
 If CI fails with `FAIL: gst-launch-1.0 is not available`, the dependency install
 step did not run or did not complete before the codec smoke command. Use
 `scripts/video-codec-smoke.sh --install-missing --work-dir /tmp` for strict
 codec smoke jobs, and use `--allow-missing` only for optional smoke jobs where
 missing codecs should be recorded as skips instead of failures.
+If `gst-launch-1.0` exists but decode still fails, inspect
+`gstreamer-elements.csv`. Missing `qtdemux` points to MP4/QuickTime demuxer
+packages, missing `matroskademux` points to WebM/Matroska demuxer packages, and
+missing decoder candidates such as `avdec_h264`, `avdec_vp9`, or `dav1ddec`
+point to codec plugin packages.
 
 The GTK video surface path also needs a runtime plugin that provides
 `gtk4paintablesink` such as `gst-plugin-gtk4`. Package names differ by
