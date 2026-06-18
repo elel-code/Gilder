@@ -132,6 +132,7 @@ It builds once, runs `wayland-video-surface-smoke.sh` with
 fullscreen, hidden, session-inactive, and session-locked states, and writes a
 top-level `baseline.csv`. The CSV contains CPU/GPU, RSS/PSS/private/USS/shared
 memory, retained and peak-over-first deltas, planned image-resource footprint,
+package-cache retained source-resource footprint,
 renderer output/static/slideshow/video surface counts, video pipeline counts,
 decoder status, caps memory features, zero-copy evidence level, QoS, GTK frame
 clock, and GDK timing fields. Each scenario keeps the original smoke evidence
@@ -148,6 +149,7 @@ scenario,phase,metric,max
 active,active,max_uss_kib,250000
 active,user-paused,retained_private_delta_kib,20480
 *,*,max_pss_kib,320000
+*,*,render_sync_package_cache_retained_unique_resource_bytes_latest,104857600
 fullscreen,fullscreen,renderer_video_pipelines_latest,0
 ```
 
@@ -448,8 +450,12 @@ slideshow image, total image-reference, and unique image-resource counts so
 paused/fullscreen/hidden evidence can prove the render plan stopped retaining
 image resources before checking GTK/private memory. The same summary reports
 planned static image, video poster, slideshow image, image-reference, and unique
-image-resource source-file bytes. These bytes are a retained-plan clue for large
-images/posters; they are not decoded texture memory or process USS. Renderer telemetry summary fields
+image-resource source-file bytes. It also reports retained package-cache
+manifest resource references, unique resources, reference bytes, and unique
+bytes for packages still held by the per-render-sync package cache. These bytes
+are source-file or source-directory footprint clues for large images/posters and
+cached package manifests; they are not decoded texture memory or process USS.
+Renderer telemetry summary fields
 include latest/max output window, static surface, slideshow surface, video
 surface, and video pipeline counts, which are used to prove that paused,
 hidden, fullscreen, inactive, and locked states actually release GTK renderer
@@ -488,7 +494,14 @@ and
 `--expect-render-sync-planned-unique-image-resource-bytes-latest-at-most <bytes>`
 when the budget should account for large source images or posters; the script combines
 explicit user limits with its per-scenario lifecycle limits by taking the
-stricter value.
+stricter value. Use
+`--expect-render-sync-package-cache-retained-resource-references-latest-at-most <count>`,
+`--expect-render-sync-package-cache-retained-unique-resources-latest-at-most <count>`,
+`--expect-render-sync-package-cache-retained-resource-bytes-latest-at-most <bytes>`,
+and
+`--expect-render-sync-package-cache-retained-unique-resource-bytes-latest-at-most <bytes>`
+to set upper bounds for resources still referenced by retained package-cache
+entries.
 The sampler also writes `video-runtime.csv`, which records each sample's
 decoder policy status, actual decoder classes, caps report count, all memory
 features, sink-side memory features, zero-copy evidence level, playback
@@ -615,8 +628,8 @@ plus per-scenario status snapshots, daemon logs, decision summaries, and
 telemetry summaries. `resource-baseline.csv` gives one row per scenario and
 pulls the sampled CPU, GPU, RSS, PSS, private, USS, shared-memory, decision,
 render-sync cache, planned image resource count/byte footprint, renderer update,
-adaptive-action, and renderer video telemetry summary values into one table
-for quick baseline comparison.
+package-cache retained resource footprint, adaptive-action, and renderer video
+telemetry summary values into one table for quick baseline comparison.
 The desktop policy smoke also forwards the same
 `--expect-max-*-kib-at-most` memory budget gates to every scenario, which makes
 it useful for CI-side private-memory regression checks once per-scenario
