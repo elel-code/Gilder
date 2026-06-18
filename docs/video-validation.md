@@ -319,7 +319,7 @@ refresh skips, desktop change deltas, render-sync cache hit/miss deltas, and
 renderer update queue queued/skipped counters. When adaptive monitoring is
 enabled, the same telemetry files also include adaptive refresh deltas, active
 trigger counts, PSI CPU/memory pressure maxima, and thermal-zone maximum
-temperature.
+temperature, plus power_supply AC/battery details.
 For memory comparisons, prefer `avg_uss_kib` or its equivalent
 `avg_private_kib` for the process-private footprint and `avg_pss_kib` for the
 shared-memory-adjusted footprint; `avg_rss_kib` includes shared mappings at
