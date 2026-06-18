@@ -109,6 +109,7 @@
 - [x] headless 桌面状态性能策略 smoke 覆盖按输出 FPS/电池策略覆盖。
 - [x] headless 桌面状态性能策略 smoke 覆盖 adaptive throttle、`pause-unfocused` 和焦点输出回退。
 - [x] headless 桌面状态性能策略 smoke 覆盖 adaptive `pause-dynamic` 静态透传和 slideshow 暂停。
+- [x] performance 采样支持断言 adaptive action telemetry，避免只验证最终 mode/reason。
 - [x] 添加 MP4/WebM codec smoke 验证脚本。
 - [x] 为 MP4/WebM codec smoke 输出结构化报告并在 CI 上传。
 - [x] 为 MP4/WebM codec smoke 输出 GStreamer demuxer/decoder element 诊断。

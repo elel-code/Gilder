@@ -356,7 +356,10 @@ renderer update queue queued/skipped counters. When adaptive monitoring is
 enabled, the same telemetry files also include adaptive refresh deltas, active
 trigger counts, PSI CPU/memory pressure maxima, and thermal-zone maximum
 temperature, power_supply AC/battery details, and daemon-side DRM
-`gpu_busy_percent` samples when the driver exposes them.
+`gpu_busy_percent` samples when the driver exposes them. Adaptive action
+columns report the observed action types, scopes, configured fallback actions,
+and max FPS values so smoke tests can distinguish throttle, `pause-unfocused`,
+and `pause-dynamic`.
 The sampler also writes `video-runtime.csv`, which records each sample's
 decoder policy status, actual decoder classes, caps report count, all memory
 features, sink-side memory features, playback position/duration, and actual
@@ -412,7 +415,9 @@ throttling, or at least one renderer sync dispatch; the Wayland video smoke
 enables these telemetry expectations for its performance samples. Use
 `--expect-render-sync-update-skipped` for targeted repeated-state scenarios
 where the same `render_sync` should be suppressed instead of sent to renderers
-again.
+again. Use `--expect-adaptive-action throttle|pause-unfocused|pause-dynamic`
+when adaptive monitoring is enabled and the sampled action itself must be
+verified in telemetry.
 `scripts/desktop-policy-smoke.sh` runs the same assertion path without GTK,
 GStreamer, or a Wayland session by setting `GILDER_DESKTOP_OUTPUTS` to a
 virtual output and covering active, battery, unfocused, fullscreen, hidden,
