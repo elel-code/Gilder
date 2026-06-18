@@ -139,6 +139,22 @@ under `scenarios/<name>/`, so budget regressions can be traced back to raw
 `samples.csv`, `telemetry.csv`, `video-runtime.csv`, status snapshots, and
 daemon logs. Add `--scenario fullscreen-resume` when the same run should also
 measure fullscreen -> active resume after a file-backed output-state switch.
+Pass `--budget-csv <path>` to make the matrix enforce per-scenario budgets.
+The budget file is a simple CSV with `scenario,phase,metric,max`; `scenario`
+and `phase` may be `*`, and `metric` must match a `baseline.csv` column:
+
+```csv
+scenario,phase,metric,max
+active,active,max_uss_kib,250000
+active,user-paused,retained_private_delta_kib,20480
+*,*,max_pss_kib,320000
+fullscreen,fullscreen,renderer_video_pipelines_latest,0
+```
+
+Budget checks write `budget-results.csv` and fail the matrix when any matching
+numeric baseline value is missing or above its limit. Prefer PSS, USS/private,
+and retained delta limits for memory regression gates; keep RSS/shared limits
+as supplemental audit signals because they include shared library mappings.
 
 The smoke is intentionally partly visual: after the script reports success,
 confirm that the selected output shows the generated moving test video. Pass
@@ -403,6 +419,7 @@ scripts/desktop-policy-smoke.sh --report-dir /tmp/gilder-desktop-policy-smoke
 scripts/wayland-video-surface-smoke.sh --sample-performance --sample-duration 30 --keep
 scripts/wayland-video-surface-smoke.sh --sample-paused --sample-duration 30 --keep
 scripts/wayland-baseline-matrix.sh --report-dir /tmp/gilder-wayland-baseline --sample-duration 30
+scripts/wayland-baseline-matrix.sh --report-dir /tmp/gilder-wayland-baseline --budget-csv ./wayland-budget.csv
 ```
 
 The script finds a running `gilderd` process, samples `ps` CPU/RSS/VSZ fields,
