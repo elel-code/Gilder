@@ -405,7 +405,11 @@ refresh skips, desktop change deltas, render-sync cache hit/miss deltas, and
 renderer update queue queued/skipped counters. The telemetry summary also
 reports latest package/archive cache entries, archive cache max entries,
 archive reuse/extraction counts, and archive eviction/error deltas so long
-runs can catch `.gwp` unpack cache growth. When adaptive monitoring is
+runs can catch `.gwp` unpack cache growth. Renderer telemetry summary fields
+include latest/max output window, static surface, slideshow surface, video
+surface, and video pipeline counts, which are used to prove that paused,
+hidden, fullscreen, inactive, and locked states actually release GTK renderer
+resources. When adaptive monitoring is
 enabled, the same telemetry files also include adaptive refresh deltas, active
 trigger counts, PSI CPU/memory pressure maxima, and thermal-zone maximum
 temperature, power_supply AC/battery details, and daemon-side DRM
@@ -419,10 +423,11 @@ interval, and max observed GTK frame-clock FPS, plus completed GDK frame timing
 counts and presentation timing maxima.
 Use `--expect-renderer-video-pipeline-lifecycle` in Wayland smoke runs when the
 sampled scenario should prove lifecycle behavior: active and fullscreen-resumed
-performance windows must report at least one renderer video pipeline, while
-paused, hidden, fullscreen, inactive, and locked windows must end with zero
-renderer video pipelines. This gate uses daemon telemetry and complements
-`--require-video-runtime-row`, which only proves that an active phase exposed a
+performance windows must report at least one renderer output window and video
+pipeline, while paused, hidden, fullscreen, inactive, and locked windows must
+end with zero output windows and zero renderer video pipelines. This gate uses
+daemon telemetry and complements `--require-video-runtime-row`, which only
+proves that an active phase exposed a
 live per-output runtime row.
 The sampler also writes `video-runtime.csv`, which records each sample's
 decoder policy status, actual decoder classes, caps report count, all memory
