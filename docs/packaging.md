@@ -50,7 +50,8 @@ Validation helpers are installed under
 `share/doc/gilder/scripts/video-codec-smoke.sh` and
 `share/doc/gilder/scripts/wayland-video-surface-smoke.sh`, with
 `share/doc/gilder/scripts/performance-snapshot.sh` for compositor-session
-resource sampling. Dependency helpers are installed alongside them for
+resource sampling and `share/doc/gilder/scripts/wayland-baseline-matrix.sh`
+for multi-state Wayland baseline aggregation. Dependency helpers are installed alongside them for
 Ubuntu/Debian and Arch-like codec smoke plus Arch-like Wayland video smoke
 environments.
 

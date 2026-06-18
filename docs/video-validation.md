@@ -109,6 +109,7 @@ scripts/wayland-video-surface-smoke.sh --simulate-output-state fullscreen --samp
 scripts/wayland-video-surface-smoke.sh --measure-fullscreen-resume --sample-performance --keep
 scripts/wayland-video-surface-smoke.sh --simulate-session locked --sample-performance --keep
 scripts/wayland-video-surface-smoke.sh --sample-paused --keep
+scripts/wayland-baseline-matrix.sh --report-dir /tmp/gilder-wayland-baseline --sample-duration 30
 scripts/wayland-video-surface-smoke.sh --allow-missing
 scripts/wayland-video-surface-smoke.sh --no-build --keep
 ```
@@ -123,6 +124,21 @@ without starting the daemon or changing the current wallpaper. With
 a visual run. Missing GStreamer element rows include package hints for common
 runtime gaps such as `gtk4paintablesink` (`gst-plugin-gtk4` on Arch-like
 systems).
+
+For a full Wayland video resource baseline, run
+`scripts/wayland-baseline-matrix.sh --report-dir /tmp/gilder-wayland-baseline`.
+It builds once, runs `wayland-video-surface-smoke.sh` with
+`--sample-performance` across active, user-paused, battery, unfocused,
+fullscreen, hidden, session-inactive, and session-locked states, and writes a
+top-level `baseline.csv`. The CSV contains CPU/GPU, RSS/PSS/private/USS/shared
+memory, retained and peak-over-first deltas, planned image-resource footprint,
+renderer output/static/slideshow/video surface counts, video pipeline counts,
+decoder status, caps memory features, zero-copy evidence level, QoS, GTK frame
+clock, and GDK timing fields. Each scenario keeps the original smoke evidence
+under `scenarios/<name>/`, so budget regressions can be traced back to raw
+`samples.csv`, `telemetry.csv`, `video-runtime.csv`, status snapshots, and
+daemon logs. Add `--scenario fullscreen-resume` when the same run should also
+measure fullscreen -> active resume after a file-backed output-state switch.
 
 The smoke is intentionally partly visual: after the script reports success,
 confirm that the selected output shows the generated moving test video. Pass
@@ -386,6 +402,7 @@ scripts/desktop-policy-smoke.sh --keep
 scripts/desktop-policy-smoke.sh --report-dir /tmp/gilder-desktop-policy-smoke
 scripts/wayland-video-surface-smoke.sh --sample-performance --sample-duration 30 --keep
 scripts/wayland-video-surface-smoke.sh --sample-paused --sample-duration 30 --keep
+scripts/wayland-baseline-matrix.sh --report-dir /tmp/gilder-wayland-baseline --sample-duration 30
 ```
 
 The script finds a running `gilderd` process, samples `ps` CPU/RSS/VSZ fields,
