@@ -213,6 +213,7 @@
 - [x] 在 render sync telemetry、CSV、性能采样和 smoke 报告中追加计划层图片源文件字节 footprint，并支持按引用字节/去重字节设置预算门槛。
 - [x] 在 status/watch、telemetry CSV、性能采样、desktop smoke 和 Wayland baseline 中报告 package cache retained manifest 资源引用数/去重数与源文件字节 footprint，并支持预算门槛。
 - [x] 在 GTK renderer telemetry、status/CSV、性能采样、desktop smoke 和 Wayland baseline 中报告当前 static CSS provider/slideshow surface 源资源引用数与字节 footprint，并支持预算门槛。
+- [x] 为 GTK renderer static/slideshow source footprint 计算添加 headless 单元测试，避免后续内存预算依赖的 renderer 残留资源指标回归。
 - [x] 在 headless desktop policy smoke 中按场景断言 planned image resource footprint：renderable 静态场景最多 1，fullscreen/hidden/session/adaptive removal 场景必须为 0。
 - [x] 在真实 Wayland 视频 smoke 中把 planned image resource footprint 纳入 lifecycle gate：active/resumed 视频最多每输出 1 个 poster 引用，paused/hidden/fullscreen/session removal 必须为 0。
 - [x] GTK video surface 成功接管输出后释放 poster/static CSS provider，并在 Wayland video lifecycle gate 中要求 active/resumed 最新 static/slideshow surface 为 0。
