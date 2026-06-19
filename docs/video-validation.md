@@ -450,7 +450,11 @@ generation/reuse counts, generation errors, and evictions so static oversized
 source downscaling can be checked alongside memory samples. It reports planned
 video source references, unique sources, duplicate source references, maximum
 same-source fanout, and source bytes so multi-output duplicate decode candidates
-can be identified before implementing pipeline sharing. It also reports planned static image, video poster,
+can be identified before implementing pipeline sharing. It also reports renderer
+video pipeline source references, unique sources, and source bytes so active,
+paused, hidden, and resumed samples can prove whether the runtime pipeline is
+still holding a video source. These source-byte metrics are not decoded frame
+memory or USS. It also reports planned static image, video poster,
 slideshow image, total image-reference, and unique image-resource counts so
 paused/fullscreen/hidden evidence can prove the render plan stopped retaining
 image resources before checking GTK/private memory. The same summary reports
@@ -636,7 +640,7 @@ as the `desktop-policy-smoke` artifact. The artifact includes top-level
 plus per-scenario status snapshots, daemon logs, decision summaries, and
 telemetry summaries. `resource-baseline.csv` gives one row per scenario and
 pulls the sampled CPU, GPU, RSS, PSS, private, USS, shared-memory, decision,
-render-sync cache, static-image runtime cache, video source sharing candidates, planned image resource count/byte footprint, renderer update,
+render-sync cache, static-image runtime cache, video source sharing candidates, renderer video pipeline source footprint, planned image resource count/byte footprint, renderer update,
 package-cache retained resource footprint, renderer static/slideshow reference
 and unique-resource footprint, adaptive-action, and renderer video telemetry summary values into one
 table for quick baseline comparison.
