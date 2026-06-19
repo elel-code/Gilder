@@ -19,8 +19,9 @@
 | Video | `video` | 完整 | 完整 | 复制可播放视频，必要时生成 poster，支持 loop、静音/音频意图、max FPS、decoder policy 和运行时证据。 | 硬解/DMABuf zero-copy 验证和同源多输出解码复用仍未完成。 |
 | Web | `web` | 部分 | fallback plan | 复制 HTML/CSS/JS 资源，注入兼容 bridge，映射用户属性；renderer 可显示 fallback poster，并按动态壁纸参与 `pause-dynamic` 资源释放。 | WebKitGTK runtime、sandbox、输入/audio/FPS bridge 和权限模型未完成。 |
 | Scene | `scene-lite` | 部分 | first-class plan + static snapshot | 生成 Gilder scene-lite graph，支持 2D image/color/rectangle/ellipse/text/path/group layer、transform、opacity、keyframe/timeline 曲线和属性 binding；daemon 生成 `scene_lite_plans`，GTK 当前把 time=0 snapshot 合成为受控缓存 SVG surface，IPC 数值/布尔属性可影响 snapshot layer，并统计 snapshot/layer 图片资源。 | GTK 原生动画 scene surface、effect stack、particle system、shader node 和 audio response 未完成。 |
+| Shader / shader effect | `shader`（手写包）/ `scene-lite` fallback（WE 转换） | fallback | fallback plan | Gilder 包格式可声明一等 `shader` entry，记录 GLSL/WGSL source、time/resolution/mouse/property uniform、max FPS 和 fallback poster；当前 renderer 显示 fallback，并按动态壁纸参与 `pause-dynamic` 资源释放。Wallpaper Engine custom shader 转换仍记录为缺失能力。 | 原生 GPU shader compile/render、uniform 注入、GPU memory telemetry 和 Wayland shader surface smoke 未完成。 |
 | Application / executable | 无 | 阻塞 | 阻塞 | 拒绝转换并生成 conversion report。 | 为安全和可移植性，原生可执行壁纸不作为目标能力。 |
-| Playlist / collection | `playlist` / `slideshow` | 部分 | 部分 | 静态图片序列可转为 `slideshow`；Wallpaper Engine playlist/collection 中的 image/video/web/scene 子项可转为一等 `playlist` item 并保留 weight，web 子项注入 bridge，scene 子项降级为独立 `scene-lite` fallback graph；GTK renderer 支持定时切换和非 `tile` fit 的 crossfade；一等 `playlist` entry 可按 first-match 条件或稳定 weighted-random 在 static/video/slideshow/web/scene-lite 子 entry 间选择，支持 item weight、输出、电源、本地时间窗口、本地星期、focused/visible/fullscreen 和 session 条件。 | 媒体/系统信息、更复杂日历选择和更完整 Wallpaper Engine playlist 策略映射仍需补。 |
+| Playlist / collection | `playlist` / `slideshow` | 部分 | 部分 | 静态图片序列可转为 `slideshow`；Wallpaper Engine playlist/collection 中的 image/video/web/scene 子项可转为一等 `playlist` item 并保留 weight，web 子项注入 bridge，scene 子项降级为独立 `scene-lite` fallback graph；GTK renderer 支持定时切换和非 `tile` fit 的 crossfade；一等 `playlist` entry 可按 first-match 条件或稳定 weighted-random 在 static/video/slideshow/web/scene-lite/shader 子 entry 间选择，支持 item weight、输出、电源、本地时间窗口、本地星期、focused/visible/fullscreen 和 session 条件。 | 媒体/系统信息、更复杂日历选择和更完整 Wallpaper Engine playlist 策略映射仍需补。 |
 
 ## 能力矩阵
 
@@ -36,7 +37,7 @@
 | Scene fallback/snapshot | `scene-lite` entry display | 部分 | Converter 测试、scene-lite render plan 测试、静态 snapshot SVG cache 测试和 fallback/首图/纯色 GTK 显示路径。 |
 | Scene layer 和 transform | `core::scene_lite` graph | 部分 | Headless scene graph 解析、shape/text/path layer、资源校验和 snapshot evaluator 测试。 |
 | Timeline 动画 | `core::scene_lite` keyframes | 部分 | 确定性 timeline 曲线求值测试；原生 scene surface 和真实 renderer frame budget telemetry 后续补。 |
-| Shader effect | 后续 shader 能力 | 阻塞 | Shader compile 测试、GPU memory telemetry、Wayland surface smoke。 |
+| Shader entry | `shader` entry | 部分 | Manifest/schema 测试、fallback render plan 测试和 `pause-dynamic` 释放测试；Shader compile、uniform 注入、GPU memory telemetry 和 Wayland surface smoke 后续补。 |
 | Particle | 后续 scene/particle runtime | 阻塞 | 确定性 emitter 测试、资源预算 gate、adaptive pause 测试。 |
 | Audio response | 后续可选 PipeWire input | 阻塞 | 显式权限测试、默认关闭/静音策略、延迟和资源 telemetry。 |
 | 用户属性 | Manifest `properties` + scene-lite bindings | 部分 | Parser/schema 测试、scene-lite snapshot 属性绑定测试；video/web/native scene runtime 仍需按类型继续接入。 |
@@ -50,15 +51,15 @@
    GPU、PSS、USS/private 和 wakeup。
 2. 下一步优先让 `web` runtime 可用，并默认启用 sandbox，网络和音频必须显式授权。
    Web 壁纸常见，而且已经能映射到当前转换出的资源目录。
-3. 在广泛加入 shader 或 particle 前，先把 `scene-lite` 扩展成真正的 2D scene runtime。
+3. 在加入原生 shader runtime 或 particle 前，先把 `scene-lite` 扩展成真正的 2D scene runtime。
    Scene graph、transform、opacity 和 timeline 行为应可在无 compositor 环境确定性测试；
    当前 first-class render plan 已经给原生 scene surface 留出同步边界。
-4. Shader 和 particle 能力从一开始就要接入 GPU/USS/PSS 预算 gate，以及 adaptive
+4. 原生 shader runtime 和 particle 能力从一开始就要接入 GPU/USS/PSS 预算 gate，以及 adaptive
    pause/throttle。
 5. Audio-responsive 壁纸必须作为 opt-in 能力实现，使用 PipeWire input，并在 status/watch
    中清晰报告权限和采样状态。
 6. Playlist 已按 first-match 条件和稳定 weighted-random 复用 static、video、slideshow、
-   web、scene-lite 的既有 renderer 逻辑，并支持本地时间窗口和本地星期条件；Wallpaper
+   web、scene-lite、shader 的既有 renderer 逻辑，并支持本地时间窗口和本地星期条件；Wallpaper
    Engine playlist 已支持 image/video/web/scene 子项，后续再补复杂策略映射。
 
 ## 转换报告要求

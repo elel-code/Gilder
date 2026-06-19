@@ -158,7 +158,7 @@ allow_audio = false
 - `title`：展示名称。
 - `authors`：作者列表。
 - `license`：许可证或 `unknown`。
-- `kind`：`static-image`、`video`、`slideshow`、`web`、`scene-lite`、`playlist`。
+- `kind`：`static-image`、`video`、`slideshow`、`web`、`scene-lite`、`shader`、`playlist`。
 - `tags`：搜索和管理用标签。
 - `preview`：缩略图和 fallback poster。
 - `entry`：默认运行入口。
@@ -309,7 +309,7 @@ Playlist 是一等包类型，用来在一个 `.gwpdir` 内根据当前桌面状
 第一个所有条件都满足的 item；`weighted-random` 会先过滤满足条件的 item，再按 item
 的 `weight` 做稳定加权选择。`weight` 默认是 1，必须大于 0。稳定 seed 来自输出名、
 本地分钟、本地星期、当前桌面状态和候选 item id/weight，因此同一分钟内状态栏轮询不会
-导致壁纸跳变。选中的 `entry` 会继续转换为 static/video/slideshow/web/scene-lite 的既有
+导致壁纸跳变。选中的 `entry` 会继续转换为 static/video/slideshow/web/scene-lite/shader 的既有
 render plan。
 支持的条件字段：
 
@@ -350,6 +350,38 @@ Web 运行时默认受限：
 当前 GTK runtime 尚未执行 WebKit 内容；如果 `fallback` 存在，renderer 会先显示
 fallback 静态图，并把 `web` 视为动态壁纸参与 `pause-dynamic` 策略。缺少
 `fallback` 的 Web 包会在渲染计划中报告 unsupported，避免静默显示空背景。
+
+### Shader
+
+```json
+{
+  "type": "shader",
+  "source": "shaders/main.frag",
+  "fallback": "previews/poster.svg",
+  "language": "glsl",
+  "max_fps": 60,
+  "uniforms": [
+    { "name": "u_time", "source": "time" },
+    { "name": "u_resolution", "source": "resolution" },
+    { "name": "u_mouse", "source": "mouse" },
+    { "name": "u_intensity", "source": "property", "property": "intensity" }
+  ]
+}
+```
+
+`shader` 是 v1 为 GLSL/WGSL 风格动态壁纸预留的一等 entry：
+
+- `source` 指向包内 shader 源文件。
+- `fallback` 指向静态 poster；当前 GTK renderer 尚未编译或执行 shader，会显示该 fallback。
+- `language` 可为 `auto`、`glsl` 或 `wgsl`，默认 `auto`。
+- `max_fps` 必须大于 0，后续原生 shader runtime 会与桌面状态性能策略合成目标 FPS。
+- `uniforms` 声明 runtime 需要注入的 uniform。`source` 支持 `time`、`resolution`、`mouse`
+  和 `property`；`property` uniform 必须设置 `property` 字段，其它来源不能设置
+  `property`。uniform 名称不能为空且不能重复。
+
+缺少 `fallback` 的 shader 包会在当前渲染计划中报告 unsupported，避免把未实现的
+GPU shader runtime 误显示为空背景。`shader` 会作为动态壁纸参与 `pause-dynamic`
+资源释放策略。
 
 ### Scene-lite
 

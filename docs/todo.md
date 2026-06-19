@@ -109,7 +109,7 @@
 - [ ] 继续采集 compositor presentation/frame callback 统计。
 - [x] 将 adaptive monitor 结果作为只会降载的性能策略输入，支持阈值、冷却时间和恢复条件。
 - [x] adaptive monitor 支持用户可选的 `pause-unfocused` 动作，在系统压力下暂停非焦点输出。
-- [x] adaptive monitor 支持用户可选的 `pause-dynamic` 动作，在系统压力下暂停 video/slideshow/web/scene-lite 动态壁纸。
+- [x] adaptive monitor 支持用户可选的 `pause-dynamic` 动作，在系统压力下暂停 video/slideshow/web/scene-lite/shader 动态壁纸。
 - [x] adaptive monitor 支持 GPU busy 和低电量阈值触发，并在 headless smoke 中覆盖 throttle 与 `pause-dynamic` 释放资源。
 - [x] 在 status/watch 中报告 adaptive monitor 的当前采样、触发原因和实际降载动作。
 - [x] 在真实 niri Wayland 会话采集 battery/unfocused/fullscreen 视频 surface 策略和内存证据。
@@ -332,8 +332,8 @@
 - [x] 增加 `GILDER_GTK_VIDEO_SINK_CHAIN=auto|gtk4|glsinkbin` 底层验证入口，用同一 4K/240 场景对比 direct `gtk4paintablesink` 与 `glsinkbin+gtk4paintablesink` 的 sink caps、queue、PSS/USS 和 GPU memory。
 - [x] 用真实 4K/240 NVIDIA/niri 样本确认 high memory 主要来自 `glsinkbin` 路径：direct sink 20s 峰值 PSS/USS/GPU memory 约 390/356 MiB/496 MiB，GL wrapper 约 661/627 MiB/689 MiB；默认 `auto` 因此切到 direct sink。
 - [x] 静态图运行时缓存按 fit 估算降采样收益，覆盖 `contain` 极端比例大图和 `stretch` 大面积源图，减少直接让 GTK/GDK 解码原图的场景。
-- [x] battery 性能策略支持用户可选 `pause-dynamic`，电池供电时释放 video/slideshow/web/scene-lite 资源但保留静态壁纸，并在 headless desktop policy smoke 中覆盖。
-- [x] fullscreen、unfocused、hidden 和 session 性能策略支持用户可选 `pause-dynamic`，只释放 video/slideshow/web/scene-lite 动态壁纸并保留静态壁纸，headless smoke 覆盖静态透传和 slideshow 移除。
+- [x] battery 性能策略支持用户可选 `pause-dynamic`，电池供电时释放 video/slideshow/web/scene-lite/shader 资源但保留静态壁纸，并在 headless desktop policy smoke 中覆盖。
+- [x] fullscreen、unfocused、hidden 和 session 性能策略支持用户可选 `pause-dynamic`，只释放 video/slideshow/web/scene-lite/shader 动态壁纸并保留静态壁纸，headless smoke 覆盖静态透传和 slideshow 移除。
 - [ ] 为 poster、thumbnail、manifest/package、视频 pipeline 和 GTK surface 缓存定义上限、淘汰策略和 status/watch 可见的 retained memory 线索。
 - [x] 静态图片 Wallpaper Engine 转换时为足够大的光栅源图生成 16:9、21:9/ultrawide 和 9:16 portrait PNG variants，供 render plan 按输出尺寸选择以减少常见场景原始超大图解码。
 - [x] 优化静态大图解码路径：转换器记录静态 raster entry 源图尺寸，render plan 在没有合适 manifest variant 且源图明显大于输出时生成受上限和淘汰管理的输出尺寸级静态缓存，避免无意义加载原始超大图。
@@ -370,7 +370,7 @@
 - [x] 为 `scene-lite` 生成一等 render sync plan，GTK 先显示 fallback、首个 image layer 或首个 color layer，并把 fallback/layer 图片资源计入计划层与 package cache footprint。
 - [x] 为 `scene-lite` 的 time=0 image/color snapshot 生成受控缓存 SVG surface，支持复用/淘汰 telemetry，避免简单 Scene 长期只显示静态 poster。
 - [x] 将 `scene-lite` 属性 binding 接入 render sync 和 snapshot cache，使 IPC 数值/布尔属性可以影响 opacity、position、scale 和 rotation，并只让当前 plan 声明的绑定属性触发 daemon cache 失效。
-- [x] 添加一等 `playlist` entry，支持 first-match 条件按输出、电源、focused/visible/fullscreen 和 session 状态选择 static/video/slideshow/web/scene-lite 子 entry，并让 `pause-dynamic` 按实际选中类型决策。
+- [x] 添加一等 `playlist` entry，支持 first-match 条件按输出、电源、focused/visible/fullscreen 和 session 状态选择 static/video/slideshow/web/scene-lite/shader 子 entry，并让 `pause-dynamic` 按实际选中类型决策。
 - [x] 扩展 `playlist` 条件：支持本地时间窗口 `{ start = "HH:MM", end = "HH:MM" }`，含跨午夜区间，供工作时段/夜间/电池等组合策略选择壁纸。
 - [x] 扩展 `scene-lite` 2D layer：支持 rectangle/ellipse shape、fill、stroke、corner radius 和本地尺寸，并合成到受控 SVG snapshot。
 - [x] 扩展 `scene-lite` 2D layer：支持 text layer、font size/family/weight、text align 和安全 SVG text 转义，并合成到受控 SVG snapshot。
@@ -378,7 +378,8 @@
 - [ ] 扩展 `scene-lite`：补齐常见 2D scene 图层、transform、opacity、动画曲线、时间轴和属性映射。
 - [ ] 设计完整 `scene` runtime：保留可高效渲染的 scene graph，不把复杂场景长期降级为静态 fallback。
 - [ ] 增强 `web` 壁纸 runtime：WebKitGTK sandbox、输入策略、音频策略、资源权限、暂停/恢复和低功耗模式。
-- [ ] 添加 shader 壁纸类型，优先支持 GLSL/WGSL 风格的时间、分辨率、鼠标和用户属性 uniform。
+- [x] 添加一等 `shader` manifest entry，记录 GLSL/WGSL 风格的时间、分辨率、鼠标和用户属性 uniform schema；runtime 完成前使用 fallback render plan，并按动态壁纸参与 `pause-dynamic` 释放策略。
+- [ ] 实现原生 shader runtime：编译/执行 GLSL/WGSL、注入 uniform、接入 GPU memory telemetry 和 Wayland surface smoke。
 - [ ] 添加粒子/特效壁纸类型，优先覆盖 Wallpaper Engine 常见粒子发射器、纹理、速度场和 blend 模式。
 - [ ] 添加音频响应壁纸能力，定义可选 PipeWire 音频采样输入和隐私/权限开关。
 - [ ] 添加时钟、系统监控、媒体信息等 Linux 桌面常见信息型壁纸组件，但默认不采集敏感信息。
