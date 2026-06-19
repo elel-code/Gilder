@@ -106,7 +106,7 @@
 - [ ] 继续采集 compositor presentation/frame callback 统计。
 - [x] 将 adaptive monitor 结果作为只会降载的性能策略输入，支持阈值、冷却时间和恢复条件。
 - [x] adaptive monitor 支持用户可选的 `pause-unfocused` 动作，在系统压力下暂停非焦点输出。
-- [x] adaptive monitor 支持用户可选的 `pause-dynamic` 动作，在系统压力下暂停 video/slideshow/web 动态壁纸。
+- [x] adaptive monitor 支持用户可选的 `pause-dynamic` 动作，在系统压力下暂停 video/slideshow/web/scene-lite 动态壁纸。
 - [x] adaptive monitor 支持 GPU busy 和低电量阈值触发，并在 headless smoke 中覆盖 throttle 与 `pause-dynamic` 释放资源。
 - [x] 在 status/watch 中报告 adaptive monitor 的当前采样、触发原因和实际降载动作。
 - [x] 在真实 niri Wayland 会话采集 battery/unfocused/fullscreen 视频 surface 策略和内存证据。
@@ -233,8 +233,8 @@
 - [x] GTK/video renderer 在无 FPS 上限时不创建 `videorate`/`capsfilter` frame limiter，减少默认 active 视频 pipeline 的常驻 GStreamer element。
 - [x] GTK/headless video renderer 使用最小 `playbin` flags，muted 路径只开 video，audible 路径只开 video+audio，避免 active 视频常驻 deinterlace、soft color balance 或 soft volume 分支。
 - [x] 将 GTK/headless 视频限帧改为 sink `throttle-time`，不再把 `videorate ! capsfilter` 插入 decoder 到 sink 的协商路径，并关闭 sink `last-sample` 保留。
-- [x] battery 性能策略支持用户可选 `pause-dynamic`，电池供电时释放 video/slideshow/web 资源但保留静态壁纸，并在 headless desktop policy smoke 中覆盖。
-- [x] fullscreen、unfocused、hidden 和 session 性能策略支持用户可选 `pause-dynamic`，只释放 video/slideshow/web 动态壁纸并保留静态壁纸，headless smoke 覆盖静态透传和 slideshow 移除。
+- [x] battery 性能策略支持用户可选 `pause-dynamic`，电池供电时释放 video/slideshow/web/scene-lite 资源但保留静态壁纸，并在 headless desktop policy smoke 中覆盖。
+- [x] fullscreen、unfocused、hidden 和 session 性能策略支持用户可选 `pause-dynamic`，只释放 video/slideshow/web/scene-lite 动态壁纸并保留静态壁纸，headless smoke 覆盖静态透传和 slideshow 移除。
 - [ ] 为 poster、thumbnail、manifest/package、视频 pipeline 和 GTK surface 缓存定义上限、淘汰策略和 status/watch 可见的 retained memory 线索。
 - [x] 静态图片 Wallpaper Engine 转换时为足够大的光栅源图生成 16:9、21:9/ultrawide 和 9:16 portrait PNG variants，供 render plan 按输出尺寸选择以减少常见场景原始超大图解码。
 - [x] 优化静态大图解码路径：转换器记录静态 raster entry 源图尺寸，render plan 在没有合适 manifest variant 且源图明显大于输出时生成受上限和淘汰管理的输出尺寸级静态缓存，避免无意义加载原始超大图。
@@ -254,6 +254,7 @@
 - [x] 梳理 Wallpaper Engine 类型矩阵：image、video、web、scene、application、audio visualizer、shader/particle、playlist，并标注 Gilder 支持等级。
 - [x] 让 `web` entry 在 runtime 未完成前使用 fallback render plan，缺少 fallback 时给出明确 unsupported 错误。
 - [x] 为 `scene-lite` 定义 2D image/color/group layer、transform、opacity、keyframe timeline、动画曲线和属性 binding schema，并提供 headless snapshot evaluator 与资源校验。
+- [x] 为 `scene-lite` 生成一等 render sync plan，GTK 先显示 fallback、首个 image layer 或首个 color layer，并把 fallback/layer 图片资源计入计划层与 package cache footprint。
 - [ ] 扩展 `scene-lite`：补齐常见 2D scene 图层、transform、opacity、动画曲线、时间轴和属性映射。
 - [ ] 设计完整 `scene` runtime：保留可高效渲染的 scene graph，不把复杂场景长期降级为静态 fallback。
 - [ ] 增强 `web` 壁纸 runtime：WebKitGTK sandbox、输入策略、音频策略、资源权限、暂停/恢复和低功耗模式。

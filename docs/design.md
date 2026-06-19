@@ -206,14 +206,14 @@ PSI、thermal、power_supply 和 DRM 采样。
 - `PerformanceConfig` 从 `$XDG_CONFIG_HOME/gilder/config.toml` 读取，控制 fullscreen、hidden、session、unfocused、battery 时继续、限帧、暂停或仅暂停动态壁纸。
 - `[outputs.<name>.performance]` 可以覆盖单个输出的 FPS 和 fullscreen/hidden/session/unfocused/battery 策略，适合把副屏、投影输出或高耗电输出配置得更保守。
 - `decide_performance` 将配置、桌面状态和输出状态合成为渲染决策：active、throttled 或 paused。多个条件同时命中时选择最省资源的结果：paused 优先于 throttled，同为 throttled/active 时选择更低 `max_fps`；同等强度时保留更早命中的明确原因。
-- `battery = "pause-dynamic"`、`fullscreen = "pause-dynamic"`、`unfocused = "pause-dynamic"`、`hidden = "pause-dynamic"` 和 `session = "pause-dynamic"` 是可选动态壁纸释放策略：daemon 在未加载 manifest 前不提前移除输出；确认壁纸是 video/slideshow/web 后才把该输出转为 paused/remove，静态壁纸仍按原桌面状态渲染。
+- `battery = "pause-dynamic"`、`fullscreen = "pause-dynamic"`、`unfocused = "pause-dynamic"`、`hidden = "pause-dynamic"` 和 `session = "pause-dynamic"` 是可选动态壁纸释放策略：daemon 在未加载 manifest 前不提前移除输出；确认壁纸是 video/slideshow/web/scene-lite 后才把该输出转为 paused/remove，静态壁纸仍按原桌面状态渲染。
 - manifest `runtime.pause_when_fullscreen` 和 `runtime.pause_when_unfocused` 会在包加载后作为额外保守策略合入同一份决策；如果配置、用户暂停、输出隐藏或会话 inactive 已经要求暂停，daemon 不会为了读取 manifest 再加载包。
 - manifest `runtime.allow_audio` 与 video entry 的 `muted` 合成最终视频静音状态，默认不输出音频。
 - adaptive system monitor 是用户可选策略层，默认关闭。开启后会采样 Linux PSI
   CPU/内存压力、thermal zone 最高温度、power_supply 电源/电池容量细节和可用 DRM
   `gpu_busy_percent` 计数，按阈值把 CPU、GPU、内存、温度和低电量结果作为保守输入
   合入 `decide_performance` 之后的输出级决策；默认动作是降低 FPS，也可以配置为只在
-  输出非焦点时暂停，焦点输出仍回退为降 FPS，或只暂停 video/slideshow/web 这类动态壁纸。
+  输出非焦点时暂停，焦点输出仍回退为降 FPS，或只暂停 video/slideshow/web/scene-lite 这类动态壁纸。
   adaptive 决策不能覆盖用户暂停、fullscreen pause、battery pause 等更强策略；同为 throttled 时会保留更低 FPS 的策略。
   该策略支持阈值、冷却时间、每输出开关、每输出动作覆盖和全局 kill switch，并在
   `status`/telemetry 中报告当前采样、触发原因和 adaptive 动作，方便用户审计。视频

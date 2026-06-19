@@ -18,7 +18,7 @@
 | Image | `static-image` | 完整 | 完整 | 复制源图、preview/poster、fit 意图；足够大的光栅图可生成 16:9、21:9/ultrawide 和 9:16 portrait variants；带尺寸 metadata 的超大静态图可生成输出尺寸级运行时缓存。 | 更多编码 variant、真实 Wayland USS/PSS 基线和不同 fit 模式的质量/内存阈值还需要继续优化。 |
 | Video | `video` | 完整 | 完整 | 复制可播放视频，必要时生成 poster，支持 loop、静音/音频意图、max FPS、decoder policy 和运行时证据。 | 硬解/DMABuf zero-copy 验证和同源多输出解码复用仍未完成。 |
 | Web | `web` | 部分 | fallback plan | 复制 HTML/CSS/JS 资源，注入兼容 bridge，映射用户属性；renderer 可显示 fallback poster，并按动态壁纸参与 `pause-dynamic` 资源释放。 | WebKitGTK runtime、sandbox、输入/audio/FPS bridge 和权限模型未完成。 |
-| Scene | `scene-lite` | 部分 | fallback + core graph | 生成 Gilder scene-lite graph，支持 2D image/color/group layer、transform、opacity、keyframe/timeline 曲线和属性 binding schema；renderer 仍显示 fallback。 | GTK 原生 scene surface、effect stack、particle system、shader node 和 audio response 未完成。 |
+| Scene | `scene-lite` | 部分 | first-class plan + fallback display | 生成 Gilder scene-lite graph，支持 2D image/color/group layer、transform、opacity、keyframe/timeline 曲线和属性 binding schema；daemon 生成 `scene_lite_plans` 并统计 fallback/layer 图片资源；GTK 当前显示 fallback、首图或纯色。 | GTK 原生动画 scene surface、effect stack、particle system、shader node 和 audio response 未完成。 |
 | Application / executable | 无 | 阻塞 | 阻塞 | 拒绝转换并生成 conversion report。 | 为安全和可移植性，原生可执行壁纸不作为目标能力。 |
 | Playlist / collection | `slideshow` 或配置分配 | 部分 | 部分 | 静态图片序列可转为 `slideshow`；daemon 配置/状态可按输出分配壁纸。 | 按时间、随机、电源、输出状态选择壁纸的 playlist 还不是一等包类型。 |
 
@@ -32,9 +32,9 @@
 | Slideshow / 普通动态图片 | `slideshow` entry | 完整 | Render plan 测试、GTK 定时切换、adaptive、battery、fullscreen、unfocused、hidden 和 session `pause-dynamic` 测试。 |
 | Web 壁纸资源 | `web` entry | 部分 | Converter 测试、manifest 校验和 fallback render plan 测试。 |
 | Web runtime bridge | `assets/web/gilder-bridge.js` | fallback | 后续 WebKitGTK smoke 和属性更新测试。 |
-| Scene fallback | `scene-lite` entry fallback | 部分 | Converter 测试和静态 fallback render plan 测试。 |
+| Scene fallback | `scene-lite` entry fallback/display | 部分 | Converter 测试、scene-lite render plan 测试和 fallback/首图/纯色 GTK 显示路径。 |
 | Scene layer 和 transform | `core::scene_lite` graph | 部分 | Headless scene graph 解析、资源校验和 snapshot evaluator 测试。 |
-| Timeline 动画 | `core::scene_lite` keyframes | 部分 | 确定性 timeline 曲线求值测试；真实 renderer frame budget telemetry 后续补。 |
+| Timeline 动画 | `core::scene_lite` keyframes | 部分 | 确定性 timeline 曲线求值测试；原生 scene surface 和真实 renderer frame budget telemetry 后续补。 |
 | Shader effect | 后续 shader 能力 | 阻塞 | Shader compile 测试、GPU memory telemetry、Wayland surface smoke。 |
 | Particle | 后续 scene/particle runtime | 阻塞 | 确定性 emitter 测试、资源预算 gate、adaptive pause 测试。 |
 | Audio response | 后续可选 PipeWire input | 阻塞 | 显式权限测试、默认关闭/静音策略、延迟和资源 telemetry。 |
@@ -50,7 +50,8 @@
 2. 下一步优先让 `web` runtime 可用，并默认启用 sandbox，网络和音频必须显式授权。
    Web 壁纸常见，而且已经能映射到当前转换出的资源目录。
 3. 在广泛加入 shader 或 particle 前，先把 `scene-lite` 扩展成真正的 2D scene runtime。
-   Scene graph、transform、opacity 和 timeline 行为应可在无 compositor 环境确定性测试。
+   Scene graph、transform、opacity 和 timeline 行为应可在无 compositor 环境确定性测试；
+   当前 first-class render plan 已经给原生 scene surface 留出同步边界。
 4. Shader 和 particle 能力从一开始就要接入 GPU/USS/PSS 预算 gate，以及 adaptive
    pause/throttle。
 5. Audio-responsive 壁纸必须作为 opt-in 能力实现，使用 PipeWire input，并在 status/watch
