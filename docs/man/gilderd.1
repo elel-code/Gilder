@@ -65,6 +65,9 @@ limits retained unpacked
 archive cache entries.
 .B [cache].static_image_cache_max_entries
 limits retained runtime downscaled static image cache files.
+.B [cache].static_image_cache_max_bytes
+limits retained runtime downscaled static image cache bytes. A value of 0
+disables this byte cap.
 .TP
 .I $XDG_RUNTIME_DIR/gilder/gilder.sock
 IPC socket.

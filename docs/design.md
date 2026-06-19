@@ -255,9 +255,11 @@ archive cache 条目；生成计划时当前正在使用的 archive cache 条目
 静态 raster entry 如果带有源图 `width`/`height`，且没有显式 variant、没有可覆盖输出
 尺寸的 manifest variant、源图像素面积至少是目标输出的 2 倍，daemon 会在有 `ffmpeg`
 可用时生成 `$XDG_CACHE_HOME/gilder/static-image-cache/` 下的输出尺寸级 PNG 缓存，并把
-静态计划 source 指向该缓存文件。默认最多保留 32 个静态缓存文件，当前 render sync
-引用的文件会被保护，其余文件按最旧使用时间淘汰；`[cache].static_image_cache_max_entries = 0`
-会禁用运行时静态降采样缓存。
+静态计划 source 指向该缓存文件。默认最多保留 32 个静态缓存文件且总量最多 512MiB；
+当前 render sync 引用的文件会被保护，其余文件按最旧使用时间淘汰，直到同时满足条目数和
+`static_image_cache_max_bytes`。`[cache].static_image_cache_max_entries = 0`
+会禁用运行时静态降采样缓存；`[cache].static_image_cache_max_bytes = 0` 表示不按 byte
+总量额外淘汰，只保留条目数上限。
 
 示例：
 
@@ -293,6 +295,7 @@ package_cache_max_entries = 16
 package_cache_max_retained_unique_resource_bytes = 536870912
 render_cache_max_entries = 32
 static_image_cache_max_entries = 32
+static_image_cache_max_bytes = 536870912
 
 [outputs."HDMI-A-1"]
 wallpaper = "/home/me/Wallpapers/quiet.gwpdir"
