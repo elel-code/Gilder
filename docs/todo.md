@@ -83,6 +83,7 @@
 - [x] 实现 poster 显示。
 - [x] 实现 max_fps 或 pipeline throttling。
 - [x] 实现 slideshow 普通动态壁纸运行计划和 GTK 定时切换。
+- [x] slideshow `crossfade` 在 GTK renderer 中使用短生命周期 `gtk::Stack` 转场，并在转场结束后释放上一帧 Picture。
 - [x] 避免重复 render sync 对视频 pipeline 反复设置未变化的 state、mute、fit、限帧和 start offset。
 - [x] 避免重复 render sync 对 GTK 静态窗口反复重建 Picture/CSS fallback surface。
 - [x] 避免 GTK 初始同步和 IPC 状态变更把未变化的 render sync 重复投递给渲染器。

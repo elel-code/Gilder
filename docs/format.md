@@ -254,7 +254,8 @@ daemon 会把 video entry 转成 `render_sync.video_plans`，其中 `manifest_ma
 
 Slideshow 是 v1 的普通动态壁纸，不需要脚本运行时。daemon 会把 slideshow entry
 转成 `render_sync.slideshow_plans`，GTK renderer 会按 `interval_ms` 切换源图；
-`transition = "crossfade"` 当前作为格式意图保留，早期运行时先执行稳定的即时切换。
+`transition = "crossfade"` 会在非 `tile` fit 下使用 GTK Picture/Stack 执行短 crossfade，
+并在转场结束后释放上一帧 Picture；`tile` 会继续走 CSS fallback 和即时切换。
 
 ### Playlist
 
