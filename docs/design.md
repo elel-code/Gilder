@@ -138,6 +138,30 @@ PSI、thermal、power_supply 和 DRM 采样。
 - 循环、静音、音频丢弃、最大 FPS、poster、空闲暂停必须是 manifest 中的显式策略。
 - 解码和播放控制不阻塞 GTK 主线程。
 
+GTK/GStreamer 低内存渲染方向：
+
+- 不把硬解等同于 zero-copy。运行时必须同时报告实际 decoder、decoder class、decoder
+  policy status、decoder/sink caps memory features、QoS 和 GTK frame clock；只有出现
+  sink-side DMABuf/GLMemory 等 GPU memory caps，并且后续补齐 compositor
+  presentation 证据后，才把路径视为强 zero-copy 证据。
+- 避免在 decoder 到 sink 之间插入会破坏 GPU memory caps 协商的通用 CPU 元件。当前
+  active 视频默认不再插入 `videorate ! capsfilter`，而是使用 sink
+  `throttle-time`；muted 路径只启用 video playbin flag，并关闭 sink
+  `enable-last-sample`，减少无意义的 audio/deinterlace/last-sample 常驻引用。
+- 后续 GTK renderer 应把视频运行时从单个输出对象里拆出来：对兼容的
+  `(source, loop, muted/audio policy, decoder policy, start offset, target FPS)` 使用一个
+  共享 GStreamer pipeline 和一个共享 `GdkPaintable`，每个输出只持有自己的
+  `gtk::Picture`、fit 和 frame-clock 统计。输出暂停或移除时只 detach 对应 picture；
+  最后一个输出释放时才把 pipeline 置为 `Null`。这能同时降低多输出同源视频的解码、
+  buffer pool、sink texture 和进程私有内存占用。
+- 需要继续深入 `gtk4paintablesink`、GDK/GSK texture、GStreamer allocator 和 buffer pool
+  生命周期：定位是否存在 CPU-side raw frame、poster/static texture、buffer pool 或
+  paintable 对最近帧的额外保留；优先通过运行时证据和小步重构减少保留，而不是只调高
+  内存预算。
+- 静态图路径也要审计 GTK CSS background 的解码/texture 保留行为。大图已有输出尺寸级
+  缓存，但 renderer 侧仍应确认 CSS provider 移除后旧 texture 是否及时释放；必要时改为
+  更可控的 `GdkTexture`/`gtk::Picture` surface，并把保留资源纳入 telemetry。
+
 轻量动态壁纸：
 
 - v1 不引入复杂脚本运行时。
