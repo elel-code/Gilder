@@ -145,7 +145,9 @@ PSI、thermal、power_supply 和 DRM 采样。
 - daemon 会为 slideshow entry 生成 `render_sync.slideshow_plans`，包含 source
   列表、切换间隔、transition、fit 和性能策略合成后的目标 FPS。GTK renderer
   当前使用主线程低开销定时器执行即时切换，后续再扩展 crossfade 等过渡。
-- Web wallpaper 作为受限运行时处理，默认关闭本地文件越界访问和网络权限。
+- Web wallpaper 作为受限运行时处理，默认关闭本地文件越界访问和网络权限；在
+  WebKit runtime 完成前，renderer 使用 manifest `fallback` 生成静态计划，并按
+  动态壁纸参与 `pause-dynamic` 资源释放策略。
 
 ## 状态与配置
 
@@ -204,14 +206,14 @@ PSI、thermal、power_supply 和 DRM 采样。
 - `PerformanceConfig` 从 `$XDG_CONFIG_HOME/gilder/config.toml` 读取，控制 fullscreen、hidden、session、unfocused、battery 时继续、限帧、暂停或仅暂停动态壁纸。
 - `[outputs.<name>.performance]` 可以覆盖单个输出的 FPS 和 fullscreen/hidden/session/unfocused/battery 策略，适合把副屏、投影输出或高耗电输出配置得更保守。
 - `decide_performance` 将配置、桌面状态和输出状态合成为渲染决策：active、throttled 或 paused。多个条件同时命中时选择最省资源的结果：paused 优先于 throttled，同为 throttled/active 时选择更低 `max_fps`；同等强度时保留更早命中的明确原因。
-- `battery = "pause-dynamic"`、`fullscreen = "pause-dynamic"`、`unfocused = "pause-dynamic"`、`hidden = "pause-dynamic"` 和 `session = "pause-dynamic"` 是可选动态壁纸释放策略：daemon 在未加载 manifest 前不提前移除输出；确认壁纸是 video/slideshow 后才把该输出转为 paused/remove，静态壁纸仍按原桌面状态渲染。
+- `battery = "pause-dynamic"`、`fullscreen = "pause-dynamic"`、`unfocused = "pause-dynamic"`、`hidden = "pause-dynamic"` 和 `session = "pause-dynamic"` 是可选动态壁纸释放策略：daemon 在未加载 manifest 前不提前移除输出；确认壁纸是 video/slideshow/web 后才把该输出转为 paused/remove，静态壁纸仍按原桌面状态渲染。
 - manifest `runtime.pause_when_fullscreen` 和 `runtime.pause_when_unfocused` 会在包加载后作为额外保守策略合入同一份决策；如果配置、用户暂停、输出隐藏或会话 inactive 已经要求暂停，daemon 不会为了读取 manifest 再加载包。
 - manifest `runtime.allow_audio` 与 video entry 的 `muted` 合成最终视频静音状态，默认不输出音频。
 - adaptive system monitor 是用户可选策略层，默认关闭。开启后会采样 Linux PSI
   CPU/内存压力、thermal zone 最高温度、power_supply 电源/电池容量细节和可用 DRM
   `gpu_busy_percent` 计数，按阈值把 CPU、GPU、内存、温度和低电量结果作为保守输入
   合入 `decide_performance` 之后的输出级决策；默认动作是降低 FPS，也可以配置为只在
-  输出非焦点时暂停，焦点输出仍回退为降 FPS，或只暂停 video/slideshow 这类动态壁纸。
+  输出非焦点时暂停，焦点输出仍回退为降 FPS，或只暂停 video/slideshow/web 这类动态壁纸。
   adaptive 决策不能覆盖用户暂停、fullscreen pause、battery pause 等更强策略；同为 throttled 时会保留更低 FPS 的策略。
   该策略支持阈值、冷却时间、每输出开关、每输出动作覆盖和全局 kill switch，并在
   `status`/telemetry 中报告当前采样、触发原因和 adaptive 动作，方便用户审计。视频
@@ -248,7 +250,7 @@ snapshot、cache 目录和已引用壁纸包的 JSON/TOML manifest/`.gwp` 元数
 `status`、watch snapshot 和状态事件会复用缓存，避免性能采样期间反复读取
 manifest、校验资源或解包。当前不参与渲染的 properties、adapter 开关和桌面状态刷新
 周期不会单独让缓存失效。
-单次 render sync 生成期间会用临时 package cache 复用已解析的 manifest/package，默认最多保留 16 个条目，并且这些条目引用的去重源资源 footprint 默认最多 512MiB；超过条目数或 `package_cache_max_retained_unique_resource_bytes` 后按最早插入优先淘汰。`[cache].package_cache_max_entries = 0` 或 `[cache].package_cache_max_retained_unique_resource_bytes = 0` 会禁用该临时保留，适合希望压低 plan 构建峰值内存的用户。这里的 byte 上限基于 manifest 引用的源文件/目录大小，用作大包保留线索，不是解码纹理、GTK 内部缓存或 USS。
+单次 render sync 生成期间会用临时 package cache 复用已解析的 manifest/package，默认最多保留 16 个条目，并且这些条目引用的去重源资源 footprint 默认最多 512MiB；超过条目数或 `package_cache_max_retained_unique_resource_bytes` 后按最早插入优先淘汰。`[cache].package_cache_max_entries = 0` 或 `[cache].package_cache_max_retained_unique_resource_bytes = 0` 会禁用该临时保留，适合希望压低 plan 构建峰值内存的用户。这里的 byte 上限基于 manifest 引用的源文件/目录大小，用作大包保留线索，不是解码纹理、GTK 内部缓存或 USS；telemetry 还会把 retained preview thumbnail/poster 的引用数、去重数和源文件 byte footprint 单独拆出，便于发现超大 preview 资产。
 `.gwp` 解包目录会写入 `$XDG_CACHE_HOME/gilder/render-cache/`，默认最多保留 32 个旧
 archive cache 条目；生成计划时当前正在使用的 archive cache 条目会被保护，其余条目按最旧优先淘汰。
 `[cache].render_cache_max_entries = 0` 表示尽量只保留当前受保护条目，适合希望 aggressive
@@ -338,5 +340,5 @@ action = "pause-unfocused"
 3. 视频循环壁纸和暂停策略。
 4. Wallpaper Engine 静态/视频项目转换。
 5. Hyprland/niri 输出适配器。
-6. Web wallpaper 受限运行时。
+6. Web wallpaper fallback 渲染计划，再扩展为受限 WebKit runtime。
 7. 部分 Scene wallpaper 转换为 Gilder scene-lite。

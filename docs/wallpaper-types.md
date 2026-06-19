@@ -17,7 +17,7 @@
 | --- | --- | --- | --- | --- | --- |
 | Image | `static-image` | 完整 | 完整 | 复制源图、preview/poster、fit 意图；足够大的光栅图可生成 16:9、21:9/ultrawide 和 9:16 portrait variants；带尺寸 metadata 的超大静态图可生成输出尺寸级运行时缓存。 | 更多编码 variant、真实 Wayland USS/PSS 基线和不同 fit 模式的质量/内存阈值还需要继续优化。 |
 | Video | `video` | 完整 | 完整 | 复制可播放视频，必要时生成 poster，支持 loop、静音/音频意图、max FPS、decoder policy 和运行时证据。 | 硬解/DMABuf zero-copy 验证和同源多输出解码复用仍未完成。 |
-| Web | `web` | 部分 | fallback | 复制 HTML/CSS/JS 资源，注入兼容 bridge，映射用户属性，保留 fallback poster。 | WebKitGTK runtime、sandbox、输入/audio/FPS bridge 和权限模型未完成。 |
+| Web | `web` | 部分 | fallback plan | 复制 HTML/CSS/JS 资源，注入兼容 bridge，映射用户属性；renderer 可显示 fallback poster，并按动态壁纸参与 `pause-dynamic` 资源释放。 | WebKitGTK runtime、sandbox、输入/audio/FPS bridge 和权限模型未完成。 |
 | Scene | `scene-lite` | 部分 | fallback | 复制 scene 入口元数据和 fallback，记录 SceneScript、shader、复杂效果等 unsupported 项。 | 原生 scene graph、timeline、effect stack、particle system、shader node 和 audio response 未完成。 |
 | Application / executable | 无 | 阻塞 | 阻塞 | 拒绝转换并生成 conversion report。 | 为安全和可移植性，原生可执行壁纸不作为目标能力。 |
 | Playlist / collection | `slideshow` 或配置分配 | 部分 | 部分 | 静态图片序列可转为 `slideshow`；daemon 配置/状态可按输出分配壁纸。 | 按时间、随机、电源、输出状态选择壁纸的 playlist 还不是一等包类型。 |
@@ -30,7 +30,7 @@
 | 视频循环播放 | `video` entry + GStreamer | 完整 | Codec smoke、Wayland video surface smoke、video runtime CSV。 |
 | 视频音频意图 | `runtime.allow_audio` + `entry.muted` | 部分 | Converter 测试和 `playbin` flags 测试；PipeWire 采集/输出策略仍是后续工作。 |
 | Slideshow / 普通动态图片 | `slideshow` entry | 完整 | Render plan 测试、GTK 定时切换、adaptive、battery、fullscreen、unfocused、hidden 和 session `pause-dynamic` 测试。 |
-| Web 壁纸资源 | `web` entry | 部分 | Converter 测试和 manifest 校验。 |
+| Web 壁纸资源 | `web` entry | 部分 | Converter 测试、manifest 校验和 fallback render plan 测试。 |
 | Web runtime bridge | `assets/web/gilder-bridge.js` | fallback | 后续 WebKitGTK smoke 和属性更新测试。 |
 | Scene fallback | `scene-lite` entry fallback | 部分 | Converter 测试和静态 fallback render plan 测试。 |
 | Scene layer 和 transform | 后续 `scene` runtime | 阻塞 | Headless scene graph 测试和真实 Wayland smoke。 |

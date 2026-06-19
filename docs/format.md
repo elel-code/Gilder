@@ -271,6 +271,10 @@ Web 运行时默认受限：
 - 默认不允许网络。
 - 用户属性通过 Gilder bridge 注入，而不是直接暴露宿主 API。
 
+当前 GTK runtime 尚未执行 WebKit 内容；如果 `fallback` 存在，renderer 会先显示
+fallback 静态图，并把 `web` 视为动态壁纸参与 `pause-dynamic` 策略。缺少
+`fallback` 的 Web 包会在渲染计划中报告 unsupported，避免静默显示空背景。
+
 ### Scene-lite
 
 `scene-lite` 是 Gilder 对 Wallpaper Engine 场景壁纸的可迁移子集，不追求完整兼容：

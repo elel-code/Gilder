@@ -110,6 +110,7 @@ gilder-convert wallpaper-engine --allow-web <source> <dest.gwpdir>
 
 - Web 根目录复制到 `assets/web/`。
 - `entry.type = "web"`。
+- 如果有 preview/fallback，当前 renderer 会先用 fallback 生成静态渲染计划。
 - 用户属性转为 Gilder `properties`。
 - 生成 `assets/web/gilder-bridge.js`，提供基础属性桥接，并在后续 Web runtime 中适配常见 `window.wallpaperPropertyListener.applyUserProperties` 行为。
 

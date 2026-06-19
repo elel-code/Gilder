@@ -152,6 +152,7 @@ active,active,max_uss_kib,250000
 active,user-paused,retained_private_delta_kib,20480
 *,*,max_pss_kib,320000
 *,*,render_sync_package_cache_retained_unique_resource_bytes_latest,104857600
+*,*,render_sync_package_cache_retained_unique_preview_resource_bytes_latest,52428800
 *,*,render_sync_package_cache_max_retained_unique_resource_bytes_latest,536870912
 *,*,render_sync_static_image_cache_bytes_latest,104857600
 fullscreen,fullscreen,renderer_video_pipelines_latest,0
@@ -485,9 +486,12 @@ image resources before checking GTK/private memory. The same summary reports
 planned static image, video poster, slideshow image, image-reference, and unique
 image-resource source-file bytes. It also reports retained package-cache
 manifest resource references, unique resources, reference bytes, and unique
-bytes for packages still held by the per-render-sync package cache. These bytes
-are source-file or source-directory footprint clues for large images/posters and
-cached package manifests; they are not decoded texture memory or process USS.
+bytes for packages still held by the per-render-sync package cache. It also
+splits retained manifest preview thumbnail/poster references, unique resources,
+and source-file bytes so oversized preview assets can be budgeted separately
+from entry and variant resources. These bytes are source-file or
+source-directory footprint clues for large images/posters and cached package
+manifests; they are not decoded texture memory or process USS.
 Renderer telemetry summary fields
 include latest/max output window, static surface, slideshow surface, video
 surface, and video pipeline counts, which are used to prove that paused,
