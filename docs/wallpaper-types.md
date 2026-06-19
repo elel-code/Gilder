@@ -18,7 +18,7 @@
 | Image | `static-image` | 完整 | 完整 | 复制源图、preview/poster、fit 意图；足够大的光栅图可生成 16:9、21:9/ultrawide 和 9:16 portrait variants；带尺寸 metadata 的超大静态图可生成输出尺寸级运行时缓存。 | 更多编码 variant、真实 Wayland USS/PSS 基线和不同 fit 模式的质量/内存阈值还需要继续优化。 |
 | Video | `video` | 完整 | 完整 | 复制可播放视频，必要时生成 poster，支持 loop、静音/音频意图、max FPS、decoder policy 和运行时证据。 | 硬解/DMABuf zero-copy 验证和同源多输出解码复用仍未完成。 |
 | Web | `web` | 部分 | fallback plan | 复制 HTML/CSS/JS 资源，注入兼容 bridge，映射用户属性；renderer 可显示 fallback poster，并按动态壁纸参与 `pause-dynamic` 资源释放。 | WebKitGTK runtime、sandbox、输入/audio/FPS bridge 和权限模型未完成。 |
-| Scene | `scene-lite` | 部分 | first-class plan + static snapshot | 生成 Gilder scene-lite graph，支持 2D image/color/group layer、transform、opacity、keyframe/timeline 曲线和属性 binding schema；daemon 生成 `scene_lite_plans`，GTK 当前把 time=0 snapshot 合成为受控缓存 SVG surface，并统计 snapshot/layer 图片资源。 | GTK 原生动画 scene surface、effect stack、particle system、shader node 和 audio response 未完成。 |
+| Scene | `scene-lite` | 部分 | first-class plan + static snapshot | 生成 Gilder scene-lite graph，支持 2D image/color/group layer、transform、opacity、keyframe/timeline 曲线和属性 binding；daemon 生成 `scene_lite_plans`，GTK 当前把 time=0 snapshot 合成为受控缓存 SVG surface，IPC 数值/布尔属性可影响 snapshot layer，并统计 snapshot/layer 图片资源。 | GTK 原生动画 scene surface、effect stack、particle system、shader node 和 audio response 未完成。 |
 | Application / executable | 无 | 阻塞 | 阻塞 | 拒绝转换并生成 conversion report。 | 为安全和可移植性，原生可执行壁纸不作为目标能力。 |
 | Playlist / collection | `slideshow` 或配置分配 | 部分 | 部分 | 静态图片序列可转为 `slideshow`；daemon 配置/状态可按输出分配壁纸。 | 按时间、随机、电源、输出状态选择壁纸的 playlist 还不是一等包类型。 |
 
@@ -38,7 +38,7 @@
 | Shader effect | 后续 shader 能力 | 阻塞 | Shader compile 测试、GPU memory telemetry、Wayland surface smoke。 |
 | Particle | 后续 scene/particle runtime | 阻塞 | 确定性 emitter 测试、资源预算 gate、adaptive pause 测试。 |
 | Audio response | 后续可选 PipeWire input | 阻塞 | 显式权限测试、默认关闭/静音策略、延迟和资源 telemetry。 |
-| 用户属性 | Manifest `properties` | 部分 | Parser/schema 测试；运行时应用仍需按壁纸类型逐步接入。 |
+| 用户属性 | Manifest `properties` + scene-lite bindings | 部分 | Parser/schema 测试、scene-lite snapshot 属性绑定测试；video/web/native scene runtime 仍需按类型继续接入。 |
 | 桌面状态性能优化 | policy/adaptive monitor | 当前动态类型完整 | Desktop policy smoke、resource baseline CSV、Wayland performance snapshot。 |
 | 硬解证据 | video runtime decoder reports | 部分 | Codec smoke 和 Wayland runtime gates。 |
 | Zero-copy 证据 | caps 和 sink memory feature reports | 部分 | DMABuf/GLMemory gates，以及后续 compositor presentation 证据。 |
