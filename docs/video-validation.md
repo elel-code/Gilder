@@ -193,6 +193,13 @@ and `--expect-gtk-frame-timings`. It also forwards process memory budget gates:
 `--expect-max-shared-kib-at-most`, plus planned image-resource byte gates
 `--expect-render-sync-planned-image-resource-reference-bytes-latest-at-most`
 and `--expect-render-sync-planned-unique-image-resource-bytes-latest-at-most`,
+planned video-source fanout gates
+`--expect-render-sync-planned-video-source-references-latest-at-most`,
+`--expect-render-sync-planned-unique-video-sources-latest-at-most`,
+`--expect-render-sync-planned-duplicate-video-source-references-latest-at-most`,
+`--expect-render-sync-planned-max-video-source-outputs-latest-at-most`,
+`--expect-render-sync-planned-video-source-reference-bytes-latest-at-most`,
+and `--expect-render-sync-planned-unique-video-source-bytes-latest-at-most`,
 and the runtime static-image cache byte gate
 `--expect-render-sync-static-image-cache-bytes-latest-at-most`.
 Supplying any of these options
@@ -513,6 +520,11 @@ pipeline source footprint: renderable windows are allowed at most one video
 source reference per selected output and one unique source for the generated
 smoke wallpaper, while paused/hidden/fullscreen/inactive/locked windows must
 end with zero video source references and zero source bytes. Renderable video
+windows are also checked at the render-plan layer: planned video source
+references may fan out to the selected output count, but planned unique video
+sources must stay at one, duplicate references are bounded by the output fanout
+minus one, and paused/hidden/fullscreen/inactive/locked windows must end with
+zero planned video source references and bytes. Renderable video
 windows are allowed at most one planned poster reference per selected output
 and one unique planned poster resource for the generated smoke wallpaper; that
 planned poster is an error fallback and should not imply retained GTK
