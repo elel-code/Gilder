@@ -263,6 +263,10 @@
 - [x] T0: 将 `memory-mapping-summary.txt` 增强为同时输出
   `top_mappings_by_private_dirty` 和 `category_summary_by_private_dirty`，把
   `Private_Dirty` 优化从总量观察推进到 anonymous/heap/driver/shared-memory 分类定位。
+- [x] T0: 将 smaps 分类 `Private_Dirty` 从人工阅读推进到可执行数据链路：
+  `performance-snapshot.sh` 输出 `memory-mapping-categories.csv` 和
+  `memory_category_<category>_private_dirty_kib` summary keys，Wayland smoke validation report
+  和 baseline matrix 可直接把 anonymous、heap、nvidia-device、nvidia-library 等类别写入预算。
 - [ ] T0: 专项压低 video active/paused/fullscreen 的 `Private_Dirty`：用
   `category_summary_by_private_dirty` 对比 active -> paused/fullscreen -> resumed，
   优先确认 `anonymous`、`heap`、driver device/library dirty pages 和 shared-memory 是否按生命周期释放。

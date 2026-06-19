@@ -98,9 +98,10 @@ Private_Dirty 进一步突破判断：
 - 这说明后续确实还有可挖空间；优先级应是先确认 active -> fullscreen/paused/hidden 后
   `anonymous`、`heap`、driver device/library dirty pages 是否释放，再决定是否动 GTK/GStreamer
   buffer pool 或 poster/static fallback 生命周期。
-- `performance-snapshot.sh` 已增加 `top_mappings_by_private_dirty` 和
-  `category_summary_by_private_dirty`，下一轮采样要直接按 `Private_Dirty` 分类比较 active、
-  paused/fullscreen 和 resumed，而不是只看总 PSS/USS。
+- `performance-snapshot.sh` 已增加 `top_mappings_by_private_dirty`、
+  `category_summary_by_private_dirty`、`memory-mapping-categories.csv` 和
+  `memory_category_<category>_private_dirty_kib` summary/baseline 字段。下一轮采样要直接按
+  `Private_Dirty` 分类比较 active、paused/fullscreen 和 resumed，而不是只看总 PSS/USS。
 
 ## Guardrails Before Experiments
 

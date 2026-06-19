@@ -746,19 +746,26 @@ lists the sampled PID, the matching process row is included as
 `memory-mapping-summary.txt`, which aggregates `/proc/<pid>/smaps` by top PSS
 and top `Private_Dirty` mappings, plus coarse categories such as
 `nvidia-device`, `anonymous`, `heap`, `gtk-library`, and
-`gstreamer-library`. `category_summary_by_private_dirty` is the first table to
-check when a desktop monitor shows high application memory, because it points
-at the dirty private pages most likely to be reducible by lifecycle or cache
-changes. Wayland smoke reports link the
+`gstreamer-library`. The same sampler writes
+`memory-mapping-categories.csv` and appends
+`memory_category_<category>_private_dirty_kib` keys to `summary.txt`, so
+`wayland-baseline-matrix.sh` budget rows can directly cap categories such as
+`memory_category_anonymous_private_dirty_kib`,
+`memory_category_heap_private_dirty_kib`, and
+`memory_category_nvidia_device_private_dirty_kib` or
+`memory_category_dri_device_private_dirty_kib`. `category_summary_by_private_dirty`
+is still the first human-readable table to check when a desktop monitor shows
+high application memory, because it points at the dirty private pages most
+likely to be reducible by lifecycle or cache changes. Wayland smoke reports link the
 active and paused hardware report paths as
 `performance_active_video_hardware_report` and
 `performance_paused_video_hardware_report`, so codec/GPU/driver comparisons can
 be attached without manually correlating separate files. They also link
 `performance_active_memory_mapping_summary` and
-`performance_paused_memory_mapping_summary`, so active, paused, and
+`performance_paused_memory_mapping_summary`, plus the corresponding
+`performance_*_memory_mapping_categories` CSV paths, so active, paused, and
 fullscreen-resumed memory regressions can be traced to driver mappings, heap,
-anonymous allocations, or GTK/GStreamer libraries from the same validation
-report.
+anonymous allocations, or GTK/GStreamer libraries from the same validation report.
 When available, `samples.csv` also includes `gpu_busy_percent_avg`,
 `gpu_busy_percent_max`, and `gpu_busy_sources` from DRM sysfs
 `gpu_busy_percent` or `nvidia-smi`. These fields are optional and may be empty
@@ -817,10 +824,12 @@ private-footprint budgets into gates in desktop policy and Wayland smoke runs.
 and `wayland-video-surface-smoke.sh` includes the process memory and renderer
 telemetry summaries in `validation-report.txt` for active, paused, and
 fullscreen-resumed performance directories.
-`wayland-baseline-matrix.sh` carries private-clean, Private_Dirty, and NVIDIA
-process GPU memory summary keys into `baseline.csv`, so budget rows can use
-metrics such as `max_private_dirty_kib`, `retained_private_dirty_delta_kib`,
-and `max_nvidia_process_gpu_memory_mib` when the host supports them.
+`wayland-baseline-matrix.sh` carries private-clean, Private_Dirty, NVIDIA
+process GPU memory, and selected memory category summary keys into
+`baseline.csv`, so budget rows can use metrics such as
+`max_private_dirty_kib`, `retained_private_dirty_delta_kib`,
+`max_nvidia_process_gpu_memory_mib`, and
+`memory_category_nvidia_device_private_dirty_kib` when the host supports them.
 
 Current local release measurements for the generated 720p/30fps H.264 video
 wallpaper are hardware- and driver-specific, but they define the latest
