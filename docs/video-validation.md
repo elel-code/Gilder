@@ -396,7 +396,10 @@ For muted video wallpapers, Gilder disables `playbin` audio stream selection
 instead of routing decoded audio to `fakesink`, so muted wallpaper playback does
 not spend CPU or memory decoding an unused audio stream. `runtime.allow_audio`
 and entry-level mute settings still allow audio when a package explicitly asks
-for it.
+for it. The renderer keeps `playbin` flags minimal (`video` for muted playback,
+`video+audio` for audible playback) so deinterlace, soft color balance, and
+software volume elements are not kept in the wallpaper pipeline unless a later
+renderer path explicitly needs them.
 
 ## Remaining Surface Work
 
@@ -573,6 +576,9 @@ sink-side GLMemory or the stronger sink-side DMABuf evidence level.
 Use `--expect-video-position-progress`, `--expect-frame-limiter-enabled`, and
 `--expect-frame-limiter-max-fps <fps>` to assert that playback moved during the
 sample window and that the runtime frame limiter is active at the expected cap.
+Position progress is measured as the largest minus smallest observed position
+per output, so a looping video that wraps near the end of the sample window is
+still counted as moving.
 Use `--expect-video-qos` to require at least one QoS message and
 `--expect-qos-dropped-max-at-most <count>` to fail runs where the observed QoS
 dropped counter exceeds the selected threshold.
