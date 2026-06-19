@@ -353,8 +353,8 @@ evidence. It also records GDK `FrameTimings` observed/complete counts, frame
 time, predicted presentation time, presentation time, presentation interval,
 and refresh interval when GDK has timing history for the frame. These fields are runtime
 playback/limiter/QoS/GTK frame-clock evidence: a moving `position_ms` proves the
-pipeline playhead is advancing, `frame_limiter_max_fps` proves the applied
-capsfilter limit, `qos_dropped_max` records GStreamer sink QoS drops when the
+pipeline playhead is advancing, `frame_limiter_max_fps` proves the applied sink
+`throttle-time` limit, `qos_dropped_max` records GStreamer sink QoS drops when the
 sink reports them, and `gtk_frame_clock_ticks` proves the GTK surface is being
 driven by a frame clock. Completed GDK frame timings are stronger presentation
 clues than after-paint ticks, but they are still not direct Wayland
@@ -399,7 +399,10 @@ and entry-level mute settings still allow audio when a package explicitly asks
 for it. The renderer keeps `playbin` flags minimal (`video` for muted playback,
 `video+audio` for audible playback) so deinterlace, soft color balance, and
 software volume elements are not kept in the wallpaper pipeline unless a later
-renderer path explicitly needs them.
+renderer path explicitly needs them. FPS limiting is applied on the sink via
+`throttle-time` instead of a `video-filter`, keeping `videorate` and
+`capsfilter` out of the negotiated video path so GPU-memory caps have fewer
+software-only elements to cross.
 
 ## Remaining Surface Work
 

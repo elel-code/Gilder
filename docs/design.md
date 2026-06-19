@@ -128,8 +128,9 @@ PSI、thermal、power_supply 和 DRM 采样。
 - 默认音频被丢弃。只有 manifest `runtime.allow_audio = true` 且 video entry
   `muted = false` 时，GStreamer 才允许音频输出；否则 playbin 使用 `fakesink`
   丢弃音频。
-- 性能策略合成出的 `target_max_fps` 会通过 `videorate ! capsfilter` 应用到
-  playbin 的 `video-filter`。
+- 性能策略合成出的 `target_max_fps` 会通过 video sink 的 `throttle-time`
+  应用，避免在 decoder 和 sink 之间插入 `videorate ! capsfilter` 干扰
+  DMABuf/GLMemory caps 协商。
 - 渲染器在应用 video plan 时会跳过未变化的 state、mute、fit、target FPS 和
   start offset，避免周期性 render sync 造成重复 GStreamer property 更新或把视频反复
   seek 回起始偏移。
