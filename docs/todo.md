@@ -190,7 +190,7 @@
 - [x] 生成 `metadata/conversion-report.json`。
 - [x] 拒绝 executable/application 类型并输出清晰错误。
 - [x] Scene 子集转换到 `scene-lite`。
-- [x] Playlist/collection 项目转换到一等 `playlist`，支持 image/video 子项和 item weight。
+- [x] Playlist/collection 项目转换到一等 `playlist`，支持 image/video/web/scene 子项和 item weight。
 
 ## M7: 打包与发布
 
@@ -203,23 +203,73 @@
 
 ## M8: 性能、内存与 zero-copy 优化
 
-- [ ] T0: 建立 4K/240fps 硬解视频壁纸的顶级性能目标和回归门槛：一输出
-  `hardware-required` 必须实际选择硬件 decoder，当前 NVIDIA/H.264 基线为
-  `nvh264dec` + `decoder_policy_status=satisfied`；CPU 同时记录进程口径和按逻辑
-  CPU 折算的整机口径，目标从当前约 193-205% 进程 CPU、约 10% 整机 CPU 压到
-  <= 120% 进程 CPU、<= 6% 整机 CPU，stretch goal 为 <= 80% 进程 CPU、<= 4% 整机
-  CPU。所有数值必须附带逻辑 CPU 数、采样时长和同一场景的 QoS/drop 证据。
-- [ ] T0: 为 4K/240fps active GTK video surface 建立内存/显存门槛：当前本机 20s
-  压力基线约为 `ps` RSS 541MiB、`smaps_rollup` RSS 510MiB、PSS 430MiB、
-  private/USS 399MiB、NVIDIA 进程显存 689MiB，用户侧监控器观察到的应用内存约
-  160-200MiB。下一阶段目标优先把 PSS/private 与显存压低，而不是只追 RSS；候选门槛为
-  PSS <= 300MiB、private/USS <= 240MiB、GPU memory <= 450MiB，并用真实
-  Wayland/niri/Hyprland 采样校准。
-- [ ] T0: 把 4K/240fps 的 zero-copy 证据从“硬解已满足”推进到强证据：runtime CSV
-  至少达到 `sink-gpu-memory-caps`，GTK 4.14+/可用 dmabuf 构建上目标为
-  `sink-dmabuf-caps`；同时记录 `memory_path`、allocation pool、sink tuning、
-  compositor presentation/frame callback 和 GDK frame timing。只有硬解 decoder 但没有
-  sink-side GLMemory/DMABuf 时，仍按“硬解但 zero-copy 未证明”处理。
+- [x] T0: 建立并达到 4K/240fps 硬解视频壁纸的实用顶级 CPU 基线：一输出 active
+  NVIDIA/H.264 当前默认 direct `gtk4paintablesink` 路径实际选择 `nvh264dec`，20s
+  样本平均约 75% 进程 CPU；按 20 逻辑 CPU 折算约 3.8% 整机 CPU，已经低于
+  <= 120%/<= 6% 目标并接近 <= 80%/<= 4% stretch goal。所有后续回归门槛仍需附带逻辑
+  CPU 数、采样时长、sink path 和同一场景的 QoS/drop 证据。
+- [x] T0: 建立并达到 4K/240fps active GTK video surface 的实用顶级内存/显存基线：
+  默认 direct sink 20s 峰值约 `ps` RSS 455MiB、PSS 390MiB、private/USS 356MiB、
+  `Private_Dirty` 约 109MiB、NVIDIA 进程显存约 496MiB；用户侧监控器观察到的应用内存约
+  100MiB 时应优先对齐 `Private_Dirty` 口径，而不是 PSS/USS。GL wrapper 对照样本为
+  PSS/USS/GPU memory 约 661/627MiB/689MiB，证明 high memory 主因是
+  `glsinkbin` 路径额外 driver buffer/texture/pool 保留。
+- [x] T0: 把 4K/240fps active direct `gtk4paintablesink` 突破固化为可执行 guardrail：
+  `performance-snapshot.sh` 和 Wayland video smoke 均可断言 max `Private_Dirty` 与
+  NVIDIA 进程显存，baseline matrix 可把 private-clean/dirty 和
+  `max_nvidia_process_gpu_memory_mib` 写入 `baseline.csv` 并由预算 CSV 校验。
+- [x] T0: 强化多输出、paused 和 fullscreen-resume 验证链路：Wayland video smoke 的
+  `--all-outputs`、`--sample-paused`、`--measure-fullscreen-resume` 可复用同一套
+  process memory、`Private_Dirty`、renderer video lifecycle、source footprint 与 NVIDIA
+  显存门槛；验证报告会链接 active/paused 的 hardware report 和 smaps mapping summary。
+- [x] T0: 写入下一阶段视频底层优化路线文档 `docs/m8-video-optimization-plan.md`，把
+  zero-copy evidence、YUV/NV12 保持、queue 梯度和 fullscreen/game auto-suspend 拆成
+  可逐步验证的实验，并定义成功/停止条件。
+- [x] T0: 为 YUV/NV12 保持实验补齐运行时证据字段：`caps_reports` 记录 negotiated
+  raw video `format`/width/height，并在 `current_caps()` 不可见时回退读取 pad sticky CAPS
+  event；`--video-runtime-csv`、performance summary、baseline CSV 和 hardware report 输出
+  `formats`、`sink_formats`、`format_paths`、`frame_sizes`、`caps_sources`，用于判断 sink
+  前是否已过早转 RGBA/RGBx。
+- [x] T0: 在真实 GTK/playbin Wayland video runtime 中安装 caps-event observer，并把
+  observer 证据合并进 status/runtime CSV；2026-06-20 niri 小视频 smoke 已观察到
+  `caps-event|current|observer-initial|sticky`、sink-side `NV12`、`memory:CUDAMemory`，
+  zero-copy evidence 达到 `sink-gpu-memory-caps`。该结果证明证据链已打通，但 4K/240fps
+  仍需同场景复测。
+- [x] T0: Wayland video smoke 和 baseline matrix 支持 `--video-size`、`--video-rate`、
+  `--video-duration`，便于用同一套 guardrail 直接生成并采样 4K/240fps 压力源。
+- [x] T0: 用 2026-06-20 niri 4K/240fps generated loop 复测 direct
+  `gtk4paintablesink`：runtime CSV 已达到 `zero_copy_evidence=sink-gpu-memory-caps`，
+  `formats=NV12`、`sink_formats=NV12`、`memory_path=sink-gpu-memory`；6s sample 峰值
+  `Private_Dirty` 115156 KiB、PSS/USS 418115/403768 KiB、NVIDIA 进程显存 472MiB，仍在
+  M8 guardrail 内。该项只证明 GStreamer/GTK runtime sink-side GPU memory caps，不证明
+  compositor presentation 层 full zero-copy。
+- [x] T0: 把 4K/240fps 的 runtime zero-copy 证据从“硬解已满足”推进到
+  `sink-gpu-memory-caps`：runtime CSV 记录 `memory_path=sink-gpu-memory`、
+  sink-side `NV12`、caps sources、allocation pool、sink tuning 和 GDK/GTK timing 线索。
+  该项仍不等同 compositor presentation full zero-copy；后续 GTK 4.14+/可用 dmabuf 构建上目标为
+  `sink-dmabuf-caps`，并补 compositor presentation/frame callback 证据。
+- [ ] T0: 对 direct `gtk4paintablesink`、forced `gtk4` 和 forced `glsinkbin` 做同场景
+  zero-copy 证据对照，确认 caps/sink caps、allocation pool、memory path、PSS/USS、
+  `Private_Dirty` 和 NVIDIA 显存差异。
+- [ ] T0: 验证 4K/240fps video path 是否能保持 YUV/NV12 到 presentation 阶段，避免
+  过早维护 RGBA/RGBx 大纹理；若 GTK path 不能做到，记录为明确 blocker。
+- [x] T0: 添加 queue 调优诊断开关并做 8/4/2 buffers、50/25/12ms 梯度实验，对比
+  queue current level、QoS/drop、CPU、PSS/USS、`Private_Dirty` 和 NVIDIA 显存；4/25ms
+  作为新默认，2/12ms 因 CPU 与 QoS/drop 回退不采用。短样本中 NVIDIA 显存固定 472MiB，
+  说明显存高水位后续应从 sink/compositor buffer pool 或 auto-suspend 方向继续挖。
+- [x] T0: 将 2026-06-20 video 重大突破同步到 `docs/m8-video-optimization-plan.md`：
+  runtime caps-event、queue/multiqueue observer、4K/240 `sink-gpu-memory-caps` + `NV12`、
+  默认 4/25ms queue、最新 smoke 目录和 guardrail 结果均已记录。
+- [x] T0: 将 `memory-mapping-summary.txt` 增强为同时输出
+  `top_mappings_by_private_dirty` 和 `category_summary_by_private_dirty`，把
+  `Private_Dirty` 优化从总量观察推进到 anonymous/heap/driver/shared-memory 分类定位。
+- [ ] T0: 专项压低 video active/paused/fullscreen 的 `Private_Dirty`：用
+  `category_summary_by_private_dirty` 对比 active -> paused/fullscreen -> resumed，
+  优先确认 `anonymous`、`heap`、driver device/library dirty pages 和 shared-memory 是否按生命周期释放。
+- [ ] T0: 用 20s/30s 长样本复验 4/25ms queue 默认值，确认 active、loop、resume 和多输出场景不回退。
+- [ ] T0: 强化 fullscreen/game auto-suspend 显存释放验证，要求 removal 场景不仅
+  pipeline/source footprint 为 0，还要观察 NVIDIA 显存、smaps `nvidia-device`/anonymous/heap
+  分类和 resume latency。
 - [ ] T0: 保持 8K 静态图路径为接近顶级基线：当前交互观察为 CPU 基本 0、应用内存约
   93MiB；下一阶段把该场景纳入 `wayland-baseline-matrix`，要求 CPU 接近 0、PSS/private
   与用户可见内存口径对齐，并确认 `gtk::Picture`/GDK/GSK decoded texture 生命周期不会在
@@ -267,7 +317,7 @@
 - [x] GTK 组合 renderer snapshot 序列化 video pipeline telemetry 时复用已有 video source footprint，避免重复读取源文件 metadata。
 - [x] GTK renderer resource footprint 按路径缓存 source size，重复静态图、幻灯片帧或同源视频不再反复 `metadata()`。
 - [x] GTK video frame-clock 诊断默认改为轻量 after-paint tick/counter/time/interval 统计；完整 phase、FPS/refresh_info 和 GDK `FrameTimings` 采样需显式设置 `GILDER_GTK_VIDEO_FRAME_STATS=full`，减少 4K/高刷视频每帧主线程诊断开销。
-- [x] GTK/headless GStreamer video pipeline 默认压低内部 queue/queue2 深度到 8 buffers/50ms，并在 runtime CSV/summary 中报告 queue max/current level，减少 4K/高刷视频中间队列保留窗口并为 PSS/USS/GPU memory 深挖提供证据。
+- [x] GTK/headless GStreamer video pipeline 默认压低内部 queue/queue2/multiqueue 深度到 4 buffers/25ms，并在 runtime CSV/summary 中报告 queue max/current level，减少 4K/高刷视频中间队列保留窗口并为 PSS/USS/GPU memory 深挖提供证据。
 - [x] 增加 `GILDER_GTK_VIDEO_SINK_CHAIN=auto|gtk4|glsinkbin` 底层验证入口，用同一 4K/240 场景对比 direct `gtk4paintablesink` 与 `glsinkbin+gtk4paintablesink` 的 sink caps、queue、PSS/USS 和 GPU memory。
 - [x] 用真实 4K/240 NVIDIA/niri 样本确认 high memory 主要来自 `glsinkbin` 路径：direct sink 20s 峰值 PSS/USS/GPU memory 约 390/356 MiB/496 MiB，GL wrapper 约 661/627 MiB/689 MiB；默认 `auto` 因此切到 direct sink。
 - [x] 静态图运行时缓存按 fit 估算降采样收益，覆盖 `contain` 极端比例大图和 `stretch` 大面积源图，减少直接让 GTK/GDK 解码原图的场景。
@@ -323,7 +373,7 @@
 - [ ] 添加时钟、系统监控、媒体信息等 Linux 桌面常见信息型壁纸组件，但默认不采集敏感信息。
 - [x] 扩展 playlist 选择策略：支持稳定 `weighted-random` 和 item `weight`，避免状态栏轮询导致随机壁纸抖动。
 - [x] 扩展 playlist 日历条件：支持本地星期 `weekdays` 条件，并让 playlist 本地 clock 按依赖维度参与 render sync cache key。
-- [x] 补 Wallpaper Engine playlist 转换：支持 image/video 子项和 item weight，web/scene 子项暂记 unsupported。
+- [x] 补 Wallpaper Engine playlist 转换：支持 image/video/web/scene 子项和 item weight；web 子项注入 bridge，scene 子项生成独立 `scene-lite` fallback graph。
 - [ ] 继续扩展 playlist/轮播策略：按媒体/系统信息和更复杂日历条件选择壁纸，并补更完整 Wallpaper Engine playlist 策略映射。
 - [x] 扩展 Wallpaper Engine 转换器，为 web/scene/shader/particle/audio 响应能力输出更细的 conversion report 和缺失能力提示。
 - [ ] 为每类新壁纸定义 manifest schema、示例包、转换测试、headless 计划测试和真实 Wayland smoke 验证入口。

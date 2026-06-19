@@ -16,7 +16,7 @@
 gilder-convert wallpaper-engine <source-project-dir> <dest.gwpdir>
 ```
 
-当前实现支持静态图片、视频、Web、保守 `scene-lite` 和 image/video 子项组成的 playlist/collection 项目的 `.gwpdir` 输出；application/executable 项目会生成转换报告并拒绝转换。缺失预览图时，静态图片项目会从源图生成 poster/thumbnail，视频项目会优先通过本机 `ffmpeg` 从首帧生成 poster/thumbnail，失败时回退到 metadata-based SVG fallback；Scene 项目会生成 metadata-based SVG fallback。静态大图在本机同时有 `ffprobe` 和 `ffmpeg` 时，会额外生成 16:9、21:9/ultrawide 和 9:16 portrait PNG variants，供 daemon 按输出尺寸自动选择，降低常见输出上无意义解码超大原图的概率。
+当前实现支持静态图片、视频、Web、保守 `scene-lite` 和 image/video/web/scene 子项组成的 playlist/collection 项目的 `.gwpdir` 输出；application/executable 项目会生成转换报告并拒绝转换。缺失预览图时，静态图片项目会从源图生成 poster/thumbnail，视频项目会优先通过本机 `ffmpeg` 从首帧生成 poster/thumbnail，失败时回退到 metadata-based SVG fallback；Scene 项目会生成 metadata-based SVG fallback。静态大图在本机同时有 `ffprobe` 和 `ffmpeg` 时，会额外生成 16:9、21:9/ultrawide 和 9:16 portrait PNG variants，供 daemon 按输出尺寸自动选择，降低常见输出上无意义解码超大原图的概率。
 
 已支持：
 
@@ -55,7 +55,7 @@ gilder-convert wallpaper-engine --allow-web <source> <dest.gwpdir>
 | Video | `video` | 高 | 复制可播放视频；必要时转码；生成 poster |
 | Web | `web` | 中 | 复制 HTML/CSS/JS/资源；注入兼容 bridge；默认禁网 |
 | Scene | `scene-lite` / `video` / `static-image` | 低到中 | 复制 Scene 入口元数据并生成 fallback；复杂效果记录为 unsupported |
-| Playlist / collection | `playlist` | 中 | 将 image/video 子项复制为一等 playlist item；保留 item weight；web/scene 子项先记录为 unsupported |
+| Playlist / collection | `playlist` | 中 | 将 image/video/web/scene 子项复制为一等 playlist item；保留 item weight；web 子项注入 bridge；scene 子项生成独立 scene-lite fallback graph |
 | Application / executable | 不支持 | 无 | 拒绝转换，仅生成报告 |
 
 ## 静态图片转换
@@ -160,20 +160,22 @@ Scene 转换策略按优先级：
 
 适合情况：
 
-- Wallpaper Engine playlist 或 collection 项目中列出多个图片/视频资源。
+- Wallpaper Engine playlist 或 collection 项目中列出多个图片、视频、Web 或 Scene 资源。
 - `project.json` 使用 `items`、`playlist`、`wallpapers`、`entries` 或 `children` 数组描述条目。
 
 输出：
 
 - 顶层 `entry.type = "playlist"`，`selection = "first-match"`。
 - image 子项转换为 `static-image` entry，video 子项转换为 muted `video` entry。
+- web 子项复制到独立 `assets/playlist-<index>-web/` 根目录并注入 `gilder-bridge.js`。
+- scene 子项保留原始 metadata，并转换为独立的 `scene-lite` fallback graph。
 - `weight`、`probability` 或 `chance` 数值会转换为 Gilder playlist item `weight`。
-- 子项资源复制到 `assets/playlist-<index>.*`，item id 使用稳定索引和源标题/name/id 生成。
+- image/video 子项资源复制到 `assets/playlist-<index>.*`，item id 使用稳定索引和源标题/name/id 生成。
 
 限制：
 
 - Wallpaper Engine playlist 的复杂日历、媒体状态、随机策略和嵌套 playlist 还未完整映射。
-- web/scene/application 子项暂不内联转换，会写入 `playlist-item:*` unsupported feature 和 warning。
+- application 和嵌套 playlist 子项仍不转换，会写入 `playlist-item:*` unsupported feature 和 warning。
 - playlist 音频意图暂不打开全局 `runtime.allow_audio`；video 子项默认静音。
 
 ## 用户属性映射

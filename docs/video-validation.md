@@ -91,7 +91,10 @@ scripts/wayland-video-surface-smoke.sh
 The script builds Gilder with `gtk-renderer,video-renderer`, generates a tiny
 video wallpaper, starts an isolated daemon with a temporary `GILDER_SOCKET`,
 sets the wallpaper on one output, and writes status/log evidence under a
-temporary work directory.
+temporary work directory. By default the generated source is `128x72@12fps`
+for fast smoke validation. Use `--video-size <WxH>`, `--video-rate <fps>`, and
+`--video-duration <sec>` when the same evidence chain should be stressed with a
+4K/high-refresh source such as `3840x2160@240fps`.
 
 Useful options:
 
@@ -102,6 +105,9 @@ scripts/wayland-video-surface-smoke.sh --expect-compositor hyprland --require-vi
 scripts/wayland-video-surface-smoke.sh --expect-compositor hyprland --require-video-runtime-row --expect-zero-copy-profile gtk-dmabuf-surface --keep
 scripts/wayland-video-surface-smoke.sh --all-outputs --visual-hold 20 --keep
 scripts/wayland-video-surface-smoke.sh --sample-performance --keep
+scripts/wayland-video-surface-smoke.sh --sample-performance --expect-max-private-dirty-kib-at-most 163840 --keep
+scripts/wayland-video-surface-smoke.sh --sample-performance --expect-max-private-dirty-kib-at-most 163840 --expect-max-nvidia-process-gpu-memory-mib-at-most 550 --keep
+scripts/wayland-video-surface-smoke.sh --sample-performance --video-size 3840x2160 --video-rate 240 --video-duration 1 --require-video-runtime-row --keep
 scripts/wayland-video-surface-smoke.sh --visual-hold 20 --keep
 scripts/wayland-video-surface-smoke.sh --simulate-power battery --sample-performance --keep
 scripts/wayland-video-surface-smoke.sh --simulate-output-state unfocused --sample-performance --keep
@@ -109,7 +115,9 @@ scripts/wayland-video-surface-smoke.sh --simulate-output-state fullscreen --samp
 scripts/wayland-video-surface-smoke.sh --measure-fullscreen-resume --sample-performance --keep
 scripts/wayland-video-surface-smoke.sh --simulate-session locked --sample-performance --keep
 scripts/wayland-video-surface-smoke.sh --sample-paused --keep
+scripts/wayland-video-surface-smoke.sh --all-outputs --sample-paused --expect-renderer-video-pipeline-lifecycle --expect-max-private-dirty-kib-at-most 163840 --keep
 scripts/wayland-baseline-matrix.sh --report-dir /tmp/gilder-wayland-baseline --sample-duration 30
+scripts/wayland-baseline-matrix.sh --report-dir /tmp/gilder-wayland-4k240 --scenario active --sample-duration 6 --video-size 3840x2160 --video-rate 240 --video-duration 1
 scripts/wayland-baseline-matrix.sh --report-dir /tmp/gilder-wayland-baseline --budget-csv examples/wayland-memory-budget.example.csv
 scripts/wayland-video-surface-smoke.sh --allow-missing
 scripts/wayland-video-surface-smoke.sh --no-build --keep
@@ -413,7 +421,8 @@ clues than after-paint ticks, but they are still not direct Wayland
 Use `gilderctl status --video-runtime-csv --from-file <status.json>` to turn a
 saved status snapshot into compact decoder/caps/playback evidence with
 sink-side memory features, `zero_copy_evidence_level`, `memory_path_level`, and
-allocation pool/allocator summaries plus `memory_retention_*` fields. The raw status JSON remains the
+allocation pool/allocator summaries plus `formats`, `sink_formats`,
+`format_paths`, `frame_sizes`, `caps_sources`, and `memory_retention_*` fields. The raw status JSON remains the
 authoritative source for full caps strings and full allocation-query details.
 
 The exact hardware decode path is left to the host GStreamer installation. The
@@ -468,10 +477,13 @@ Set `GILDER_GTK_VIDEO_SINK_CHAIN=glsinkbin` to force
 direct sink, when comparing 4K/high-refresh PSS, USS, GPU memory, sink caps, and
 queue behavior or investigating GLMemory/DMABuf negotiation. Gilder also
 tunes `playbin` child queues for wallpaper playback: queue-like elements are
-capped at 8 buffers and 50ms, with byte caps disabled so one large 4K frame does
-not trip a small byte limit. The queue is not made leaky by default; if
-downstream cannot keep up, backpressure bounds memory before packet dropping is
-considered.
+capped at 4 buffers and 25ms by default, with byte caps disabled so one large
+4K frame does not trip a small byte limit. The queue is not made leaky by
+default; if downstream cannot keep up, backpressure bounds memory before packet
+dropping is considered. Use `GILDER_VIDEO_QUEUE_MAX_SIZE_BUFFERS`,
+`GILDER_VIDEO_QUEUE_MAX_SIZE_TIME_MS`, and
+`GILDER_VIDEO_QUEUE_MAX_SIZE_BYTES`, or the matching Wayland smoke/matrix
+`--video-queue-max-size-*` options, when running queue gradient experiments.
 
 ## Remaining Surface Work
 
@@ -506,11 +518,12 @@ scripts/wayland-baseline-matrix.sh --report-dir /tmp/gilder-wayland-baseline --b
 ```
 
 The script finds a running `gilderd` process, samples `ps` CPU/RSS/VSZ fields,
-and, on Linux, reads `/proc/<pid>/smaps_rollup` for PSS, USS/private, and
-shared memory. RSS is the resident set including shared mappings; PSS is the
-shared memory cost apportioned across processes; USS is the unique/private set
-size, reported here as `Private_Clean + Private_Dirty`. It computes a small
-`summary.txt` with min/average/max memory values and writes one `gilderctl`
+and, on Linux, reads `/proc/<pid>/smaps_rollup` for PSS, USS/private, private
+clean/dirty, and shared memory. RSS is the resident set including shared
+mappings; PSS is the shared memory cost apportioned across processes;
+USS/private is `Private_Clean + Private_Dirty`; `Private_Dirty` is often the
+closest value to lightweight desktop monitor "app memory" displays. It computes
+a small `summary.txt` with min/average/max memory values and writes one `gilderctl`
 status JSON snapshot per sample. It also asks
 `gilderctl status --decisions-csv --from-file` to
 produce `decisions.csv` and `decision-summary.txt`, so active/paused,
@@ -626,7 +639,8 @@ runtime video-source limits are combined with the per-scenario lifecycle limits
 by taking the stricter value.
 The sampler also writes `video-runtime.csv`, which records each sample's
 decoder policy status, actual decoder classes, caps report count, all memory
-features, sink-side memory features, zero-copy evidence level, memory path,
+features, sink-side memory features, negotiated raw video formats, sink-side
+formats, format paths, frame sizes, zero-copy evidence level, memory path,
 allocation report count, allocation pools/allocators, memory-retention risk,
 playback position/duration, actual frame limiter state, sink low-memory tuning,
 selected sink element, and GTK frame clock phase counters. It also writes
@@ -638,6 +652,9 @@ allocation pool/allocator summaries, `video_memory_retention_level_latest`,
 `video_memory_retention_system_memory_pool_reports_max`,
 `video_memory_retention_sink_frame_retention_latest`, `video_position_moving_outputs`,
 `video_position_delta_ms_max`, `video_frame_limiter_enabled_rows`, limiter FPS min/max,
+`video_formats_latest`, `video_sink_formats_latest`,
+`video_format_paths_latest`, `video_frame_sizes_latest`,
+`video_caps_sources_latest`,
 `video_qos_messages_max`, `video_qos_dropped_max`,
 `video_gtk_frame_clock_ticks_max`, GTK frame clock phase maxima, GTK frame
 clock interval/FPS summaries, `video_gtk_frame_timings_complete_max`,
@@ -647,7 +664,12 @@ The same CSV appends `queue_report_count`, `queue_elements`,
 `queue_max_size_*`, and `queue_current_level_*` fields; the summary includes
 queue report count and max observed queue current-level buffers/bytes/time,
 which are useful when checking whether high PSS/USS/GPU memory correlates with
-internal GStreamer buffering.
+internal GStreamer buffering. The 2026-06-20 4K/240 direct-sink queue gradient
+used these fields to compare 8/50ms, 4/25ms, and 2/12ms. 4/25ms is the current
+default: it lowered observed queue bytes/time without CPU or memory regression,
+while 2/12ms increased CPU and QoS dropped buffers. NVIDIA process GPU memory
+stayed flat at 472 MiB across the short samples, so queue tuning should not be
+treated as the main lever for that remaining GPU-memory high-water mark.
 Phase, FPS/refresh, and GDK timing summary fields are expected to stay empty or
 zero unless the sampled daemon ran with `GILDER_GTK_VIDEO_FRAME_STATS=full`;
 `video_gtk_frame_clock_ticks_max` and after-paint ticks remain available in the
@@ -709,19 +731,41 @@ running daemon with `performance-snapshot.sh`.
 These checks are evidence gates only: hardware decoder evidence and
 DMABuf/GLMemory caps should still be interpreted separately from compositor
 presentation feedback and full zero-copy proof.
+The runtime caps evidence combines `current_caps()`, sticky CAPS, and runtime
+caps-event probes on observed pads. `video_caps_sources_latest` is the quickest
+sanity check: `caps-event` means the sampler observed negotiated caps as they
+flowed through the GTK/playbin pipeline, which is stronger than a late static
+snapshot alone.
 `performance-snapshot.sh` also writes `video-hardware-report.txt` next to the
 process and video-runtime summaries. That report combines the same decoder,
-caps, sink caps, zero-copy, CPU/GPU/PSS/USS/private fields with `ffprobe`
-codec metadata for each sampled video source and DRM/NVIDIA GPU driver details
-from sysfs or `nvidia-smi` when available. Wayland smoke reports link the
+caps, sink caps, zero-copy, CPU/GPU/PSS/USS/private/private-dirty fields with
+`ffprobe` codec metadata for each sampled video source and DRM/NVIDIA GPU
+driver details from sysfs or `nvidia-smi` when available; when `nvidia-smi`
+lists the sampled PID, the matching process row is included as
+`nvidia_smi.process.<pid>`. The sampler also writes
+`memory-mapping-summary.txt`, which aggregates `/proc/<pid>/smaps` by top PSS
+and top `Private_Dirty` mappings, plus coarse categories such as
+`nvidia-device`, `anonymous`, `heap`, `gtk-library`, and
+`gstreamer-library`. `category_summary_by_private_dirty` is the first table to
+check when a desktop monitor shows high application memory, because it points
+at the dirty private pages most likely to be reducible by lifecycle or cache
+changes. Wayland smoke reports link the
 active and paused hardware report paths as
 `performance_active_video_hardware_report` and
 `performance_paused_video_hardware_report`, so codec/GPU/driver comparisons can
-be attached without manually correlating separate files.
+be attached without manually correlating separate files. They also link
+`performance_active_memory_mapping_summary` and
+`performance_paused_memory_mapping_summary`, so active, paused, and
+fullscreen-resumed memory regressions can be traced to driver mappings, heap,
+anonymous allocations, or GTK/GStreamer libraries from the same validation
+report.
 When available, `samples.csv` also includes `gpu_busy_percent_avg`,
 `gpu_busy_percent_max`, and `gpu_busy_sources` from DRM sysfs
 `gpu_busy_percent` or `nvidia-smi`. These fields are optional and may be empty
-on drivers that do not expose a simple busy counter.
+on drivers that do not expose a simple busy counter. On NVIDIA systems where
+`nvidia-smi` exposes the process table, `samples.csv` also records
+`nvidia_process_gpu_memory_mib`, and `summary.txt` reports
+`first/avg/last/max_nvidia_process_gpu_memory_mib`.
 `telemetry-summary.txt` separately reports `daemon_gpu_busy_samples`,
 `daemon_avg_gpu_busy_percent`, `daemon_max_gpu_busy_percent`, and
 `daemon_gpu_busy_sources_latest` when adaptive monitoring captured GPU busy from
@@ -744,15 +788,20 @@ full size and is not private usage. Use
 `--expect-max-uss-kib-at-most <kib>`,
 `--expect-max-private-kib-at-most <kib>`, and
 `--expect-max-pss-kib-at-most <kib>` to turn those budgets into hard sampling
-gates. `--expect-max-rss-kib-at-most <kib>` and
+gates. Use `--expect-max-private-dirty-kib-at-most <kib>` when the regression
+budget should align with desktop monitors that show a small application-memory
+number close to `Private_Dirty`. On NVIDIA hosts, use
+`--expect-max-nvidia-process-gpu-memory-mib-at-most <mib>` to fail samples that
+retain too much process GPU memory in `nvidia-smi`. `--expect-max-rss-kib-at-most <kib>` and
 `--expect-max-shared-kib-at-most <kib>` are also available for broader
 auditing, but they should not be used as the only private-footprint signal.
-The PSS/USS/private/shared gates require readable Linux
-`/proc/<pid>/smaps_rollup` data; if that data is missing, the sampler reports
-the expectation as unmet instead of treating zeroes as a valid pass.
+The PSS/USS/private/shared/Private_Dirty gates require readable Linux
+`/proc/<pid>/smaps_rollup` data; NVIDIA process GPU memory gates require a
+matching `nvidia-smi` process row. If required data is missing, the sampler
+reports the expectation as unmet instead of treating zeroes as a valid pass.
 `summary.txt` also records `first_*_kib`, `last_*_kib`,
-`retained_*_delta_kib`, and `peak_over_first_*_kib` for RSS, PSS, private,
-USS, and shared memory. Retained delta is the last sample minus the first
+`retained_*_delta_kib`, and `peak_over_first_*_kib` for RSS, PSS,
+private-clean, private-dirty, private/USS, and shared memory. Retained delta is the last sample minus the first
 sample and is the quickest way to spot memory that remains after a paused,
 hidden, fullscreen, or fullscreen-resumed sampling window. Peak-over-first is
 kept separate so transient decode/GTK allocation spikes are not confused with
@@ -768,6 +817,10 @@ private-footprint budgets into gates in desktop policy and Wayland smoke runs.
 and `wayland-video-surface-smoke.sh` includes the process memory and renderer
 telemetry summaries in `validation-report.txt` for active, paused, and
 fullscreen-resumed performance directories.
+`wayland-baseline-matrix.sh` carries private-clean, Private_Dirty, and NVIDIA
+process GPU memory summary keys into `baseline.csv`, so budget rows can use
+metrics such as `max_private_dirty_kib`, `retained_private_dirty_delta_kib`,
+and `max_nvidia_process_gpu_memory_mib` when the host supports them.
 
 Current local release measurements for the generated 720p/30fps H.264 video
 wallpaper are hardware- and driver-specific, but they define the latest
@@ -786,26 +839,49 @@ may still copy frames through CPU memory instead of preserving a GPU/DMABuf
 path to presentation.
 
 Current local stress measurements for the next T0 optimization target were
-captured on 2026-06-19 in a real Wayland/niri session with a 20-logical-CPU
-host and NVIDIA H.264 hardware decode. Treat these as machine-specific pressure
-baselines, not portable budgets:
+captured on 2026-06-19 and 2026-06-20 in a real Wayland/niri session with a
+20-logical-CPU host and NVIDIA H.264 hardware decode. Treat these as
+machine-specific pressure baselines, not portable budgets:
 
 | Scenario | Decoder / path | CPU | Process memory | GPU memory | Runtime evidence |
 | --- | --- | ---: | ---: | ---: | --- |
-| 4K/240fps H.264 active GTK video surface, 20s sample, direct sink | `nvh264dec`, `gtk4paintablesink` | 83.39% process CPU, about 4.2% whole-machine CPU | `ps` RSS 454868 KiB; PSS 389957 KiB; private/USS 355784 KiB | 496 MiB | `auto`, `not-applicable`, `actual_decoders=nvh264dec`, `zero_copy_evidence=hardware-decode`, QoS observed |
+| Generated H.264 Wayland smoke, 5s sample, direct sink | `nvh264dec`, `gtk4paintablesink` | 10.18% process CPU | `ps` RSS 357632 KiB; PSS 293459 KiB; private/USS 260544 KiB; `Private_Dirty` 94652 KiB | 108 MiB | `actual_decoders=nvh264dec`, `formats=NV12`, `sink_formats=NV12`, `caps_sources=caps-event|current|observer-initial|sticky`, `zero_copy_evidence=sink-gpu-memory-caps`, `memory_path=sink-gpu-memory` |
+| 4K/240fps H.264 generated loop, 6s sample, direct sink | `nvh264dec`, `gtk4paintablesink` | 45.45% process CPU, about 2.3% whole-machine CPU | `ps` RSS 458616 KiB; PSS 418115 KiB; private/USS 403768 KiB; `Private_Dirty` 115156 KiB | 472 MiB | `actual_decoders=nvh264dec`, `formats=NV12`, `sink_formats=NV12`, `caps_sources=caps-event|current|observer-initial|sticky`, `zero_copy_evidence=sink-gpu-memory-caps`, `memory_path=sink-gpu-memory`, QoS dropped max 876 buffers under 60fps limiter |
+| 4K/240fps H.264 active GTK video surface, 6s guardrail sample, direct sink | `nvh264dec`, `gtk4paintablesink` | 75.52% process CPU, about 3.8% whole-machine CPU | `ps` RSS 452644 KiB; PSS 387821 KiB; private/USS 353660 KiB; `Private_Dirty` 109220 KiB | 496 MiB | `auto`, `not-applicable`, `actual_decoders=nvh264dec`, `zero_copy_evidence=hardware-decode`, QoS observed |
 | 4K/240fps H.264 active GTK video surface, 20s sample, GL wrapper | `nvh264dec`, `glsinkbin+gtk4paintablesink` | 125.30% process CPU, about 6.3% whole-machine CPU | `ps` RSS 726488 KiB; PSS 661483 KiB; private/USS 627164 KiB | 689 MiB | `auto`, `not-applicable`, `actual_decoders=nvh264dec`, `zero_copy_evidence=hardware-decode`, QoS observed |
 | 8K static image, interactive observation | GTK static image path | about 0% whole-machine CPU | about 93 MiB in the user's monitor | n/a | static path remained visually idle |
 
+The older 4K rows were captured before runtime caps-event observer evidence was
+available, so their `hardware-decode` level should be read as "sink-side caps
+not yet observed", not as proof that the current runtime path lacks GPU memory
+caps. The 2026-06-20 4K generated-loop row supersedes that specific evidence
+gap for GStreamer/GTK sink-side caps, while compositor presentation feedback is
+still a separate TODO.
+
 For CPU reporting, keep both process and whole-machine-normalized numbers. Linux
 process CPU treats one logical CPU as 100%, so divide process CPU by logical CPU
-count when comparing whole-machine pressure. For memory reporting, do not compare monitor
-memory, RSS, PSS, private/USS, and GPU memory as if they were the same metric:
-RSS includes shared mappings at full size, PSS apportions shared mappings, and
-private/USS is the process-unique footprint. The T0 target is to push the
-4K/240fps path from "hardware decode is confirmed" to a top-tier presentation
-path: lower process CPU toward <= 120% on this host, lower PSS/private and GPU
-memory, and raise zero-copy evidence from `hardware-decode` to sink-side
-GLMemory/DMABuf plus compositor presentation evidence.
+count when comparing whole-machine pressure. For memory reporting, do not compare
+monitor memory, `Private_Dirty`, RSS, PSS, private/USS, and GPU memory as if
+they were the same metric: RSS includes shared mappings at full size, PSS
+apportions shared mappings, private/USS is the process-unique footprint, and
+`Private_Dirty` is the closest sampled kernel metric to the small app-memory
+number shown by many desktop monitors. The practical T0 target for 4K/240fps is
+now met on the local NVIDIA/niri path with direct `gtk4paintablesink`; runtime
+evidence has reached sink-side GPU memory caps, and the next enhancement target
+is adding DMABuf/compositor presentation proof before calling the path full
+zero-copy.
+
+For this host, the first executable 4K/240 active direct-sink guardrail should
+use CPU <= 120% process CPU, PSS <= 460800 KiB, USS/private <= 430080 KiB,
+`Private_Dirty` <= 163840 KiB, and NVIDIA process GPU memory <= 550 MiB. The
+`Private_Dirty` and NVIDIA caps are intentionally above the observed
+109220 KiB / 496 MiB peak to leave short-run variance while still catching a
+regression back toward the `glsinkbin` memory profile. For non-NVIDIA hosts,
+omit the NVIDIA process GPU memory expectation and keep the smaps-backed
+process budgets.
+The follow-up experiment order for zero-copy, YUV/NV12 preservation, queue
+gradients, and fullscreen/game auto-suspend is tracked in
+`docs/m8-video-optimization-plan.md`.
 
 Pass `--pid`, `--socket`, or `--gilderctl` when testing an isolated daemon such
 as the Wayland surface smoke script. The CSV, summaries, and raw status files

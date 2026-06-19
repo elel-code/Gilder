@@ -191,8 +191,8 @@ GTK/GStreamer 低内存渲染方向：
   phase signal、FPS/refresh_info 和 GDK `FrameTimings` 查询。需要完整 presentation 证据时，
   启动 daemon 前设置 `GILDER_GTK_VIDEO_FRAME_STATS=full`；需要最大化性能排查时可设置为
   `off` 完全关闭这组 GTK frame-clock 诊断。
-- GStreamer video pipeline 会在 `playbin` 子元素创建时把 queue/queue2 这类内部队列压到
-  8 buffers、50ms、byte 上限关闭，用小时间/帧数窗口约束 4K/高刷视频的中间缓冲，而不是让
+- GStreamer video pipeline 会在 `playbin` 子元素创建时把 queue/queue2/multiqueue 这类内部队列压到
+  4 buffers、25ms、byte 上限关闭，用小时间/帧数窗口约束 4K/高刷视频的中间缓冲，而不是让
   默认 1-2s 队列在 raw/GL 帧路径上放大 PSS/USS/GPU memory。该调优不默认开启 leaky/drop；
   下游跟不上时先让上游背压，避免为了省内存破坏关键帧解码稳定性。runtime diagnostics 会报告
   `queue_reports`，用于把 queue current level 和 PSS/显存采样对齐。
@@ -209,12 +209,14 @@ GTK/GStreamer 低内存渲染方向：
 
 当前技术栈冲击顶级性能的判断：
 
-- GTK + GStreamer + `gtk4paintablesink` + `glsinkbin` 仍是下一阶段的主线。它已经能把
+- GTK + GStreamer + direct `gtk4paintablesink` 仍是下一阶段的主线。它已经能把
   视频解码、GTK layer-shell surface、生命周期释放、decoder/caps/allocation 诊断和性能
   策略放在同一套 runtime 中，工程复杂度和可维护性明显低于自写 Wayland/GL sink。
 - 这条栈可以做到“壁纸软件顶级”：静态 8K 路径应保持 CPU 接近 0、低私有内存；4K/240fps
-  视频路径应在硬解满足的基础上，把进程 CPU 从当前约 193-205% 降到 <= 120%，并把
-  sink-side GLMemory/DMABuf、allocation pool、compositor presentation 证据纳入回归门槛。
+  视频路径在 NVIDIA/niri 20 逻辑 CPU 本机样本中已降到约 75% 进程 CPU、约 3.8% 整机 CPU，
+  `Private_Dirty` 约 109MiB、PSS/USS/显存约 390/356MiB/496MiB。后续增强应把
+  sink-side GLMemory/DMABuf、allocation pool、compositor presentation 证据纳入回归门槛，
+  而不是再把优化前的 `glsinkbin` high-memory 路径当作默认目标。
 - 这条栈不保证天然达到“播放器/渲染引擎极限”。如果 GTK/GDK/GSK 或
   `gtk4paintablesink` 在目标驱动/合成器上无法稳定暴露 sink-side GLMemory/DMABuf，或者
   presentation/frame pacing 仍高于预算，就需要评估更低层方案：自定义 GStreamer sink、
