@@ -161,6 +161,8 @@ GTK/GStreamer 低内存渲染方向：
   `gtk4paintablesink`、GDK/GSK texture、GStreamer allocator 和 buffer pool 生命周期：
   定位是否存在 CPU-side raw frame、poster/static texture、buffer pool 或 paintable 对最近帧的
   额外保留；优先通过运行时证据和小步重构减少保留，而不是只调高内存预算。
+- decoder/caps/allocation/memory path 诊断按 video runtime 缓存并低频刷新；GTK 50ms 主循环仍可更新
+  QoS、frame clock 和播放位置，但不会在每个 tick 反复遍历 pipeline 或发 allocation query。
 - 静态图路径也要审计 GTK CSS background 的解码/texture 保留行为。大图已有输出尺寸级
   缓存，但 renderer 侧仍应确认 CSS provider 移除后旧 texture 是否及时释放；必要时改为
   更可控的 `GdkTexture`/`gtk::Picture` surface，并把保留资源纳入 telemetry。

@@ -369,6 +369,10 @@ These reports are
 environment-dependent, but when present they are the right evidence for
 debugging `gtk4paintablesink`, allocator choice, buffer-pool sizing, and
 whether a DMABuf/GLMemory path is actually being negotiated.
+Decoder/caps/allocation/memory-path diagnostics are cached per video runtime and
+refreshed at a lower cadence than GTK frame-clock or playback-position fields.
+This keeps validation evidence available without making every GTK tick or
+status poll traverse the GStreamer pipeline and send allocation queries.
 `renderer_runtime.video_pipelines[]` also reports `position_ms`, `duration_ms`,
 `frame_limiter_enabled`, `frame_limiter_max_fps`, and `frame_stats`.
 `frame_stats` accumulates GStreamer QoS messages observed during bus polling,
