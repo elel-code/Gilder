@@ -515,6 +515,15 @@ and
 `--expect-render-sync-package-cache-retained-unique-resource-bytes-latest-at-most <bytes>`
 to set upper bounds for resources still referenced by retained package-cache
 entries.
+Use
+`--expect-renderer-video-pipeline-source-references-latest-at-most <count>`,
+`--expect-renderer-video-pipeline-source-reference-bytes-latest-at-most <bytes>`,
+`--expect-renderer-video-pipeline-unique-sources-latest-at-most <count>`, and
+`--expect-renderer-video-pipeline-unique-source-bytes-latest-at-most <bytes>`
+to set runtime video-source footprint gates. These are useful for active,
+paused, hidden, fullscreen, and resumed samples where the process memory
+budget should be checked alongside proof that renderer video pipelines no
+longer hold source references.
 The sampler also writes `video-runtime.csv`, which records each sample's
 decoder policy status, actual decoder classes, caps report count, all memory
 features, sink-side memory features, zero-copy evidence level, playback
