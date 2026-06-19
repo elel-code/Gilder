@@ -192,7 +192,11 @@ from `performance-snapshot.sh`: `--expect-decoder-policy-status`,
 `--expect-zero-copy-evidence-at-least`, `--expect-video-position-progress`,
 `--expect-gtk-frame-clock`,
 `--expect-gtk-frame-clock-phase before-paint|update|layout|paint|after-paint|all`,
-and `--expect-gtk-frame-timings`. It also forwards process memory budget gates:
+`--expect-gtk-frame-timings`, and the memory-retention gates
+`--expect-memory-retention-level-at-most`,
+`--expect-memory-retention-system-pools-at-most`,
+`--expect-memory-retention-min-pool-bytes-at-most`, and
+`--expect-memory-retention-sink-frame-retention`. It also forwards process memory budget gates:
 `--expect-max-rss-kib-at-most`, `--expect-max-pss-kib-at-most`,
 `--expect-max-private-kib-at-most`, `--expect-max-uss-kib-at-most`, and
 `--expect-max-shared-kib-at-most`, plus planned image-resource byte gates
@@ -618,7 +622,7 @@ selected sink element, and GTK frame clock phase counters. It also writes
 `video_zero_copy_evidence.<level>` counts, `video_memory_path_latest`,
 `video_memory_path.<level>` counts, `video_allocation_report_count_max`, latest
 allocation pool/allocator summaries, `video_memory_retention_level_latest`,
-`video_memory_retention_estimated_min_pool_bytes_max`,
+`video_memory_retention_rows`, `video_memory_retention_estimated_min_pool_bytes_max`,
 `video_memory_retention_system_memory_pool_reports_max`,
 `video_memory_retention_sink_frame_retention_latest`, `video_position_moving_outputs`,
 `video_position_delta_ms_max`, `video_frame_limiter_enabled_rows`, limiter FPS min/max,
@@ -659,6 +663,15 @@ sample window and that the runtime frame limiter is active at the expected cap.
 Position progress is measured as the largest minus smallest observed position
 per output, so a looping video that wraps near the end of the sample window is
 still counted as moving.
+Use `--expect-memory-retention-level-at-most <unknown|low|medium|high>` to fail
+when the worst sampled `retention_report.level` is above the selected risk
+level. Use `--expect-memory-retention-system-pools-at-most <count>`,
+`--expect-memory-retention-min-pool-bytes-at-most <bytes>`, and
+`--expect-memory-retention-sink-frame-retention <state>` to gate system-memory
+allocation pools, minimum buffer-pool capacity, and sink last-sample/preroll
+retention. These checks make retained-frame and buffer-pool risk visible next to
+PSS/USS/private deltas; they are still runtime evidence, not direct proof of
+actual resident memory.
 Use `--expect-video-qos` to require at least one QoS message and
 `--expect-qos-dropped-max-at-most <count>` to fail runs where the observed QoS
 dropped counter exceeds the selected threshold.
