@@ -170,7 +170,8 @@ GTK/GStreamer 低内存渲染方向：
 - 静态图普通 fit 已从 CSS background 改为显式 `gtk::Picture` surface，切到视频、
   移除输出或换帧时会从 GTK 容器移除 Picture 引用；`tile` 仍保留 CSS background
   fallback。大图已有输出尺寸级缓存，后续还要继续确认 GDK/GSK decoded texture
-  生命周期，并把 retained texture 线索纳入 telemetry。
+  生命周期。telemetry 已拆分 static Picture/CSS/color surface 数，并按 Picture
+  paintable intrinsic size 估算 RGBA decoded footprint，作为 retained texture 风险线索。
 
 轻量动态壁纸：
 
@@ -267,7 +268,7 @@ GTK/GStreamer 低内存渲染方向：
 `status.telemetry` 会暴露桌面刷新、read 请求快照复用、桌面变化和 `render_sync`
 缓存 hit/miss 计数、单次 render sync 的 package/archive cache 统计、archive cache
 淘汰计数、静态大图运行时降采样缓存的生成/复用/淘汰计数、计划层静态图/poster/slideshow 图片资源数量和源文件字节 footprint、计划层视频 source 引用/去重/重复候选、GTK renderer
-当前 static surface/slideshow surface/video pipeline 指向的源资源引用数、去重资源数和字节 footprint，以及渲染器同步更新
+当前 static surface/slideshow surface/video pipeline 指向的源资源引用数、去重资源数和字节 footprint、static surface 类型计数、估算 decoded footprint，以及渲染器同步更新
 queued/skipped 计数。计划层和 renderer 源文件字节不是解码后的纹理内存或 USS，但能在性能采样中暴露
 大图、大 poster、slideshow 图片或视频源是否仍被计划引用或被 GTK surface/pipeline 持有，便于用性能采样证明确实没有因为轮询
 反复调用 compositor 适配器、重复生成渲染计划、无限保留旧 `.gwp` 解包缓存、GTK surface 残留或重复投递未变化的同步。

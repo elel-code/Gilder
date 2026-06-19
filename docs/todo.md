@@ -253,8 +253,9 @@
 - [x] 为视频 runtime 增加 allocator/buffer-pool/caps 路径诊断，区分硬解后仍落到 CPU raw frame、decoder 侧 GPU memory、sink-side GPU memory 和 DMABuf/GLMemory runtime surface 线索。
 - [x] 将视频 runtime 的 decoder/caps/allocation/memory path 诊断改为每 runtime 低频缓存刷新，避免 GTK 50ms tick 或状态轮询持续遍历 GStreamer pipeline 和发 allocation query。
 - [x] GTK 静态图普通 fit 从 CSS background-image 改为显式 `gtk::Picture` surface，切到视频、移除输出或换帧时释放 Picture 引用；`tile` 保留 CSS fallback。
+- [x] GTK renderer telemetry 拆分 static Picture/CSS/color surface，并按 Picture paintable intrinsic size 报告估算 decoded footprint，作为 retained texture 风险线索。
 - [ ] 基于 `memory_path` 和 `allocation_reports` 定向研究 `gtk4paintablesink`、GDK/GSK texture、GStreamer allocator/buffer-pool 的低内存路径，优先减少 CPU-side frame 和重复 texture 保留。
-- [ ] 继续审计 GTK 静态图 surface：确认 `gtk::Picture`/GDK/GSK decoded texture 生命周期，并加入 retained texture 线索。
+- [ ] 继续审计 GTK 静态图 surface：确认 `gtk::Picture`/GDK/GSK decoded texture 生命周期，并把估算 decoded footprint 与真实 PSS/USS/private delta 对齐。
 - [x] 扩展 adaptive monitor，让用户可选按 CPU/GPU/内存压力、电池、温度、session/output 状态自动降 FPS、暂停动态壁纸或释放资源。
 - [x] 为 adaptive 行为加入保守默认值、冷却时间、恢复条件和 status/watch 可解释报告，避免自动化策略不可预期。
 
