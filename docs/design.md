@@ -97,16 +97,17 @@ PSI、thermal、power_supply 和 DRM 采样。
 - 在包加载时读取尺寸和色彩信息，按输出选择最接近的 variant。
 - 渲染层只处理 fit/crop/tile/solid background，不在热路径做重复解码。
 - `gtk-renderer` feature 使用 GTK 4 与 gtk4-layer-shell 创建 background layer
-  窗口，并通过 CSS background 映射 `cover`、`contain`、`stretch`、`tile`、
-  `center`。启用该 feature 时，daemon 在主线程运行 GTK application，IPC accept
-  loop 在后台线程运行，状态变更会通过同步队列投递到 GTK 主线程。
+  窗口。普通静态图使用 `gtk::Picture` 映射 `cover`、`contain`、`stretch` 和
+  `center`，只在 `tile` 这种 Picture 不直接支持的模式退回 CSS background。启用该
+  feature 时，daemon 在主线程运行 GTK application，IPC accept loop 在后台线程运行，
+  状态变更会通过同步队列投递到 GTK 主线程。
 - daemon 会为当前 desktop snapshot 和持久化状态生成 `render_sync`，列出每个
   输出的静态渲染计划、需要移除的输出和加载错误。`.gwp` 会在计划阶段解包到
   `$XDG_CACHE_HOME/gilder/render-cache/`，GTK 主循环会消费这些计划，为匹配到的
   GDK monitor 创建或更新 background layer 窗口，并关闭 removals、加载错误和
   当前快照中已经消失的输出窗口。
 - GTK 静态渲染器会记住每个输出上次应用的静态 plan；当 source、fit、background
-  和输出名都未变化时，后续同步不会重复移除/创建 CSS provider 或重新加载 CSS。
+  和输出名都未变化时，后续同步不会重复移除/创建 Picture 或 CSS fallback surface。
 
 视频壁纸：
 
@@ -116,7 +117,7 @@ PSI、thermal、power_supply 和 DRM 采样。
 - 如果 video entry 提供 poster，或 manifest 的 `preview.poster` 可用，daemon 会同时
   生成一条静态 poster plan；`gtk-renderer` 可以先把它显示在 background layer，
   作为视频 sink 接入前以及加载失败时的占位画面。视频 pipeline 成功接管输出后，
-  GTK renderer 会释放实际 static CSS surface，但保留 poster plan 作为错误 fallback。
+  GTK renderer 会释放实际 static surface，但保留 poster plan 作为错误 fallback。
 - 同时启用 `gtk-renderer` 和 `video-renderer` 时，GTK 主线程会尝试为每个
   video plan 构建 `playbin + gtk4paintablesink`，把 GStreamer 提供的
   `GdkPaintable` 放入对应输出的 layer-shell background window；poster 仍作为加载
@@ -166,9 +167,10 @@ GTK/GStreamer 低内存渲染方向：
 - GTK renderer tick 会按当前负载动态调度：存在视频 runtime 时保持 50ms，用于 bus、QoS、
   frame clock 和播放位置；纯静态空闲或长间隔 slideshow 会退到最长 250ms，并且只在收到新
   render sync、slideshow 实际换帧或存在视频 runtime 时写入 renderer runtime snapshot。
-- 静态图路径也要审计 GTK CSS background 的解码/texture 保留行为。大图已有输出尺寸级
-  缓存，但 renderer 侧仍应确认 CSS provider 移除后旧 texture 是否及时释放；必要时改为
-  更可控的 `GdkTexture`/`gtk::Picture` surface，并把保留资源纳入 telemetry。
+- 静态图普通 fit 已从 CSS background 改为显式 `gtk::Picture` surface，切到视频、
+  移除输出或换帧时会从 GTK 容器移除 Picture 引用；`tile` 仍保留 CSS background
+  fallback。大图已有输出尺寸级缓存，后续还要继续确认 GDK/GSK decoded texture
+  生命周期，并把 retained texture 线索纳入 telemetry。
 
 轻量动态壁纸：
 
@@ -265,7 +267,7 @@ GTK/GStreamer 低内存渲染方向：
 `status.telemetry` 会暴露桌面刷新、read 请求快照复用、桌面变化和 `render_sync`
 缓存 hit/miss 计数、单次 render sync 的 package/archive cache 统计、archive cache
 淘汰计数、静态大图运行时降采样缓存的生成/复用/淘汰计数、计划层静态图/poster/slideshow 图片资源数量和源文件字节 footprint、计划层视频 source 引用/去重/重复候选、GTK renderer
-当前 static CSS provider/slideshow surface/video pipeline 指向的源资源引用数、去重资源数和字节 footprint，以及渲染器同步更新
+当前 static surface/slideshow surface/video pipeline 指向的源资源引用数、去重资源数和字节 footprint，以及渲染器同步更新
 queued/skipped 计数。计划层和 renderer 源文件字节不是解码后的纹理内存或 USS，但能在性能采样中暴露
 大图、大 poster、slideshow 图片或视频源是否仍被计划引用或被 GTK surface/pipeline 持有，便于用性能采样证明确实没有因为轮询
 反复调用 compositor 适配器、重复生成渲染计划、无限保留旧 `.gwp` 解包缓存、GTK surface 残留或重复投递未变化的同步。

@@ -83,7 +83,7 @@
 - [x] 实现 max_fps 或 pipeline throttling。
 - [x] 实现 slideshow 普通动态壁纸运行计划和 GTK 定时切换。
 - [x] 避免重复 render sync 对视频 pipeline 反复设置未变化的 state、mute、fit、限帧和 start offset。
-- [x] 避免重复 render sync 对 GTK 静态窗口反复重建 CSS provider。
+- [x] 避免重复 render sync 对 GTK 静态窗口反复重建 Picture/CSS fallback surface。
 - [x] 避免 GTK 初始同步和 IPC 状态变更把未变化的 render sync 重复投递给渲染器。
 - [x] 为 daemon status/watch 路径缓存未变化的 render sync，减少性能采样时的重复 manifest IO。
 - [x] render sync 缓存只跟踪渲染相关 state，避免 properties set/get 造成无意义重算。
@@ -221,13 +221,13 @@
 - [x] 在 status/watch、telemetry CSV、性能采样、desktop smoke 和 Wayland baseline 中报告 package cache retained manifest 资源引用数/去重数与源文件字节 footprint，并支持预算门槛。
 - [x] 在 status/watch、telemetry CSV、性能采样、desktop smoke 和 Wayland baseline 中拆分 package cache retained preview thumbnail/poster 资源引用数、去重数和源文件字节 footprint，并支持预算门槛。
 - [x] 在 telemetry CSV、性能采样 summary、desktop smoke 和 Wayland baseline 中报告 package cache 去重源资源 byte 上限，便于 retained footprint 与预算同表对比。
-- [x] 在 GTK renderer telemetry、status/CSV、性能采样、desktop smoke 和 Wayland baseline 中报告当前 static CSS provider/slideshow surface 源资源引用数与字节 footprint，并支持预算门槛。
+- [x] 在 GTK renderer telemetry、status/CSV、性能采样、desktop smoke 和 Wayland baseline 中报告当前 static surface/slideshow surface 源资源引用数与字节 footprint，并支持预算门槛。
 - [x] 在 GTK renderer telemetry、status/CSV、性能采样、desktop smoke 和 Wayland baseline 中报告当前 static/slideshow surface 去重源资源数与去重字节 footprint，并支持预算门槛。
 - [x] 在 GTK/headless renderer telemetry、status/CSV、性能采样、desktop smoke 和 Wayland baseline 中报告当前 video pipeline 源文件引用数、去重数与字节 footprint，作为运行时视频资源释放和同源 pipeline 共享优化的证据。
 - [x] 为 GTK renderer static/slideshow source footprint 计算添加 headless 单元测试，避免后续内存预算依赖的 renderer 残留资源指标回归。
 - [x] 在 headless desktop policy smoke 中按场景断言 planned image resource footprint：renderable 静态场景最多 1，fullscreen/hidden/session/adaptive removal 场景必须为 0。
 - [x] 在真实 Wayland 视频 smoke 中把 planned image resource footprint 纳入 lifecycle gate：active/resumed 视频最多每输出 1 个 poster 引用，paused/hidden/fullscreen/session removal 必须为 0。
-- [x] GTK video surface 成功接管输出后释放 poster/static CSS provider，并在 Wayland video lifecycle gate 中要求 active/resumed 最新 static/slideshow surface 为 0。
+- [x] GTK video surface 成功接管输出后释放 poster/static surface，并在 Wayland video lifecycle gate 中要求 active/resumed 最新 static/slideshow surface 为 0。
 - [x] performance snapshot 和 headless desktop policy smoke 支持断言 renderer video pipeline source footprint，便于验证 paused/hidden/fullscreen 后运行时视频 source 是否释放。
 - [x] Wayland video surface lifecycle gate 自动断言 runtime video pipeline source footprint：active/resumed 按输出数设上限，paused/hidden/fullscreen/session removal 必须为 0。
 - [x] GTK/video renderer 在无 FPS 上限时不创建 `videorate`/`capsfilter` frame limiter，减少默认 active 视频 pipeline 的常驻 GStreamer element。
@@ -252,8 +252,9 @@
 - [x] 重构 GTK 视频 runtime：按兼容 source/loop/audio/decoder/start-offset/FPS key 共享 GStreamer pipeline 和 `GdkPaintable`，每个输出只保留独立 `gtk::Picture`、fit 和 frame-clock 统计，并在 status/CSV telemetry 中报告 `video_shared_runtimes`。
 - [x] 为视频 runtime 增加 allocator/buffer-pool/caps 路径诊断，区分硬解后仍落到 CPU raw frame、decoder 侧 GPU memory、sink-side GPU memory 和 DMABuf/GLMemory runtime surface 线索。
 - [x] 将视频 runtime 的 decoder/caps/allocation/memory path 诊断改为每 runtime 低频缓存刷新，避免 GTK 50ms tick 或状态轮询持续遍历 GStreamer pipeline 和发 allocation query。
+- [x] GTK 静态图普通 fit 从 CSS background-image 改为显式 `gtk::Picture` surface，切到视频、移除输出或换帧时释放 Picture 引用；`tile` 保留 CSS fallback。
 - [ ] 基于 `memory_path` 和 `allocation_reports` 定向研究 `gtk4paintablesink`、GDK/GSK texture、GStreamer allocator/buffer-pool 的低内存路径，优先减少 CPU-side frame 和重复 texture 保留。
-- [ ] 审计 GTK 静态图 surface：确认 CSS provider 移除后的 decoded texture 生命周期，必要时改为更可控的 `GdkTexture`/`gtk::Picture` 路径并加入 retained texture 线索。
+- [ ] 继续审计 GTK 静态图 surface：确认 `gtk::Picture`/GDK/GSK decoded texture 生命周期，并加入 retained texture 线索。
 - [x] 扩展 adaptive monitor，让用户可选按 CPU/GPU/内存压力、电池、温度、session/output 状态自动降 FPS、暂停动态壁纸或释放资源。
 - [x] 为 adaptive 行为加入保守默认值、冷却时间、恢复条件和 status/watch 可解释报告，避免自动化策略不可预期。
 
