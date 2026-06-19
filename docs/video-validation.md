@@ -559,8 +559,9 @@ zero planned video source references and bytes. Renderable video
 windows are allowed at most one planned poster reference per selected output
 and one unique planned poster resource for the generated smoke wallpaper; that
 planned poster is an error fallback and should not imply retained GTK
-static-surface memory during active playback. This gate uses daemon telemetry
-and complements
+static-surface memory during active playback. GTK video rendering now loads that
+poster only after video pipeline failure, not before normal active playback.
+This gate uses daemon telemetry and complements
 `--require-video-runtime-row`, which only proves that an active phase exposed a
 live per-output runtime row. Use
 `--expect-render-sync-planned-image-resource-references-latest-at-most <count>`

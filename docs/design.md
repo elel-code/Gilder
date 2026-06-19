@@ -157,6 +157,11 @@ GTK/GStreamer 低内存渲染方向：
   最后一个输出释放时才把 pipeline 置为 `Null`。`renderer_runtime` 和 telemetry 会报告
   `video_shared_runtimes`，用于区分 video surface 数和实际共享 GStreamer runtime 数。
   这能同时降低多输出同源视频的解码、buffer pool、sink texture 和进程私有内存占用。
+- 启用 video renderer 的构建中，视频计划不再同时生成 poster 静态 surface 计划；GTK
+  会先尝试建立视频 surface，只有 pipeline 构建失败或运行中报错时才从
+  `video_plans[].poster` 懒加载 poster fallback。这样 active/resumed 视频路径不会先解码
+  一张通常很大的 poster 再立刻释放，启动峰值 decoded texture 和私有内存会更低。未启用
+  video renderer 的构建仍保留 poster 静态 fallback，避免没有视频能力时空白。
 - 运行时已经报告 `memory_path` 和 `allocation_reports`，能区分 CPU raw frame、decoder
   侧 GPU/DMABuf、sink 侧 GPU/DMABuf，以及已响应的 allocator/buffer pool。后续继续深入
   `gtk4paintablesink`、GDK/GSK texture、GStreamer allocator 和 buffer pool 生命周期：
