@@ -166,6 +166,9 @@ repository includes `examples/wayland-memory-budget.example.csv` as a
 conservative starting point for one-output active video and lifecycle
 scenarios. Treat it as a guardrail template: update the values from your own
 `baseline.csv` once a machine-specific baseline has been accepted.
+For multi-output video runs, compare `renderer_video_surfaces_*` with
+`renderer_video_shared_runtimes_*`: compatible outputs can have multiple GTK
+video surfaces backed by one shared GStreamer runtime.
 
 The smoke is intentionally partly visual: after the script reports success,
 confirm that the selected output shows the generated moving test video. Pass

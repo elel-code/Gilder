@@ -148,12 +148,13 @@ GTK/GStreamer 低内存渲染方向：
   active 视频默认不再插入 `videorate ! capsfilter`，而是使用 sink
   `throttle-time`；muted 路径只启用 video playbin flag，并关闭 sink
   `enable-last-sample`，减少无意义的 audio/deinterlace/last-sample 常驻引用。
-- 后续 GTK renderer 应把视频运行时从单个输出对象里拆出来：对兼容的
+- GTK renderer 已把视频运行时从单个输出对象里拆出来：对兼容的
   `(source, loop, muted/audio policy, decoder policy, start offset, target FPS)` 使用一个
   共享 GStreamer pipeline 和一个共享 `GdkPaintable`，每个输出只持有自己的
   `gtk::Picture`、fit 和 frame-clock 统计。输出暂停或移除时只 detach 对应 picture；
-  最后一个输出释放时才把 pipeline 置为 `Null`。这能同时降低多输出同源视频的解码、
-  buffer pool、sink texture 和进程私有内存占用。
+  最后一个输出释放时才把 pipeline 置为 `Null`。`renderer_runtime` 和 telemetry 会报告
+  `video_shared_runtimes`，用于区分 video surface 数和实际共享 GStreamer runtime 数。
+  这能同时降低多输出同源视频的解码、buffer pool、sink texture 和进程私有内存占用。
 - 需要继续深入 `gtk4paintablesink`、GDK/GSK texture、GStreamer allocator 和 buffer pool
   生命周期：定位是否存在 CPU-side raw frame、poster/static texture、buffer pool 或
   paintable 对最近帧的额外保留；优先通过运行时证据和小步重构减少保留，而不是只调高
