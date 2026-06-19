@@ -598,7 +598,7 @@ The sampler also writes `video-runtime.csv`, which records each sample's
 decoder policy status, actual decoder classes, caps report count, all memory
 features, sink-side memory features, zero-copy evidence level, memory path,
 allocation report count, allocation pools/allocators, playback position/duration,
-actual frame limiter state, and GTK frame clock phase counters. It also writes
+actual frame limiter state, sink low-memory tuning, and GTK frame clock phase counters. It also writes
 `video-runtime-summary.txt`, including `video_zero_copy_evidence_latest`,
 `video_zero_copy_evidence.<level>` counts, `video_memory_path_latest`,
 `video_memory_path.<level>` counts, `video_allocation_report_count_max`, latest

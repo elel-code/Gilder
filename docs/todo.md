@@ -256,6 +256,7 @@
 - [x] 重构 GTK 视频 runtime：按兼容 source/loop/audio/decoder/start-offset/FPS key 共享 GStreamer pipeline 和 `GdkPaintable`，每个输出只保留独立 `gtk::Picture`、fit 和 frame-clock 统计，并在 status/CSV telemetry 中报告 `video_shared_runtimes`。
 - [x] 为视频 runtime 增加 allocator/buffer-pool/caps 路径诊断，区分硬解后仍落到 CPU raw frame、decoder 侧 GPU memory、sink-side GPU memory 和 DMABuf/GLMemory runtime surface 线索。
 - [x] 将视频 runtime 的 decoder/caps/allocation/memory path 诊断改为每 runtime 低频缓存刷新，避免 GTK 50ms tick 或状态轮询持续遍历 GStreamer pipeline 和发 allocation query。
+- [x] headless/GTK video sink 默认启用低内存 BaseSink 调优：关闭 last-sample、开启 QoS、按目标 FPS 收紧 max-lateness，并在 runtime snapshot 中报告 sink tuning。
 - [x] GTK 静态图普通 fit 从 CSS background-image 改为显式 `gtk::Picture` surface，切到视频、移除输出或换帧时释放 Picture 引用；`tile` 保留 CSS fallback。
 - [x] GTK renderer telemetry 拆分 static Picture/CSS/color surface，并按 Picture paintable intrinsic size 报告估算 decoded footprint，作为 retained texture 风险线索。
 - [x] desktop policy smoke、Wayland baseline matrix 和 Wayland video smoke 报告 static Picture/CSS/color surface 与估算 decoded footprint，并支持 headless 场景预算转发。
