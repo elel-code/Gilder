@@ -128,6 +128,19 @@ to also collect frame-clock phase counters, FPS/refresh info, and GDK frame
 timings; set to
 .B off
 to disable this GTK frame-clock diagnostic observer.
+.TP
+.B GILDER_GTK_VIDEO_SINK_CHAIN
+GTK video sink chain selection. The default
+.B auto
+mode tries
+.B glsinkbin+gtk4paintablesink
+and falls back to direct
+.B gtk4paintablesink .
+Set to
+.B gtk4
+to force direct GTK sink presentation, or
+.B glsinkbin
+to force the GL wrapper when comparing video memory and zero-copy behavior.
 .SH SEE ALSO
 .BR gilderctl (1),
 .BR gilder-convert (1)

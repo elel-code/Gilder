@@ -190,6 +190,16 @@ GTK/GStreamer 低内存渲染方向：
   phase signal、FPS/refresh_info 和 GDK `FrameTimings` 查询。需要完整 presentation 证据时，
   启动 daemon 前设置 `GILDER_GTK_VIDEO_FRAME_STATS=full`；需要最大化性能排查时可设置为
   `off` 完全关闭这组 GTK frame-clock 诊断。
+- GStreamer video pipeline 会在 `playbin` 子元素创建时把 queue/queue2 这类内部队列压到
+  8 buffers、50ms、byte 上限关闭，用小时间/帧数窗口约束 4K/高刷视频的中间缓冲，而不是让
+  默认 1-2s 队列在 raw/GL 帧路径上放大 PSS/USS/GPU memory。该调优不默认开启 leaky/drop；
+  下游跟不上时先让上游背压，避免为了省内存破坏关键帧解码稳定性。runtime diagnostics 会报告
+  `queue_reports`，用于把 queue current level 和 PSS/显存采样对齐。
+- GTK sink chain 默认仍为 `auto`：优先 `glsinkbin+gtk4paintablesink`，不可用时 direct
+  `gtk4paintablesink`。为深挖 4K/240 内存占用，可用
+  `GILDER_GTK_VIDEO_SINK_CHAIN=gtk4` 强制 direct sink，或用 `glsinkbin` 强制 GL wrapper，
+  对比同一视频下的 sink caps、queue reports、PSS/USS 和 GPU memory，判断 GL wrapper 是否引入
+  额外 texture/pool 保留。
 - 静态图普通 fit 已从 CSS background 改为显式 `gtk::Picture` surface，切到视频、
   移除输出或换帧时会从 GTK 容器移除 Picture 引用；`tile` 仍保留 CSS background
   fallback。大图已有输出尺寸级缓存，后续还要继续确认 GDK/GSK decoded texture

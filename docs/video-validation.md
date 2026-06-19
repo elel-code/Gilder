@@ -464,6 +464,14 @@ working OpenGL/DMABuf support can negotiate GLMemory/DMABuf closer to the GTK
 paintable. If the GL wrapper is unavailable, the renderer falls back to direct
 `gtk4paintablesink`. `sink_tuning.sink_element` and the CSV
 `sink_element` column report which path is active.
+Set `GILDER_GTK_VIDEO_SINK_CHAIN=gtk4` to force direct `gtk4paintablesink`, or
+`GILDER_GTK_VIDEO_SINK_CHAIN=glsinkbin` to force the GL wrapper, when comparing
+4K/high-refresh PSS, USS, GPU memory, sink caps, and queue behavior. Gilder also
+tunes `playbin` child queues for wallpaper playback: queue-like elements are
+capped at 8 buffers and 50ms, with byte caps disabled so one large 4K frame does
+not trip a small byte limit. The queue is not made leaky by default; if
+downstream cannot keep up, backpressure bounds memory before packet dropping is
+considered.
 
 ## Remaining Surface Work
 
@@ -635,6 +643,11 @@ allocation pool/allocator summaries, `video_memory_retention_level_latest`,
 clock interval/FPS summaries, `video_gtk_frame_timings_complete_max`,
 `video_sink_element_latest`, low-memory sink property summaries, and GDK
 frame timing presentation interval/time summaries.
+The same CSV appends `queue_report_count`, `queue_elements`,
+`queue_max_size_*`, and `queue_current_level_*` fields; the summary includes
+queue report count and max observed queue current-level buffers/bytes/time,
+which are useful when checking whether high PSS/USS/GPU memory correlates with
+internal GStreamer buffering.
 Phase, FPS/refresh, and GDK timing summary fields are expected to stay empty or
 zero unless the sampled daemon ran with `GILDER_GTK_VIDEO_FRAME_STATS=full`;
 `video_gtk_frame_clock_ticks_max` and after-paint ticks remain available in the
