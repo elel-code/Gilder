@@ -166,11 +166,11 @@ GTK/GStreamer 低内存渲染方向：
   `video_plans[].poster` 懒加载 poster fallback。这样 active/resumed 视频路径不会先解码
   一张通常很大的 poster 再立刻释放，启动峰值 decoded texture 和私有内存会更低。未启用
   video renderer 的构建仍保留 poster 静态 fallback，避免没有视频能力时空白。
-- 运行时已经报告 `memory_path` 和 `allocation_reports`，能区分 CPU raw frame、decoder
-  侧 GPU/DMABuf、sink 侧 GPU/DMABuf，以及已响应的 allocator/buffer pool。后续继续深入
-  `gtk4paintablesink`、GDK/GSK texture、GStreamer allocator 和 buffer pool 生命周期：
-  定位是否存在 CPU-side raw frame、poster/static texture、buffer pool 或 paintable 对最近帧的
-  额外保留；优先通过运行时证据和小步重构减少保留，而不是只调高内存预算。
+- 运行时已经报告 `memory_path`、`allocation_reports` 和 `retention_report`，能区分 CPU raw
+  frame、decoder 侧 GPU/DMABuf、sink 侧 GPU/DMABuf、已响应的 allocator/buffer pool，以及
+  system-memory pool、last-sample/preroll frame 保留等风险。后续继续用真实 PSS/USS/private
+  delta 和 compositor presentation 证据校准 `gtk4paintablesink`、GDK/GSK texture、GStreamer
+  allocator 和 buffer pool 生命周期；优先通过运行时证据和小步重构减少保留，而不是只调高内存预算。
 - decoder/caps/allocation/memory path 诊断按 video runtime 缓存并低频刷新；GTK 50ms 主循环仍可更新
   QoS、frame clock 和播放位置，但不会在每个 tick 反复遍历 pipeline 或发 allocation query。
 - GTK renderer tick 会按当前负载动态调度：存在视频 runtime 时保持 50ms，用于 bus、QoS、
@@ -181,6 +181,21 @@ GTK/GStreamer 低内存渲染方向：
   fallback。大图已有输出尺寸级缓存，后续还要继续确认 GDK/GSK decoded texture
   生命周期。telemetry 已拆分 static Picture/CSS/color surface 数，并按 Picture
   paintable intrinsic size 估算 RGBA decoded footprint，作为 retained texture 风险线索。
+
+当前技术栈冲击顶级性能的判断：
+
+- GTK + GStreamer + `gtk4paintablesink` + `glsinkbin` 仍是下一阶段的主线。它已经能把
+  视频解码、GTK layer-shell surface、生命周期释放、decoder/caps/allocation 诊断和性能
+  策略放在同一套 runtime 中，工程复杂度和可维护性明显低于自写 Wayland/GL sink。
+- 这条栈可以做到“壁纸软件顶级”：静态 8K 路径应保持 CPU 接近 0、低私有内存；4K/240fps
+  视频路径应在硬解满足的基础上，把进程 CPU 从当前约 193-205% 降到 <= 120%，并把
+  sink-side GLMemory/DMABuf、allocation pool、compositor presentation 证据纳入回归门槛。
+- 这条栈不保证天然达到“播放器/渲染引擎极限”。如果 GTK/GDK/GSK 或
+  `gtk4paintablesink` 在目标驱动/合成器上无法稳定暴露 sink-side GLMemory/DMABuf，或者
+  presentation/frame pacing 仍高于预算，就需要评估更低层方案：自定义 GStreamer sink、
+  libmpv/render API、或直接 Wayland linux-dmabuf/GL/Vulkan surface。替换栈的触发条件必须
+  来自同场景实测：硬解已满足但 sink caps 只能到 SystemMemory、PSS/private/GPU 显存无法压到
+  T0 预算、或 compositor presentation 证明长期掉帧。
 
 轻量动态壁纸：
 

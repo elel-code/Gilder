@@ -202,6 +202,27 @@
 
 ## M8: 性能、内存与 zero-copy 优化
 
+- [ ] T0: 建立 4K/240fps 硬解视频壁纸的顶级性能目标和回归门槛：一输出
+  `hardware-required` 必须实际选择硬件 decoder，当前 NVIDIA/H.264 基线为
+  `nvh264dec` + `decoder_policy_status=satisfied`；CPU 同时记录进程口径和按逻辑
+  CPU 折算的整机口径，目标从当前约 193-205% 进程 CPU、约 10% 整机 CPU 压到
+  <= 120% 进程 CPU、<= 6% 整机 CPU，stretch goal 为 <= 80% 进程 CPU、<= 4% 整机
+  CPU。所有数值必须附带逻辑 CPU 数、采样时长和同一场景的 QoS/drop 证据。
+- [ ] T0: 为 4K/240fps active GTK video surface 建立内存/显存门槛：当前本机 20s
+  压力基线约为 `ps` RSS 541MiB、`smaps_rollup` RSS 510MiB、PSS 430MiB、
+  private/USS 399MiB、NVIDIA 进程显存 689MiB，用户侧监控器观察到的应用内存约
+  160-200MiB。下一阶段目标优先把 PSS/private 与显存压低，而不是只追 RSS；候选门槛为
+  PSS <= 300MiB、private/USS <= 240MiB、GPU memory <= 450MiB，并用真实
+  Wayland/niri/Hyprland 采样校准。
+- [ ] T0: 把 4K/240fps 的 zero-copy 证据从“硬解已满足”推进到强证据：runtime CSV
+  至少达到 `sink-gpu-memory-caps`，GTK 4.14+/可用 dmabuf 构建上目标为
+  `sink-dmabuf-caps`；同时记录 `memory_path`、allocation pool、sink tuning、
+  compositor presentation/frame callback 和 GDK frame timing。只有硬解 decoder 但没有
+  sink-side GLMemory/DMABuf 时，仍按“硬解但 zero-copy 未证明”处理。
+- [ ] T0: 保持 8K 静态图路径为接近顶级基线：当前交互观察为 CPU 基本 0、应用内存约
+  93MiB；下一阶段把该场景纳入 `wayland-baseline-matrix`，要求 CPU 接近 0、PSS/private
+  与用户可见内存口径对齐，并确认 `gtk::Picture`/GDK/GSK decoded texture 生命周期不会在
+  切换、隐藏或暂停后保留超大纹理。
 - [ ] 为真实 Wayland active、paused、fullscreen、hidden、battery、unfocused 场景建立 CPU/GPU/RSS/PSS/USS/private/shared 基线表。
 - [ ] 为常见场景定义可执行的内存预算和回归阈值，优先使用 PSS、USS 和 private 占用作为判断依据。
 - [x] 提供真实 Wayland baseline matrix 采集脚本，批量运行 active/user-paused/battery/unfocused/fullscreen/hidden/session 场景并汇总 CPU/GPU/RSS/PSS/USS/private/shared、renderer resource、decoder/caps 和 timing 证据。
@@ -261,10 +282,11 @@
 - [x] 将视频 runtime 的 decoder/caps/allocation/memory path 诊断改为每 runtime 低频缓存刷新，避免 GTK 50ms tick 或状态轮询持续遍历 GStreamer pipeline 和发 allocation query。
 - [x] headless/GTK video sink 默认启用低内存 BaseSink 调优：关闭 last-sample、开启 QoS、按目标 FPS 收紧 max-lateness，并在 runtime snapshot 中报告 sink tuning。
 - [x] runtime CSV、performance summary 和 video hardware report 报告 sink element、async、last-sample、render-delay、processing-deadline 和 preroll-frame 状态，便于验证 GTK 是否进入 GL sink 低内存路径。
+- [x] GTK renderer 在 pause/remove sync 时实际释放 output window、video surface 和 GStreamer pipeline，并用 Wayland smoke 实测 active/paused RSS/PSS/USS/private 下降与 paused renderer lifecycle 归零。
 - [x] GTK 静态图普通 fit 从 CSS background-image 改为显式 `gtk::Picture` surface，切到视频、移除输出或换帧时释放 Picture 引用；`tile` 保留 CSS fallback。
 - [x] GTK renderer telemetry 拆分 static Picture/CSS/color surface，并按 Picture paintable intrinsic size 报告估算 decoded footprint，作为 retained texture 风险线索。
 - [x] desktop policy smoke、Wayland baseline matrix 和 Wayland video smoke 报告 static Picture/CSS/color surface 与估算 decoded footprint，并支持 headless 场景预算转发。
-- [ ] 基于 `memory_path` 和 `allocation_reports` 定向研究 `gtk4paintablesink`、GDK/GSK texture、GStreamer allocator/buffer-pool 的低内存路径，优先减少 CPU-side frame 和重复 texture 保留。
+- [x] 基于 `memory_path`、`allocation_reports` 和 sink tuning 输出 `retention_report`/CSV/summary/baseline 线索，定向识别 CPU-side frame、buffer pool 和 last-sample/preroll frame 保留风险。
 - [ ] 继续审计 GTK 静态图 surface：确认 `gtk::Picture`/GDK/GSK decoded texture 生命周期，并把估算 decoded footprint 与真实 PSS/USS/private delta 对齐。
 - [x] 扩展 adaptive monitor，让用户可选按 CPU/GPU/内存压力、电池、温度、session/output 状态自动降 FPS、暂停动态壁纸或释放资源。
 - [x] 为 adaptive 行为加入保守默认值、冷却时间、恢复条件和 status/watch 可解释报告，避免自动化策略不可预期。

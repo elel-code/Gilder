@@ -369,6 +369,14 @@ These reports are
 environment-dependent, but when present they are the right evidence for
 debugging `gtk4paintablesink`, allocator choice, buffer-pool sizing, and
 whether a DMABuf/GLMemory path is actually being negotiated.
+`renderer_runtime.video_pipelines[].retention_report` combines `memory_path`,
+allocation-query results, and sink tuning into an `unknown`, `low`, `medium`,
+or `high` retained-memory risk. It also reports estimated minimum and maximum
+buffer-pool capacity, system-memory/GPU/DMABuf pool counts, and whether the
+sink can retain a last-sample or preroll frame. Treat `high` as the strongest
+signal for CPU-side raw frames, system-memory pools, or retained sink frames;
+treat `medium` as "needs PSS/USS correlation", especially when GPU/DMABuf caps
+are only observed before the sink.
 Decoder/caps/allocation/memory-path diagnostics are cached per video runtime and
 refreshed at a lower cadence than GTK frame-clock or playback-position fields.
 This keeps validation evidence available without making every GTK tick or
@@ -397,7 +405,7 @@ clues than after-paint ticks, but they are still not direct Wayland
 Use `gilderctl status --video-runtime-csv --from-file <status.json>` to turn a
 saved status snapshot into compact decoder/caps/playback evidence with
 sink-side memory features, `zero_copy_evidence_level`, `memory_path_level`, and
-allocation pool/allocator summaries. The raw status JSON remains the
+allocation pool/allocator summaries plus `memory_retention_*` fields. The raw status JSON remains the
 authoritative source for full caps strings and full allocation-query details.
 
 The exact hardware decode path is left to the host GStreamer installation. The
@@ -603,12 +611,16 @@ by taking the stricter value.
 The sampler also writes `video-runtime.csv`, which records each sample's
 decoder policy status, actual decoder classes, caps report count, all memory
 features, sink-side memory features, zero-copy evidence level, memory path,
-allocation report count, allocation pools/allocators, playback position/duration,
-actual frame limiter state, sink low-memory tuning, selected sink element, and GTK frame clock phase counters. It also writes
+allocation report count, allocation pools/allocators, memory-retention risk,
+playback position/duration, actual frame limiter state, sink low-memory tuning,
+selected sink element, and GTK frame clock phase counters. It also writes
 `video-runtime-summary.txt`, including `video_zero_copy_evidence_latest`,
 `video_zero_copy_evidence.<level>` counts, `video_memory_path_latest`,
 `video_memory_path.<level>` counts, `video_allocation_report_count_max`, latest
-allocation pool/allocator summaries, `video_position_moving_outputs`,
+allocation pool/allocator summaries, `video_memory_retention_level_latest`,
+`video_memory_retention_estimated_min_pool_bytes_max`,
+`video_memory_retention_system_memory_pool_reports_max`,
+`video_memory_retention_sink_frame_retention_latest`, `video_position_moving_outputs`,
 `video_position_delta_ms_max`, `video_frame_limiter_enabled_rows`, limiter FPS min/max,
 `video_qos_messages_max`, `video_qos_dropped_max`,
 `video_gtk_frame_clock_ticks_max`, GTK frame clock phase maxima, GTK frame
@@ -731,6 +743,27 @@ this host. The GTK/Wayland path is still the main memory target: it confirms
 hardware decoding, but the sink caps only showed `memory:SystemMemory`, so it
 may still copy frames through CPU memory instead of preserving a GPU/DMABuf
 path to presentation.
+
+Current local stress measurements for the next T0 optimization target were
+captured on 2026-06-19 in a real Wayland/niri session with a 20-logical-CPU
+host and NVIDIA H.264 hardware decode. Treat these as machine-specific pressure
+baselines, not portable budgets:
+
+| Scenario | Decoder / path | CPU | Process memory | GPU memory | Runtime evidence |
+| --- | --- | ---: | ---: | ---: | --- |
+| 4K/240fps H.264 active GTK video surface, 20s sample | `nvh264dec`, `glsinkbin+gtk4paintablesink` | 193.46% process CPU, about 9.7% whole-machine CPU | `ps` RSS 554580 KiB; `smaps_rollup` RSS 522180 KiB, PSS 440293 KiB, private/USS 409108 KiB | 689 MiB | `hardware-required`, `satisfied`, `actual_decoders=nvh264dec`, `zero_copy_evidence=hardware-decode`, QoS observed |
+| 8K static image, interactive observation | GTK static image path | about 0% whole-machine CPU | about 93 MiB in the user's monitor | n/a | static path remained visually idle |
+
+For CPU reporting, keep both process and whole-machine-normalized numbers. Linux
+process CPU treats one logical CPU as 100%, so 193.46% on this 20-thread host is
+about 9.7% of total CPU capacity. For memory reporting, do not compare monitor
+memory, RSS, PSS, private/USS, and GPU memory as if they were the same metric:
+RSS includes shared mappings at full size, PSS apportions shared mappings, and
+private/USS is the process-unique footprint. The T0 target is to push the
+4K/240fps path from "hardware decode is confirmed" to a top-tier presentation
+path: lower process CPU toward <= 120% on this host, lower PSS/private and GPU
+memory, and raise zero-copy evidence from `hardware-decode` to sink-side
+GLMemory/DMABuf plus compositor presentation evidence.
 
 Pass `--pid`, `--socket`, or `--gilderctl` when testing an isolated daemon such
 as the Wayland surface smoke script. The CSV, summaries, and raw status files
