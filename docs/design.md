@@ -247,7 +247,7 @@ snapshot、cache 目录和已引用壁纸包的 JSON/TOML manifest/`.gwp` 元数
 `status`、watch snapshot 和状态事件会复用缓存，避免性能采样期间反复读取
 manifest、校验资源或解包。当前不参与渲染的 properties、adapter 开关和桌面状态刷新
 周期不会单独让缓存失效。
-单次 render sync 生成期间会用临时 package cache 复用已解析的 manifest/package，默认最多保留 16 个条目，超过后按最早插入优先淘汰；`[cache].package_cache_max_entries = 0` 会禁用该临时保留，适合希望压低 plan 构建峰值内存的用户。
+单次 render sync 生成期间会用临时 package cache 复用已解析的 manifest/package，默认最多保留 16 个条目，并且这些条目引用的去重源资源 footprint 默认最多 512MiB；超过条目数或 `package_cache_max_retained_unique_resource_bytes` 后按最早插入优先淘汰。`[cache].package_cache_max_entries = 0` 或 `[cache].package_cache_max_retained_unique_resource_bytes = 0` 会禁用该临时保留，适合希望压低 plan 构建峰值内存的用户。这里的 byte 上限基于 manifest 引用的源文件/目录大小，用作大包保留线索，不是解码纹理、GTK 内部缓存或 USS。
 `.gwp` 解包目录会写入 `$XDG_CACHE_HOME/gilder/render-cache/`，默认最多保留 32 个旧
 archive cache 条目；生成计划时当前正在使用的 archive cache 条目会被保护，其余条目按最旧优先淘汰。
 `[cache].render_cache_max_entries = 0` 表示尽量只保留当前受保护条目，适合希望 aggressive
@@ -290,6 +290,7 @@ decoder = "auto" # auto, hardware-preferred, hardware-required, software
 
 [cache]
 package_cache_max_entries = 16
+package_cache_max_retained_unique_resource_bytes = 536870912
 render_cache_max_entries = 32
 static_image_cache_max_entries = 32
 

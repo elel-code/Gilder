@@ -56,6 +56,9 @@ Render cache and unpacked wallpaper archives.
 .B [cache].package_cache_max_entries
 limits temporary manifest/package entries retained while building one render
 sync plan.
+.B [cache].package_cache_max_retained_unique_resource_bytes
+limits the unique source-resource footprint retained by that temporary
+manifest/package cache. A value of 0 disables temporary package retention.
 .B [cache].render_cache_max_entries
 limits retained unpacked
 .I .gwp
