@@ -132,7 +132,7 @@ It builds once, runs `wayland-video-surface-smoke.sh` with
 fullscreen, hidden, session-inactive, and session-locked states, and writes a
 top-level `baseline.csv`. The CSV contains CPU/GPU, RSS/PSS/private/USS/shared
 memory, retained and peak-over-first deltas, planned image-resource footprint,
-package-cache retained source-resource footprint,
+package-cache retained source-resource footprint and configured byte budget,
 renderer output/static/slideshow/video surface counts, video pipeline counts,
 decoder status, caps memory features, zero-copy evidence level, QoS, GTK frame
 clock, and GDK timing fields. Each scenario keeps the original smoke evidence
@@ -150,6 +150,7 @@ active,active,max_uss_kib,250000
 active,user-paused,retained_private_delta_kib,20480
 *,*,max_pss_kib,320000
 *,*,render_sync_package_cache_retained_unique_resource_bytes_latest,104857600
+*,*,render_sync_package_cache_max_retained_unique_resource_bytes_latest,536870912
 fullscreen,fullscreen,renderer_video_pipelines_latest,0
 ```
 

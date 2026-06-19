@@ -215,6 +215,7 @@
 - [x] 在 render sync telemetry、CSV 和性能采样汇总中报告计划层静态图、视频 poster、slideshow 图片资源 footprint，并支持 planned image resource 上限断言。
 - [x] 在 render sync telemetry、CSV、性能采样和 smoke 报告中追加计划层图片源文件字节 footprint，并支持按引用字节/去重字节设置预算门槛。
 - [x] 在 status/watch、telemetry CSV、性能采样、desktop smoke 和 Wayland baseline 中报告 package cache retained manifest 资源引用数/去重数与源文件字节 footprint，并支持预算门槛。
+- [x] 在 telemetry CSV、性能采样 summary、desktop smoke 和 Wayland baseline 中报告 package cache 去重源资源 byte 上限，便于 retained footprint 与预算同表对比。
 - [x] 在 GTK renderer telemetry、status/CSV、性能采样、desktop smoke 和 Wayland baseline 中报告当前 static CSS provider/slideshow surface 源资源引用数与字节 footprint，并支持预算门槛。
 - [x] 在 GTK renderer telemetry、status/CSV、性能采样、desktop smoke 和 Wayland baseline 中报告当前 static/slideshow surface 去重源资源数与去重字节 footprint，并支持预算门槛。
 - [x] 在 GTK/headless renderer telemetry、status/CSV、性能采样、desktop smoke 和 Wayland baseline 中报告当前 video pipeline 源文件引用数、去重数与字节 footprint，作为运行时视频资源释放和同源 pipeline 共享优化的证据。
@@ -224,6 +225,7 @@
 - [x] GTK video surface 成功接管输出后释放 poster/static CSS provider，并在 Wayland video lifecycle gate 中要求 active/resumed 最新 static/slideshow surface 为 0。
 - [x] performance snapshot 和 headless desktop policy smoke 支持断言 renderer video pipeline source footprint，便于验证 paused/hidden/fullscreen 后运行时视频 source 是否释放。
 - [x] Wayland video surface lifecycle gate 自动断言 runtime video pipeline source footprint：active/resumed 按输出数设上限，paused/hidden/fullscreen/session removal 必须为 0。
+- [x] GTK/video renderer 在无 FPS 上限时不创建 `videorate`/`capsfilter` frame limiter，减少默认 active 视频 pipeline 的常驻 GStreamer element。
 - [x] battery 性能策略支持用户可选 `pause-dynamic`，电池供电时释放 video/slideshow 资源但保留静态壁纸，并在 headless desktop policy smoke 中覆盖。
 - [x] fullscreen、unfocused、hidden 和 session 性能策略支持用户可选 `pause-dynamic`，只释放 video/slideshow 动态壁纸并保留静态壁纸，headless smoke 覆盖静态透传和 slideshow 移除。
 - [ ] 为 poster、thumbnail、manifest/package、视频 pipeline 和 GTK surface 缓存定义上限、淘汰策略和 status/watch 可见的 retained memory 线索。
