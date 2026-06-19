@@ -286,6 +286,7 @@
 - [ ] 添加音频响应壁纸能力，定义可选 PipeWire 音频采样输入和隐私/权限开关。
 - [ ] 添加时钟、系统监控、媒体信息等 Linux 桌面常见信息型壁纸组件，但默认不采集敏感信息。
 - [x] 扩展 playlist 选择策略：支持稳定 `weighted-random` 和 item `weight`，避免状态栏轮询导致随机壁纸抖动。
+- [x] 扩展 playlist 日历条件：支持本地星期 `weekdays` 条件，并让 playlist 本地 clock 按依赖维度参与 render sync cache key。
 - [ ] 继续扩展 playlist/轮播策略：按媒体/系统信息和更复杂日历条件选择壁纸，并补 Wallpaper Engine playlist 转换。
 - [x] 扩展 Wallpaper Engine 转换器，为 web/scene/shader/particle/audio 响应能力输出更细的 conversion report 和缺失能力提示。
 - [ ] 为每类新壁纸定义 manifest schema、示例包、转换测试、headless 计划测试和真实 Wayland smoke 验证入口。
