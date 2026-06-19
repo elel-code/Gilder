@@ -267,6 +267,9 @@
   `performance-snapshot.sh` 输出 `memory-mapping-categories.csv` 和
   `memory_category_<category>_private_dirty_kib` summary keys，Wayland smoke validation report
   和 baseline matrix 可直接把 anonymous、heap、nvidia-device、nvidia-library 等类别写入预算。
+- [x] T0: baseline matrix 输出 `memory-category-deltas.csv`，用 `active,active` baseline
+  自动计算 paused/fullscreen/hidden/resumed 等 phase 的分类 `Private_Dirty` delta/release，
+  让 fullscreen/game auto-suspend 是否释放 driver/heap/anonymous dirty pages 变成可直接审计的表。
 - [ ] T0: 专项压低 video active/paused/fullscreen 的 `Private_Dirty`：用
   `category_summary_by_private_dirty` 对比 active -> paused/fullscreen -> resumed，
   优先确认 `anonymous`、`heap`、driver device/library dirty pages 和 shared-memory 是否按生命周期释放。

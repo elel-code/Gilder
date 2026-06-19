@@ -830,6 +830,11 @@ process GPU memory, and selected memory category summary keys into
 `max_private_dirty_kib`, `retained_private_dirty_delta_kib`,
 `max_nvidia_process_gpu_memory_mib`, and
 `memory_category_nvidia_device_private_dirty_kib` when the host supports them.
+It also writes `memory-category-deltas.csv`, comparing every sampled
+scenario/phase against the `active,active` baseline for those category
+`Private_Dirty` metrics. Negative `delta_from_active_kib` or positive
+`release_from_active_kib` means the lifecycle state released dirty private pages
+for that category; positive delta means the category grew relative to active.
 
 Current local release measurements for the generated 720p/30fps H.264 video
 wallpaper are hardware- and driver-specific, but they define the latest
