@@ -263,6 +263,11 @@ archive cache 条目；生成计划时当前正在使用的 archive cache 条目
 `static_image_cache_max_bytes`。`[cache].static_image_cache_max_entries = 0`
 会禁用运行时静态降采样缓存；`[cache].static_image_cache_max_bytes = 0` 表示不按 byte
 总量额外淘汰，只保留条目数上限。
+scene-lite 的 time=0 静态 snapshot 会写入
+`$XDG_CACHE_HOME/gilder/scene-lite-cache/` 下的 SVG 文件，并复用同一组
+`static_image_cache_max_entries`/`static_image_cache_max_bytes` 上限和最旧优先淘汰策略。
+这些 SVG 是 scene graph 的轻量显示 surface，不是解码后的纹理内存；status telemetry
+会报告 snapshot cache 的条目数、字节数、生成、复用和淘汰计数。
 
 示例：
 
