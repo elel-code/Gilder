@@ -237,7 +237,7 @@
 - [x] 优化静态大图解码路径：转换器记录静态 raster entry 源图尺寸，render plan 在没有合适 manifest variant 且源图明显大于输出时生成受上限和淘汰管理的输出尺寸级静态缓存，避免无意义加载原始超大图。
 - [x] 为运行时静态图缓存添加 byte 上限、最旧优先淘汰、status/CSV/performance/baseline telemetry，避免输出尺寸级缓存长期增长不可见。
 - [x] performance snapshot、headless desktop smoke 和 Wayland video smoke 支持断言运行时静态图缓存 byte footprint，把静态缓存预算变成可执行回归门槛。
-- [ ] 接上更强硬解路径验证：按 codec/GPU/driver 记录实际 decoder、caps、sink caps、CPU/GPU/USS/PSS 对比。
+- [x] 接上更强硬解路径验证：按 codec/GPU/driver 记录实际 decoder、caps、sink caps、CPU/GPU/USS/PSS 对比。
 - [ ] 验证 GTK video surface 是否能保持 GPU/DMABuf 路径，区分“硬解但发生 CPU copy”和真正 zero-copy。
 - [x] performance snapshot 和 Wayland video smoke 支持 `--expect-zero-copy-evidence-at-least`，按证据强度做最低等级断言，避免更强 DMABuf/GLMemory 证据无法满足较低门槛。
 - [ ] 继续采集 compositor presentation/frame callback 统计，补足 GTK/GDK timing 之外的 compositor 侧证据。

@@ -599,6 +599,15 @@ surface path when the backend exposes them.
 These checks are evidence gates only: hardware decoder evidence and
 DMABuf/GLMemory caps should still be interpreted separately from compositor
 presentation feedback and full zero-copy proof.
+`performance-snapshot.sh` also writes `video-hardware-report.txt` next to the
+process and video-runtime summaries. That report combines the same decoder,
+caps, sink caps, zero-copy, CPU/GPU/PSS/USS/private fields with `ffprobe`
+codec metadata for each sampled video source and DRM/NVIDIA GPU driver details
+from sysfs or `nvidia-smi` when available. Wayland smoke reports link the
+active and paused hardware report paths as
+`performance_active_video_hardware_report` and
+`performance_paused_video_hardware_report`, so codec/GPU/driver comparisons can
+be attached without manually correlating separate files.
 When available, `samples.csv` also includes `gpu_busy_percent_avg`,
 `gpu_busy_percent_max`, and `gpu_busy_sources` from DRM sysfs
 `gpu_busy_percent` or `nvidia-smi`. These fields are optional and may be empty
