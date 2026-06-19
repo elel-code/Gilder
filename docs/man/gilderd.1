@@ -132,15 +132,14 @@ to disable this GTK frame-clock diagnostic observer.
 .B GILDER_GTK_VIDEO_SINK_CHAIN
 GTK video sink chain selection. The default
 .B auto
-mode tries
-.B glsinkbin+gtk4paintablesink
-and falls back to direct
+mode uses direct
 .B gtk4paintablesink .
 Set to
 .B gtk4
-to force direct GTK sink presentation, or
+to pin direct GTK sink presentation, or
 .B glsinkbin
-to force the GL wrapper when comparing video memory and zero-copy behavior.
+to force the GL wrapper when comparing video memory, GLMemory/DMABuf, and
+zero-copy behavior.
 .SH SEE ALSO
 .BR gilderctl (1),
 .BR gilder-convert (1)

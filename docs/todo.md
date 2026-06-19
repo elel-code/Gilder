@@ -260,7 +260,7 @@
 - [x] GTK/video renderer 在无 FPS 上限时不创建 `videorate`/`capsfilter` frame limiter，减少默认 active 视频 pipeline 的常驻 GStreamer element。
 - [x] GTK/headless video renderer 使用最小 `playbin` flags，muted 路径只开 video，audible 路径只开 video+audio，避免 active 视频常驻 deinterlace、soft color balance 或 soft volume 分支。
 - [x] 将 GTK/headless 视频限帧改为 sink `throttle-time`，不再把 `videorate ! capsfilter` 插入 decoder 到 sink 的协商路径，并关闭 sink `last-sample` 保留。
-- [x] GTK video surface 优先使用 `glsinkbin+gtk4paintablesink`，并关闭 async preroll、preroll frame 和 render delay，减少 CPU raw frame/readback 与 paused/preroll frame 保留风险。
+- [x] GTK video surface 默认使用 direct `gtk4paintablesink`，并关闭 async preroll、preroll frame 和 render delay；`glsinkbin+gtk4paintablesink` 保留为显式诊断路径，避免 NVIDIA/GL wrapper 在常规播放中额外保留 driver buffer 和 texture/pool。
 - [x] GTK renderer tick 按负载动态调度：video runtime 单独存在时使用 250ms 常规 polling，frame stats 按 500ms 写回最近的 runtime snapshot；slideshow 过渡仍可使用更短 tick；纯静态无动态工作不安装 renderer runtime timeout，render sync 由 GLib idle wakeup 立即消费，减少 8K static idle wakeup。
 - [x] GTK video polling 先检查 video runtime 是否存在，并让 frame stats 到期判断直接读取 runtime 计数，避免无视频空 poll 或完整 resource footprint/source size 重算。
 - [x] GTK 共享 video runtime 的 renderer snapshot 复用同一份 decoder/caps/allocation、position 和 duration 查询，再展开为逐输出 telemetry，减少同源多屏视频的 GStreamer 查询成本。
@@ -269,6 +269,7 @@
 - [x] GTK video frame-clock 诊断默认改为轻量 after-paint tick/counter/time/interval 统计；完整 phase、FPS/refresh_info 和 GDK `FrameTimings` 采样需显式设置 `GILDER_GTK_VIDEO_FRAME_STATS=full`，减少 4K/高刷视频每帧主线程诊断开销。
 - [x] GTK/headless GStreamer video pipeline 默认压低内部 queue/queue2 深度到 8 buffers/50ms，并在 runtime CSV/summary 中报告 queue max/current level，减少 4K/高刷视频中间队列保留窗口并为 PSS/USS/GPU memory 深挖提供证据。
 - [x] 增加 `GILDER_GTK_VIDEO_SINK_CHAIN=auto|gtk4|glsinkbin` 底层验证入口，用同一 4K/240 场景对比 direct `gtk4paintablesink` 与 `glsinkbin+gtk4paintablesink` 的 sink caps、queue、PSS/USS 和 GPU memory。
+- [x] 用真实 4K/240 NVIDIA/niri 样本确认 high memory 主要来自 `glsinkbin` 路径：direct sink 20s 峰值 PSS/USS/GPU memory 约 390/356 MiB/496 MiB，GL wrapper 约 661/627 MiB/689 MiB；默认 `auto` 因此切到 direct sink。
 - [x] 静态图运行时缓存按 fit 估算降采样收益，覆盖 `contain` 极端比例大图和 `stretch` 大面积源图，减少直接让 GTK/GDK 解码原图的场景。
 - [x] battery 性能策略支持用户可选 `pause-dynamic`，电池供电时释放 video/slideshow/web/scene-lite 资源但保留静态壁纸，并在 headless desktop policy smoke 中覆盖。
 - [x] fullscreen、unfocused、hidden 和 session 性能策略支持用户可选 `pause-dynamic`，只释放 video/slideshow/web/scene-lite 动态壁纸并保留静态壁纸，headless smoke 覆盖静态透传和 slideshow 移除。

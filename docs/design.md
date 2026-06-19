@@ -150,10 +150,11 @@ GTK/GStreamer 低内存渲染方向：
   active 视频默认不再插入 `videorate ! capsfilter`，而是使用 sink
   `throttle-time`；muted 路径只启用 video playbin flag，并关闭 sink
   `enable-last-sample`，减少无意义的 audio/deinterlace/last-sample 常驻引用。
-- GTK 视频路径优先把 `gtk4paintablesink` 包进 `glsinkbin`，让 decodebin 更容易把上游
-  caps 协商到 GLMemory/DMABuf，再落到 GTK `GdkPaintable`。如果 `glsinkbin` 不可用或构建
-  失败，则回退到直接 `gtk4paintablesink`。sink 低内存调优还会在支持时关闭 async
-  preroll、preroll frame 和 render delay，减少 paused/preroll/last-frame 路径的额外帧保留。
+- GTK 视频路径默认直接使用 `gtk4paintablesink`，避免 `glsinkbin` 在 NVIDIA/GL wrapper
+  场景中引入额外 driver buffer、texture/pool 和 anonymous memory 保留。需要验证
+  GLMemory/DMABuf 时仍可用环境变量强制 `glsinkbin+gtk4paintablesink`。sink 低内存调优还会
+  在支持时关闭 async preroll、preroll frame 和 render delay，减少 paused/preroll/last-frame
+  路径的额外帧保留。
 - GTK renderer 已把视频运行时从单个输出对象里拆出来：对兼容的
   `(source, loop, muted/audio policy, decoder policy, start offset, target FPS)` 使用一个
   共享 GStreamer pipeline 和一个共享 `GdkPaintable`，每个输出只持有自己的
@@ -195,11 +196,11 @@ GTK/GStreamer 低内存渲染方向：
   默认 1-2s 队列在 raw/GL 帧路径上放大 PSS/USS/GPU memory。该调优不默认开启 leaky/drop；
   下游跟不上时先让上游背压，避免为了省内存破坏关键帧解码稳定性。runtime diagnostics 会报告
   `queue_reports`，用于把 queue current level 和 PSS/显存采样对齐。
-- GTK sink chain 默认仍为 `auto`：优先 `glsinkbin+gtk4paintablesink`，不可用时 direct
-  `gtk4paintablesink`。为深挖 4K/240 内存占用，可用
-  `GILDER_GTK_VIDEO_SINK_CHAIN=gtk4` 强制 direct sink，或用 `glsinkbin` 强制 GL wrapper，
-  对比同一视频下的 sink caps、queue reports、PSS/USS 和 GPU memory，判断 GL wrapper 是否引入
-  额外 texture/pool 保留。
+- GTK sink chain 默认仍为 `auto`，但默认路径使用 direct `gtk4paintablesink`，把 NVIDIA/GL
+  wrapper 场景中额外的 PSS/USS 和显存保留排除出常规播放路径。需要验证 GLMemory/DMABuf 或
+  零拷贝行为时，可用 `GILDER_GTK_VIDEO_SINK_CHAIN=glsinkbin` 强制
+  `glsinkbin+gtk4paintablesink`；`gtk4` 可显式固定 direct sink，便于对比同一视频下的
+  sink caps、queue reports、PSS/USS 和 GPU memory。
 - 静态图普通 fit 已从 CSS background 改为显式 `gtk::Picture` surface，切到视频、
   移除输出或换帧时会从 GTK 容器移除 Picture 引用；`tile` 仍保留 CSS background
   fallback。大图已有输出尺寸级缓存，后续还要继续确认 GDK/GSK decoded texture

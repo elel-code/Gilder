@@ -458,15 +458,15 @@ software volume elements are not kept in the wallpaper pipeline unless a later
 renderer path explicitly needs them. FPS limiting is applied on the sink via
 `throttle-time` instead of a `video-filter`, keeping `videorate` and
 `capsfilter` out of the negotiated video path so GPU-memory caps have fewer
-software-only elements to cross. The GTK surface path also tries
-`glsinkbin+gtk4paintablesink` before direct `gtk4paintablesink`, so systems with
-working OpenGL/DMABuf support can negotiate GLMemory/DMABuf closer to the GTK
-paintable. If the GL wrapper is unavailable, the renderer falls back to direct
-`gtk4paintablesink`. `sink_tuning.sink_element` and the CSV
-`sink_element` column report which path is active.
-Set `GILDER_GTK_VIDEO_SINK_CHAIN=gtk4` to force direct `gtk4paintablesink`, or
-`GILDER_GTK_VIDEO_SINK_CHAIN=glsinkbin` to force the GL wrapper, when comparing
-4K/high-refresh PSS, USS, GPU memory, sink caps, and queue behavior. Gilder also
+software-only elements to cross. The GTK surface path defaults to direct
+`gtk4paintablesink`. This avoids the extra GL wrapper texture/pool retention
+observed on the local NVIDIA 4K/240 stress case while keeping the GTK paintable
+path simple. `sink_tuning.sink_element` and the CSV `sink_element` column report
+which path is active.
+Set `GILDER_GTK_VIDEO_SINK_CHAIN=glsinkbin` to force
+`glsinkbin+gtk4paintablesink`, or `GILDER_GTK_VIDEO_SINK_CHAIN=gtk4` to pin the
+direct sink, when comparing 4K/high-refresh PSS, USS, GPU memory, sink caps, and
+queue behavior or investigating GLMemory/DMABuf negotiation. Gilder also
 tunes `playbin` child queues for wallpaper playback: queue-like elements are
 capped at 8 buffers and 50ms, with byte caps disabled so one large 4K frame does
 not trip a small byte limit. The queue is not made leaky by default; if
@@ -792,12 +792,13 @@ baselines, not portable budgets:
 
 | Scenario | Decoder / path | CPU | Process memory | GPU memory | Runtime evidence |
 | --- | --- | ---: | ---: | ---: | --- |
-| 4K/240fps H.264 active GTK video surface, 20s sample | `nvh264dec`, `glsinkbin+gtk4paintablesink` | 193.46% process CPU, about 9.7% whole-machine CPU | `ps` RSS 554580 KiB; `smaps_rollup` RSS 522180 KiB, PSS 440293 KiB, private/USS 409108 KiB | 689 MiB | `hardware-required`, `satisfied`, `actual_decoders=nvh264dec`, `zero_copy_evidence=hardware-decode`, QoS observed |
+| 4K/240fps H.264 active GTK video surface, 20s sample, direct sink | `nvh264dec`, `gtk4paintablesink` | 83.39% process CPU, about 4.2% whole-machine CPU | `ps` RSS 454868 KiB; PSS 389957 KiB; private/USS 355784 KiB | 496 MiB | `auto`, `not-applicable`, `actual_decoders=nvh264dec`, `zero_copy_evidence=hardware-decode`, QoS observed |
+| 4K/240fps H.264 active GTK video surface, 20s sample, GL wrapper | `nvh264dec`, `glsinkbin+gtk4paintablesink` | 125.30% process CPU, about 6.3% whole-machine CPU | `ps` RSS 726488 KiB; PSS 661483 KiB; private/USS 627164 KiB | 689 MiB | `auto`, `not-applicable`, `actual_decoders=nvh264dec`, `zero_copy_evidence=hardware-decode`, QoS observed |
 | 8K static image, interactive observation | GTK static image path | about 0% whole-machine CPU | about 93 MiB in the user's monitor | n/a | static path remained visually idle |
 
 For CPU reporting, keep both process and whole-machine-normalized numbers. Linux
-process CPU treats one logical CPU as 100%, so 193.46% on this 20-thread host is
-about 9.7% of total CPU capacity. For memory reporting, do not compare monitor
+process CPU treats one logical CPU as 100%, so divide process CPU by logical CPU
+count when comparing whole-machine pressure. For memory reporting, do not compare monitor
 memory, RSS, PSS, private/USS, and GPU memory as if they were the same metric:
 RSS includes shared mappings at full size, PSS apportions shared mappings, and
 private/USS is the process-unique footprint. The T0 target is to push the
