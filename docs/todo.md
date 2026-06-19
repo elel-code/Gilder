@@ -206,6 +206,7 @@
 - [x] 在 renderer telemetry 中报告 output window、static/slideshow/video surface 和 video pipeline 计数，并让性能采样/Wayland smoke 可断言 output window lifecycle。
 - [x] 让 performance/Wayland smoke 可断言 static/slideshow/video surface lifecycle，补齐 output window 之外的 renderer resource gate。
 - [ ] 评估视频 pipeline 共享：同源多输出时避免重复解码，优先复用解码或 texture 产物。
+- [x] 在 render sync telemetry、CSV、性能采样和 baseline matrix 中报告计划层视频 source 引用数、去重数、重复引用数、最大同源 fanout 和 source 字节 footprint，作为同源多输出 pipeline 共享候选评估依据。
 - [ ] 限制 poster、thumbnail、manifest/package cache 的内存增长，并为缓存淘汰添加 telemetry。
 - [x] 为单次 render sync 的 manifest/package 临时缓存添加可配置条目上限、FIFO 淘汰、status/watch telemetry、CSV 和性能采样汇总。
 - [x] 为 `.gwp` 解包 render cache 添加可配置条目上限、当前使用条目保护、最旧优先淘汰和 telemetry/CSV/性能采样汇总。
