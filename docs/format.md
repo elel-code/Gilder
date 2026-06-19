@@ -158,7 +158,7 @@ allow_audio = false
 - `title`：展示名称。
 - `authors`：作者列表。
 - `license`：许可证或 `unknown`。
-- `kind`：`static-image`、`video`、`slideshow`、`web`、`scene-lite`。
+- `kind`：`static-image`、`video`、`slideshow`、`web`、`scene-lite`、`playlist`。
 - `tags`：搜索和管理用标签。
 - `preview`：缩略图和 fallback poster。
 - `entry`：默认运行入口。
@@ -174,6 +174,8 @@ Wallpaper Engine 输入类型、Gilder 当前 kind、运行时支持等级和后
 `gilderctl set <wallpaper> --variant <id>` 绑定指定变体。没有显式 variant 时，daemon
 会根据输出尺寸和 scale，在能覆盖目标尺寸的 variant 中选择像素面积最小的资源；没有
 可覆盖 variant 时继续使用 entry 默认资源，避免把大屏输出降级到小资源。
+`playlist` 子 entry 当前不会自动套用顶层 `variants`，避免条件选择出的子项被全局
+variant 误替换。
 Wallpaper Engine 静态图转换器会在 `ffprobe`/`ffmpeg` 可用且源图足够大时生成
 `landscape-*`、`ultrawide-*` 和 `portrait-*` 这类常见比例 PNG variant，作为降低
 常见输出解码内存的保守默认；原图仍保留为 entry source 和无损 fallback。静态图
@@ -252,6 +254,53 @@ daemon 会把 video entry 转成 `render_sync.video_plans`，其中 `manifest_ma
 Slideshow 是 v1 的普通动态壁纸，不需要脚本运行时。daemon 会把 slideshow entry
 转成 `render_sync.slideshow_plans`，GTK renderer 会按 `interval_ms` 切换源图；
 `transition = "crossfade"` 当前作为格式意图保留，早期运行时先执行稳定的即时切换。
+
+### Playlist
+
+```json
+{
+  "type": "playlist",
+  "selection": "first-match",
+  "items": [
+    {
+      "id": "battery-static",
+      "conditions": {
+        "power": "battery"
+      },
+      "entry": {
+        "type": "static-image",
+        "source": "assets/battery.avif",
+        "fit": "cover"
+      }
+    },
+    {
+      "id": "default-video",
+      "entry": {
+        "type": "video",
+        "source": "assets/loop.webm",
+        "muted": true,
+        "fit": "cover",
+        "max_fps": 60
+      }
+    }
+  ]
+}
+```
+
+Playlist 是一等包类型，用来在一个 `.gwpdir` 内根据当前桌面状态选择已有 entry。
+当前 `selection` 支持 `first-match`：daemon 按顺序选择第一个所有条件都满足的 item，
+然后把其 `entry` 继续转换为 static/video/slideshow/web/scene-lite 的既有 render plan。
+支持的条件字段：
+
+- `outputs`：输出名列表，空列表表示不限制输出。
+- `power`：`unknown`、`ac` 或 `battery`。
+- `focused`、`visible`、`fullscreen`：匹配当前输出状态。
+- `session_active`、`session_locked`：匹配当前 logind/session 状态。
+
+如果没有 item 匹配，render plan 会报告 `playlist did not match any item`。Playlist
+可以用于性能策略，例如电池供电时选择静态图，AC 时选择视频；这样 `pause-dynamic`
+会按实际选中的子 entry 判断是否需要释放资源。随机、按时间和更复杂权重策略仍是后续
+格式扩展。
 
 ### Web
 

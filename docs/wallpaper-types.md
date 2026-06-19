@@ -20,7 +20,7 @@
 | Web | `web` | 部分 | fallback plan | 复制 HTML/CSS/JS 资源，注入兼容 bridge，映射用户属性；renderer 可显示 fallback poster，并按动态壁纸参与 `pause-dynamic` 资源释放。 | WebKitGTK runtime、sandbox、输入/audio/FPS bridge 和权限模型未完成。 |
 | Scene | `scene-lite` | 部分 | first-class plan + static snapshot | 生成 Gilder scene-lite graph，支持 2D image/color/group layer、transform、opacity、keyframe/timeline 曲线和属性 binding；daemon 生成 `scene_lite_plans`，GTK 当前把 time=0 snapshot 合成为受控缓存 SVG surface，IPC 数值/布尔属性可影响 snapshot layer，并统计 snapshot/layer 图片资源。 | GTK 原生动画 scene surface、effect stack、particle system、shader node 和 audio response 未完成。 |
 | Application / executable | 无 | 阻塞 | 阻塞 | 拒绝转换并生成 conversion report。 | 为安全和可移植性，原生可执行壁纸不作为目标能力。 |
-| Playlist / collection | `slideshow` 或配置分配 | 部分 | 部分 | 静态图片序列可转为 `slideshow`；daemon 配置/状态可按输出分配壁纸。 | 按时间、随机、电源、输出状态选择壁纸的 playlist 还不是一等包类型。 |
+| Playlist / collection | `playlist` / `slideshow` | 部分 | 部分 | 静态图片序列可转为 `slideshow`；一等 `playlist` entry 可按 first-match 条件在 static/video/slideshow/web/scene-lite 子 entry 间选择，支持输出、电源、focused/visible/fullscreen 和 session 条件。 | 按时间、随机、权重和媒体/系统信息选择还未完成；Wallpaper Engine playlist 转换仍需补。 |
 
 ## 能力矩阵
 
@@ -30,6 +30,7 @@
 | 视频循环播放 | `video` entry + GStreamer | 完整 | Codec smoke、Wayland video surface smoke、video runtime CSV。 |
 | 视频音频意图 | `runtime.allow_audio` + `entry.muted` | 部分 | Converter 测试和 `playbin` flags 测试；PipeWire 采集/输出策略仍是后续工作。 |
 | Slideshow / 普通动态图片 | `slideshow` entry | 完整 | Render plan 测试、GTK 定时切换、adaptive、battery、fullscreen、unfocused、hidden 和 session `pause-dynamic` 测试。 |
+| Playlist 条件选择 | `playlist` entry | 部分 | Manifest/schema 测试、power 条件 render plan 测试、battery `pause-dynamic` 静态选择测试；时间/随机策略后续补。 |
 | Web 壁纸资源 | `web` entry | 部分 | Converter 测试、manifest 校验和 fallback render plan 测试。 |
 | Web runtime bridge | `assets/web/gilder-bridge.js` | fallback | 后续 WebKitGTK smoke 和属性更新测试。 |
 | Scene fallback/snapshot | `scene-lite` entry display | 部分 | Converter 测试、scene-lite render plan 测试、静态 snapshot SVG cache 测试和 fallback/首图/纯色 GTK 显示路径。 |
@@ -56,8 +57,8 @@
    pause/throttle。
 5. Audio-responsive 壁纸必须作为 opt-in 能力实现，使用 PipeWire input，并在 status/watch
    中清晰报告权限和采样状态。
-6. Playlist 规则应在核心运行时类型稳定后实现，让 playlist policy 在 static、video、
-   slideshow、web、scene 包之间选择，而不是复制 renderer 逻辑。
+6. Playlist 已按 first-match 条件复用 static、video、slideshow、web、scene-lite 的既有
+   renderer 逻辑；后续再补时间、随机、权重和 Wallpaper Engine playlist 转换。
 
 ## 转换报告要求
 
