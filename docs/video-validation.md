@@ -179,7 +179,8 @@ same kept work directory. The smoke also accepts video runtime evidence gates
 from `performance-snapshot.sh`: `--expect-decoder-policy-status`,
 `--expect-decoder-class`, `--expect-memory-feature`,
 `--expect-sink-memory-feature`, `--expect-zero-copy-evidence`,
-`--expect-video-position-progress`, `--expect-gtk-frame-clock`,
+`--expect-zero-copy-evidence-at-least`, `--expect-video-position-progress`,
+`--expect-gtk-frame-clock`,
 `--expect-gtk-frame-clock-phase before-paint|update|layout|paint|after-paint|all`,
 and `--expect-gtk-frame-timings`. It also forwards process memory budget gates:
 `--expect-max-rss-kib-at-most`, `--expect-max-pss-kib-at-most`,
@@ -555,16 +556,20 @@ frame timing presentation interval/time summaries.
 Use that table beside CPU, PSS, USS, and RSS when checking hard decode or
 zero-copy behavior.
 Use `--expect-decoder-policy-status`, `--expect-decoder-class`,
-`--expect-memory-feature`, `--expect-sink-memory-feature`, and
-`--expect-zero-copy-evidence` to make the sampling run fail when live video
-runtime evidence does not contain the expected decoder policy result,
-hardware/software class, negotiated caps memory feature, sink-side memory
-feature, or zero-copy evidence level. For example,
+`--expect-memory-feature`, `--expect-sink-memory-feature`,
+`--expect-zero-copy-evidence`, and `--expect-zero-copy-evidence-at-least` to
+make the sampling run fail when live video runtime evidence does not contain
+the expected decoder policy result, hardware/software class, negotiated caps
+memory feature, sink-side memory feature, or zero-copy evidence level. For exact
+evidence matching use `--expect-zero-copy-evidence`; for minimum acceptable
+evidence use `--expect-zero-copy-evidence-at-least`, ordered as `missing`,
+`software-decode`, `hardware-decode`, `gpu-memory-caps`, `dmabuf-caps`,
+`sink-gpu-memory-caps`, then `sink-dmabuf-caps`. For example,
 `--expect-decoder-class hardware` checks that the running pipeline observed a
 known hardware decoder, `--expect-sink-memory-feature memory:DMABuf` checks for
 sink-side DMABuf caps, and
-`--expect-zero-copy-evidence sink-dmabuf-caps` checks that the derived evidence
-classifier reached the strongest current DMABuf sink-side level.
+`--expect-zero-copy-evidence-at-least sink-gpu-memory-caps` accepts either
+sink-side GLMemory or the stronger sink-side DMABuf evidence level.
 Use `--expect-video-position-progress`, `--expect-frame-limiter-enabled`, and
 `--expect-frame-limiter-max-fps <fps>` to assert that playback moved during the
 sample window and that the runtime frame limiter is active at the expected cap.
