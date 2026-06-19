@@ -266,6 +266,7 @@
 - [x] GTK 共享 video runtime 的 renderer snapshot 复用同一份 decoder/caps/allocation、position 和 duration 查询，再展开为逐输出 telemetry，减少同源多屏视频的 GStreamer 查询成本。
 - [x] GTK 组合 renderer snapshot 序列化 video pipeline telemetry 时复用已有 video source footprint，避免重复读取源文件 metadata。
 - [x] GTK renderer resource footprint 按路径缓存 source size，重复静态图、幻灯片帧或同源视频不再反复 `metadata()`。
+- [x] GTK video frame-clock 诊断默认改为轻量 after-paint tick/counter/time/interval 统计；完整 phase、FPS/refresh_info 和 GDK `FrameTimings` 采样需显式设置 `GILDER_GTK_VIDEO_FRAME_STATS=full`，减少 4K/高刷视频每帧主线程诊断开销。
 - [x] 静态图运行时缓存按 fit 估算降采样收益，覆盖 `contain` 极端比例大图和 `stretch` 大面积源图，减少直接让 GTK/GDK 解码原图的场景。
 - [x] battery 性能策略支持用户可选 `pause-dynamic`，电池供电时释放 video/slideshow/web/scene-lite 资源但保留静态壁纸，并在 headless desktop policy smoke 中覆盖。
 - [x] fullscreen、unfocused、hidden 和 session 性能策略支持用户可选 `pause-dynamic`，只释放 video/slideshow/web/scene-lite 动态壁纸并保留静态壁纸，headless smoke 覆盖静态透传和 slideshow 移除。

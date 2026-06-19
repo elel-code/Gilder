@@ -143,6 +143,9 @@ under `scenarios/<name>/`, so budget regressions can be traced back to raw
 `samples.csv`, `telemetry.csv`, `video-runtime.csv`, status snapshots, and
 daemon logs. Add `--scenario fullscreen-resume` when the same run should also
 measure fullscreen -> active resume after a file-backed output-state switch.
+By default GTK video frame-clock evidence is lightweight after-paint data;
+phase and GDK timing fields require `GILDER_GTK_VIDEO_FRAME_STATS=full`, which
+the Wayland smoke sets automatically for phase/timing expectations.
 Pass `--budget-csv <path>` to make the matrix enforce per-scenario budgets.
 The budget file is a simple CSV with `scenario,phase,metric,max`; `scenario`
 and `phase` may be `*`, and `metric` must match a `baseline.csv` column:
@@ -391,14 +394,15 @@ status poll traverse the GStreamer pipeline and send allocation queries.
 including max processed/dropped values, stats format, jitter, and the latest
 proportion scaled by 1000. On the GTK video surface path it also records
 `gtk_frame_clock_*` values from passive `gtk::Picture` frame clock after-paint
-observations: count, latest frame counter/time, frame interval, frame clock
-FPS, refresh interval, and GDK's predicted presentation time. The same runtime
-snapshot records frame clock phase counters for `before-paint`, `update`,
-`layout`, `paint`, and `after-paint`, which helps diagnose whether GTK is
-driving the surface through a full frame cycle or only exposing partial timing
-evidence. It also records GDK `FrameTimings` observed/complete counts, frame
-time, predicted presentation time, presentation time, presentation interval,
-and refresh interval when GDK has timing history for the frame. These fields are runtime
+observations: count, latest frame counter/time, and frame interval. Full
+diagnostics also add frame clock FPS, refresh interval, GDK's predicted
+presentation time, phase counters, and GDK timing history. To keep the
+4K/high-refresh GTK video path cheaper by default, the daemon normally records
+only after-paint ticks plus frame counter/time/interval; it does not install the
+before-paint/update/layout/paint signal handlers and does not query FPS,
+refresh_info, or GDK `FrameTimings` on every frame. Start the daemon with
+`GILDER_GTK_VIDEO_FRAME_STATS=full` when a run needs phase counters, FPS/refresh
+fields, or GDK timing history for presentation evidence. These fields are runtime
 playback/limiter/QoS/GTK frame-clock evidence: a moving `position_ms` proves the
 pipeline playhead is advancing, `frame_limiter_max_fps` proves the applied sink
 `throttle-time` limit, `qos_dropped_max` records GStreamer sink QoS drops when the
@@ -631,6 +635,10 @@ allocation pool/allocator summaries, `video_memory_retention_level_latest`,
 clock interval/FPS summaries, `video_gtk_frame_timings_complete_max`,
 `video_sink_element_latest`, low-memory sink property summaries, and GDK
 frame timing presentation interval/time summaries.
+Phase, FPS/refresh, and GDK timing summary fields are expected to stay empty or
+zero unless the sampled daemon ran with `GILDER_GTK_VIDEO_FRAME_STATS=full`;
+`video_gtk_frame_clock_ticks_max` and after-paint ticks remain available in the
+default lightweight mode.
 Use that table beside CPU, PSS, USS, and RSS when checking hard decode or
 zero-copy behavior.
 Use `--expect-decoder-policy-status`, `--expect-decoder-class`,
@@ -654,9 +662,10 @@ requested zero-copy evidence level or stronger. `hardware-decode` requires
 moving playback; `runtime-gpu-path` adds sink-side GPU memory caps;
 `runtime-dmabuf-path` raises that to sink-side DMABuf caps; `gtk-gpu-surface`
 and `gtk-dmabuf-surface` add a GTK frame clock and after-paint ticks;
-`gtk-timed-gpu-surface` also requires completed GDK frame timings. These
-profiles are stricter runtime evidence bundles, but they still stop short of
-direct compositor `wp_presentation` proof.
+`gtk-timed-gpu-surface` also requires completed GDK frame timings and therefore
+needs `GILDER_GTK_VIDEO_FRAME_STATS=full` on the sampled daemon. These profiles
+are stricter runtime evidence bundles, but they still stop short of direct
+compositor `wp_presentation` proof.
 Use `--expect-video-position-progress`, `--expect-frame-limiter-enabled`, and
 `--expect-frame-limiter-max-fps <fps>` to assert that playback moved during the
 sample window and that the runtime frame limiter is active at the expected cap.
@@ -678,9 +687,12 @@ dropped counter exceeds the selected threshold.
 Use `--expect-gtk-frame-clock` to require GTK frame clock ticks from a real GTK
 video surface sample. Use
 `--expect-gtk-frame-clock-phase before-paint|update|layout|paint|after-paint|all`
-to require specific frame clock phase ticks from the same sample. Use
-`--expect-gtk-frame-timings` to require completed GDK frame timings from the GTK
-surface path when the backend exposes them.
+to require specific frame clock phase ticks from the same sample; the Wayland
+video smoke starts its isolated daemon with `GILDER_GTK_VIDEO_FRAME_STATS=full`
+for phase expectations. Use `--expect-gtk-frame-timings` to require completed
+GDK frame timings from the GTK surface path when the backend exposes them; this
+also requires `GILDER_GTK_VIDEO_FRAME_STATS=full` when sampling an already
+running daemon with `performance-snapshot.sh`.
 These checks are evidence gates only: hardware decoder evidence and
 DMABuf/GLMemory caps should still be interpreted separately from compositor
 presentation feedback and full zero-copy proof.
@@ -709,6 +721,9 @@ inside the daemon. It also reports `renderer_video_qos_messages_max`,
 `renderer_video_gtk_frame_timings_presentation_interval_us_max` from daemon
 telemetry, which is a coarse health signal for video frame behavior before
 drilling into `video-runtime-summary.txt`.
+The phase/FPS/timing telemetry values are only populated by full GTK frame
+stats mode; default lightweight mode keeps the after-paint tick and interval
+fields for lower overhead.
 For memory comparisons, prefer `avg_uss_kib` or its equivalent
 `avg_private_kib` for the process-private footprint and `avg_pss_kib` for the
 shared-memory-adjusted footprint; `avg_rss_kib` includes shared mappings at

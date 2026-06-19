@@ -185,6 +185,11 @@ GTK/GStreamer 低内存渲染方向：
   `resource_snapshot()` 中已经计算出的 video source footprint，不会为了序列化 video pipeline
   telemetry 再重复读取源文件 metadata。resource footprint 内部按路径缓存 source size，
   重复静态图、幻灯片帧或同源视频仍保持 reference byte 语义，但每个唯一路径只读取一次 metadata。
+- GTK video frame-clock 诊断默认走轻量模式：每个输出只连接 after-paint handler，并且每帧只
+  记录 tick、frame counter/time 和 interval，避免 4K/高刷 active 视频在 GTK 主线程持续执行
+  phase signal、FPS/refresh_info 和 GDK `FrameTimings` 查询。需要完整 presentation 证据时，
+  启动 daemon 前设置 `GILDER_GTK_VIDEO_FRAME_STATS=full`；需要最大化性能排查时可设置为
+  `off` 完全关闭这组 GTK frame-clock 诊断。
 - 静态图普通 fit 已从 CSS background 改为显式 `gtk::Picture` surface，切到视频、
   移除输出或换帧时会从 GTK 容器移除 Picture 引用；`tile` 仍保留 CSS background
   fallback。大图已有输出尺寸级缓存，后续还要继续确认 GDK/GSK decoded texture
