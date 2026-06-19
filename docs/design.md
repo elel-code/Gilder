@@ -171,13 +171,19 @@ GTK/GStreamer 低内存渲染方向：
   system-memory pool、last-sample/preroll frame 保留等风险。后续继续用真实 PSS/USS/private
   delta 和 compositor presentation 证据校准 `gtk4paintablesink`、GDK/GSK texture、GStreamer
   allocator 和 buffer pool 生命周期；优先通过运行时证据和小步重构减少保留，而不是只调高内存预算。
-- decoder/caps/allocation/memory path 诊断按 video runtime 缓存并低频刷新；常规 video
-  polling 只处理 bus/EOS/error/QoS，不会在每个 tick 反复遍历 pipeline 或发 allocation query。
+- decoder/caps/allocation/memory path 诊断按 video runtime 缓存并低频刷新；共享 video
+  runtime 的 telemetry snapshot 会在一次 renderer snapshot 内复用同一份诊断、position 和
+  duration 查询；常规 video polling 只处理 bus/EOS/error/QoS，不会在每个 tick 反复遍历
+  pipeline 或发 allocation query。
 - GTK renderer tick 会按当前负载动态调度：video runtime 单独存在时使用 250ms 常规
   polling，frame stats 按 500ms 写回最近的 runtime snapshot；如果同一进程还有 slideshow
-  过渡需要更短 tick，则按 slideshow 的短间隔运行。完整 renderer runtime snapshot 只在收到新
-  render sync、slideshow 实际换帧、decoder 观察结果变化或 pipeline 报错时写入；frame stats
-  到期判断只读取 video runtime 计数，不会重新计算 surface/source footprint。
+  过渡需要更短 tick，则按 slideshow 的短间隔运行；纯静态无动态工作时退到 1000ms idle
+  tick，减少 8K static idle wakeup。完整 renderer runtime snapshot 只在收到新 render sync、
+  slideshow 实际换帧、decoder 观察结果变化或 pipeline 报错时写入；frame stats 到期判断只读取
+  video runtime 计数，不会重新计算 surface/source footprint；GTK 组合 snapshot 复用
+  `resource_snapshot()` 中已经计算出的 video source footprint，不会为了序列化 video pipeline
+  telemetry 再重复读取源文件 metadata。resource footprint 内部按路径缓存 source size，
+  重复静态图、幻灯片帧或同源视频仍保持 reference byte 语义，但每个唯一路径只读取一次 metadata。
 - 静态图普通 fit 已从 CSS background 改为显式 `gtk::Picture` surface，切到视频、
   移除输出或换帧时会从 GTK 容器移除 Picture 引用；`tile` 仍保留 CSS background
   fallback。大图已有输出尺寸级缓存，后续还要继续确认 GDK/GSK decoded texture

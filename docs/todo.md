@@ -261,8 +261,11 @@
 - [x] GTK/headless video renderer 使用最小 `playbin` flags，muted 路径只开 video，audible 路径只开 video+audio，避免 active 视频常驻 deinterlace、soft color balance 或 soft volume 分支。
 - [x] 将 GTK/headless 视频限帧改为 sink `throttle-time`，不再把 `videorate ! capsfilter` 插入 decoder 到 sink 的协商路径，并关闭 sink `last-sample` 保留。
 - [x] GTK video surface 优先使用 `glsinkbin+gtk4paintablesink`，并关闭 async preroll、preroll frame 和 render delay，减少 CPU raw frame/readback 与 paused/preroll frame 保留风险。
-- [x] GTK renderer tick 按负载动态调度：video runtime 单独存在时使用 250ms 常规 polling，frame stats 按 500ms 写回最近的 runtime snapshot；slideshow 过渡仍可使用更短 tick。
+- [x] GTK renderer tick 按负载动态调度：video runtime 单独存在时使用 250ms 常规 polling，frame stats 按 500ms 写回最近的 runtime snapshot；slideshow 过渡仍可使用更短 tick；纯静态无动态工作退到 1000ms idle tick，减少 8K static idle wakeup。
 - [x] GTK video polling 先检查 video runtime 是否存在，并让 frame stats 到期判断直接读取 runtime 计数，避免无视频空 poll 或完整 resource footprint/source size 重算。
+- [x] GTK 共享 video runtime 的 renderer snapshot 复用同一份 decoder/caps/allocation、position 和 duration 查询，再展开为逐输出 telemetry，减少同源多屏视频的 GStreamer 查询成本。
+- [x] GTK 组合 renderer snapshot 序列化 video pipeline telemetry 时复用已有 video source footprint，避免重复读取源文件 metadata。
+- [x] GTK renderer resource footprint 按路径缓存 source size，重复静态图、幻灯片帧或同源视频不再反复 `metadata()`。
 - [x] 静态图运行时缓存按 fit 估算降采样收益，覆盖 `contain` 极端比例大图和 `stretch` 大面积源图，减少直接让 GTK/GDK 解码原图的场景。
 - [x] battery 性能策略支持用户可选 `pause-dynamic`，电池供电时释放 video/slideshow/web/scene-lite 资源但保留静态壁纸，并在 headless desktop policy smoke 中覆盖。
 - [x] fullscreen、unfocused、hidden 和 session 性能策略支持用户可选 `pause-dynamic`，只释放 video/slideshow/web/scene-lite 动态壁纸并保留静态壁纸，headless smoke 覆盖静态透传和 slideshow 移除。
