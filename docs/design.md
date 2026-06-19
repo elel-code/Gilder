@@ -141,7 +141,8 @@ PSI、thermal、power_supply 和 DRM 采样。
 GTK/GStreamer 低内存渲染方向：
 
 - 不把硬解等同于 zero-copy。运行时必须同时报告实际 decoder、decoder class、decoder
-  policy status、decoder/sink caps memory features、QoS 和 GTK frame clock；只有出现
+  policy status、decoder/sink caps memory features、memory path、allocation query、
+  QoS 和 GTK frame clock；只有出现
   sink-side DMABuf/GLMemory 等 GPU memory caps，并且后续补齐 compositor
   presentation 证据后，才把路径视为强 zero-copy 证据。
 - 避免在 decoder 到 sink 之间插入会破坏 GPU memory caps 协商的通用 CPU 元件。当前
@@ -155,10 +156,11 @@ GTK/GStreamer 低内存渲染方向：
   最后一个输出释放时才把 pipeline 置为 `Null`。`renderer_runtime` 和 telemetry 会报告
   `video_shared_runtimes`，用于区分 video surface 数和实际共享 GStreamer runtime 数。
   这能同时降低多输出同源视频的解码、buffer pool、sink texture 和进程私有内存占用。
-- 需要继续深入 `gtk4paintablesink`、GDK/GSK texture、GStreamer allocator 和 buffer pool
-  生命周期：定位是否存在 CPU-side raw frame、poster/static texture、buffer pool 或
-  paintable 对最近帧的额外保留；优先通过运行时证据和小步重构减少保留，而不是只调高
-  内存预算。
+- 运行时已经报告 `memory_path` 和 `allocation_reports`，能区分 CPU raw frame、decoder
+  侧 GPU/DMABuf、sink 侧 GPU/DMABuf，以及已响应的 allocator/buffer pool。后续继续深入
+  `gtk4paintablesink`、GDK/GSK texture、GStreamer allocator 和 buffer pool 生命周期：
+  定位是否存在 CPU-side raw frame、poster/static texture、buffer pool 或 paintable 对最近帧的
+  额外保留；优先通过运行时证据和小步重构减少保留，而不是只调高内存预算。
 - 静态图路径也要审计 GTK CSS background 的解码/texture 保留行为。大图已有输出尺寸级
   缓存，但 renderer 侧仍应确认 CSS provider 移除后旧 texture 是否及时释放；必要时改为
   更可控的 `GdkTexture`/`gtk::Picture` surface，并把保留资源纳入 telemetry。
@@ -244,8 +246,9 @@ GTK/GStreamer 低内存渲染方向：
   `status`/telemetry 中报告当前采样、触发原因和 adaptive 动作，方便用户审计。视频
   renderer runtime 会报告播放 position、duration、实际 frame limiter 状态、GStreamer
   QoS processed/dropped 统计、GTK frame clock tick/interval 统计，以及从实际 decoder
-  和 caps memory features 推导的 zero-copy 证据分级；compositor presentation
-  feedback 或原生 Wayland frame callback 统计仍是后续工作。
+  和 caps memory features 推导的 zero-copy 证据分级、memory path 分级和
+  allocator/buffer-pool 协商线索；compositor presentation feedback 或原生 Wayland frame
+  callback 统计仍是后续工作。
   `GILDER_ADAPTIVE_STATE` 仅作为验证入口，用于构造高于当前阈值的 CPU/内存压力、温度、
   GPU busy 或低电量样本，让 headless smoke 可以确定性覆盖 adaptive 动作。
 

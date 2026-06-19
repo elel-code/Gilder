@@ -136,8 +136,9 @@ memory, retained and peak-over-first deltas, planned image-resource footprint,
 package-cache retained source-resource footprint and configured byte budget,
 runtime static image cache bytes and configured byte budget,
 renderer output/static/slideshow/video surface counts, video pipeline counts,
-decoder status, caps memory features, zero-copy evidence level, QoS, GTK frame
-clock, and GDK timing fields. Each scenario keeps the original smoke evidence
+decoder status, caps memory features, zero-copy evidence level, memory path,
+allocation-query summaries, QoS, GTK frame clock, and GDK timing fields. Each
+scenario keeps the original smoke evidence
 under `scenarios/<name>/`, so budget regressions can be traced back to raw
 `samples.csv`, `telemetry.csv`, `video-runtime.csv`, status snapshots, and
 daemon logs. Add `--scenario fullscreen-resume` when the same run should also
@@ -225,10 +226,11 @@ scenario should contain an active video plan, video runtime row counts and phase
 counts, the relevant performance/video-runtime summary artifact paths, and the
 prefixed active/paused video runtime evidence for decoder policy/status,
 actual decoders, decoder class, negotiated memory features, sink-side memory
-features, zero-copy evidence level, GTK frame-clock phase counters, and GDK
-frame timing counters. Use that file first when reviewing Hyprland, niri,
-hardware decode, or zero-copy evidence, then drill into the referenced CSV and
-status JSON files. Hardware decoder evidence alone is not treated as zero-copy
+features, zero-copy evidence level, memory path, allocation reports, GTK
+frame-clock phase counters, and GDK frame timing counters. Use that file first
+when reviewing Hyprland, niri, hardware decode, or zero-copy evidence, then
+drill into the referenced CSV and status JSON files. Hardware decoder evidence
+alone is not treated as zero-copy
 proof; look for DMABuf/GLMemory caps, especially sink-side caps, and compositor
 presentation evidence for stronger validation.
 With `--simulate-power battery`, it starts the isolated daemon with
@@ -354,6 +356,19 @@ direction, caps string, media type list, caps features, and aggregated
 `memory_features` such as `memory:DMABuf` or `memory:GLMemory` when GStreamer
 exposes them on the negotiated path. Empty caps reports usually mean the
 pipeline has not negotiated video caps yet.
+`renderer_runtime.video_pipelines[].memory_path` classifies those decoder/caps
+signals into a more direct path diagnosis: CPU raw caps, software decode to CPU
+raw, hardware decode that still exposes CPU raw frames, decoder-side
+GPU/DMABuf, or sink-side GPU/DMABuf. This is the first place to check when
+hardware decode is active but memory remains high, because it separates
+"decode is hardware" from "frames are still copied back through CPU memory".
+`renderer_runtime.video_pipelines[].allocation_reports` records best-effort
+GStreamer allocation-query responses sent from negotiated video src pads to
+downstream peers, including buffer pools, allocator names and allocation params.
+These reports are
+environment-dependent, but when present they are the right evidence for
+debugging `gtk4paintablesink`, allocator choice, buffer-pool sizing, and
+whether a DMABuf/GLMemory path is actually being negotiated.
 `renderer_runtime.video_pipelines[]` also reports `position_ms`, `duration_ms`,
 `frame_limiter_enabled`, `frame_limiter_max_fps`, and `frame_stats`.
 `frame_stats` accumulates GStreamer QoS messages observed during bus polling,
@@ -377,8 +392,9 @@ clues than after-paint ticks, but they are still not direct Wayland
 `wp_presentation` protocol feedback or native compositor frame callback counts.
 Use `gilderctl status --video-runtime-csv --from-file <status.json>` to turn a
 saved status snapshot into compact decoder/caps/playback evidence with
-sink-side memory features and `zero_copy_evidence_level`. The raw status JSON
-remains the authoritative source for full caps strings.
+sink-side memory features, `zero_copy_evidence_level`, `memory_path_level`, and
+allocation pool/allocator summaries. The raw status JSON remains the
+authoritative source for full caps strings and full allocation-query details.
 
 The exact hardware decode path is left to the host GStreamer installation. The
 smoke test intentionally uses `fakesink` so it can run in CI without a Wayland
@@ -407,6 +423,10 @@ sink-side memory features such as DMABuf/GLMemory where available, and pair that
 with CPU, GPU, PSS, USS, frame behavior, and compositor presentation evidence.
 Seeing a hardware decoder or a configured hardware policy alone is not zero-copy
 proof.
+Use `memory_path.level` alongside this evidence: `hardware-decode-cpu-raw`
+means hard decode was observed but negotiated caps still expose system-memory
+raw frames, while `decoder-dmabuf` or `sink-dmabuf` moves the investigation to
+allocator, buffer-pool, GTK texture and compositor presentation behavior.
 
 For muted video wallpapers, Gilder disables `playbin` audio stream selection
 instead of routing decoded audio to `fakesink`, so muted wallpaper playback does
@@ -572,13 +592,14 @@ runtime video-source limits are combined with the per-scenario lifecycle limits
 by taking the stricter value.
 The sampler also writes `video-runtime.csv`, which records each sample's
 decoder policy status, actual decoder classes, caps report count, all memory
-features, sink-side memory features, zero-copy evidence level, playback
-position/duration, actual frame limiter state, and GTK frame clock phase
-counters. It also writes
+features, sink-side memory features, zero-copy evidence level, memory path,
+allocation report count, allocation pools/allocators, playback position/duration,
+actual frame limiter state, and GTK frame clock phase counters. It also writes
 `video-runtime-summary.txt`, including `video_zero_copy_evidence_latest`,
-`video_zero_copy_evidence.<level>` counts, `video_position_moving_outputs`,
-`video_position_delta_ms_max`, `video_frame_limiter_enabled_rows`, limiter FPS
-min/max,
+`video_zero_copy_evidence.<level>` counts, `video_memory_path_latest`,
+`video_memory_path.<level>` counts, `video_allocation_report_count_max`, latest
+allocation pool/allocator summaries, `video_position_moving_outputs`,
+`video_position_delta_ms_max`, `video_frame_limiter_enabled_rows`, limiter FPS min/max,
 `video_qos_messages_max`, `video_qos_dropped_max`,
 `video_gtk_frame_clock_ticks_max`, GTK frame clock phase maxima, GTK frame
 clock interval/FPS summaries, `video_gtk_frame_timings_complete_max`, and GDK
