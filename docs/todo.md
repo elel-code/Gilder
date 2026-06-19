@@ -209,6 +209,7 @@
 - [x] 在 render sync telemetry、CSV、性能采样和 baseline matrix 中报告计划层视频 source 引用数、去重数、重复引用数、最大同源 fanout 和 source 字节 footprint，作为同源多输出 pipeline 共享候选评估依据。
 - [ ] 限制 poster、thumbnail、manifest/package cache 的内存增长，并为缓存淘汰添加 telemetry。
 - [x] 为单次 render sync 的 manifest/package 临时缓存添加可配置条目上限、FIFO 淘汰、status/watch telemetry、CSV 和性能采样汇总。
+- [x] 将 render sync package cache 命中路径改为共享已加载 package，避免多输出同一壁纸时反复深拷贝 manifest/package 数据造成额外瞬时内存分配。
 - [x] 为 `.gwp` 解包 render cache 添加可配置条目上限、当前使用条目保护、最旧优先淘汰和 telemetry/CSV/性能采样汇总。
 - [x] 在 render sync telemetry、CSV 和性能采样汇总中报告计划层静态图、视频 poster、slideshow 图片资源 footprint，并支持 planned image resource 上限断言。
 - [x] 在 render sync telemetry、CSV、性能采样和 smoke 报告中追加计划层图片源文件字节 footprint，并支持按引用字节/去重字节设置预算门槛。
