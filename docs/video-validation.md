@@ -186,7 +186,9 @@ and `--expect-gtk-frame-timings`. It also forwards process memory budget gates:
 `--expect-max-private-kib-at-most`, `--expect-max-uss-kib-at-most`, and
 `--expect-max-shared-kib-at-most`, plus planned image-resource byte gates
 `--expect-render-sync-planned-image-resource-reference-bytes-latest-at-most`
-and `--expect-render-sync-planned-unique-image-resource-bytes-latest-at-most`.
+and `--expect-render-sync-planned-unique-image-resource-bytes-latest-at-most`,
+and the runtime static-image cache byte gate
+`--expect-render-sync-static-image-cache-bytes-latest-at-most`.
 Supplying any of these options
 automatically enables performance sampling. Video runtime checks apply only to
 scenarios that should have an active video plan; process memory checks apply to
@@ -522,7 +524,10 @@ stricter value. Use
 and
 `--expect-render-sync-package-cache-retained-unique-resource-bytes-latest-at-most <bytes>`
 to set upper bounds for resources still referenced by retained package-cache
-entries.
+entries. Use
+`--expect-render-sync-static-image-cache-bytes-latest-at-most <bytes>` to cap
+the runtime downscaled static-image cache footprint reported in daemon
+telemetry.
 Use
 `--expect-renderer-video-pipeline-source-references-latest-at-most <count>`,
 `--expect-renderer-video-pipeline-source-reference-bytes-latest-at-most <bytes>`,
@@ -666,7 +671,9 @@ table for quick baseline comparison.
 The desktop policy smoke also forwards the same
 `--expect-max-*-kib-at-most` memory budget gates to every scenario, which makes
 it useful for CI-side private-memory regression checks once per-scenario
-budgets have been established.
+budgets have been established. It also forwards render-sync resource gates,
+including `--expect-render-sync-static-image-cache-bytes-latest-at-most`, to
+turn static runtime cache growth into a smoke failure.
 For battery policy comparisons on machines that are not actually discharging,
 run the daemon or smoke script with `GILDER_POWER_STATE=battery`; unset it to
 return to sysfs-based power detection.
