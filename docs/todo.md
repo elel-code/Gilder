@@ -267,6 +267,7 @@
 - [x] 为 `scene-lite` 的 time=0 image/color snapshot 生成受控缓存 SVG surface，支持复用/淘汰 telemetry，避免简单 Scene 长期只显示静态 poster。
 - [x] 将 `scene-lite` 属性 binding 接入 render sync 和 snapshot cache，使 IPC 数值/布尔属性可以影响 opacity、position、scale 和 rotation，并只让当前 plan 声明的绑定属性触发 daemon cache 失效。
 - [x] 添加一等 `playlist` entry，支持 first-match 条件按输出、电源、focused/visible/fullscreen 和 session 状态选择 static/video/slideshow/web/scene-lite 子 entry，并让 `pause-dynamic` 按实际选中类型决策。
+- [x] 扩展 `playlist` 条件：支持本地时间窗口 `{ start = "HH:MM", end = "HH:MM" }`，含跨午夜区间，供工作时段/夜间/电池等组合策略选择壁纸。
 - [x] 扩展 `scene-lite` 2D layer：支持 rectangle/ellipse shape、fill、stroke、corner radius 和本地尺寸，并合成到受控 SVG snapshot。
 - [x] 扩展 `scene-lite` 2D layer：支持 text layer、font size/family/weight、text align 和安全 SVG text 转义，并合成到受控 SVG snapshot。
 - [x] 扩展 `scene-lite` 2D layer：支持 SVG path data、fill/stroke 和安全 SVG attribute 转义，并合成到受控 SVG snapshot。
@@ -277,6 +278,6 @@
 - [ ] 添加粒子/特效壁纸类型，优先覆盖 Wallpaper Engine 常见粒子发射器、纹理、速度场和 blend 模式。
 - [ ] 添加音频响应壁纸能力，定义可选 PipeWire 音频采样输入和隐私/权限开关。
 - [ ] 添加时钟、系统监控、媒体信息等 Linux 桌面常见信息型壁纸组件，但默认不采集敏感信息。
-- [ ] 扩展 playlist/轮播策略：按时间、随机、权重、媒体/系统信息选择壁纸，并补 Wallpaper Engine playlist 转换。
+- [ ] 扩展 playlist/轮播策略：按随机、权重、媒体/系统信息和更复杂日历条件选择壁纸，并补 Wallpaper Engine playlist 转换。
 - [x] 扩展 Wallpaper Engine 转换器，为 web/scene/shader/particle/audio 响应能力输出更细的 conversion report 和缺失能力提示。
 - [ ] 为每类新壁纸定义 manifest schema、示例包、转换测试、headless 计划测试和真实 Wayland smoke 验证入口。
