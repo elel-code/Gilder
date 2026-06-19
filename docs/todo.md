@@ -87,6 +87,7 @@
 - [x] 避免重复 render sync 对视频 pipeline 反复设置未变化的 state、mute、fit、限帧和 start offset。
 - [x] 避免重复 render sync 对 GTK 静态窗口反复重建 Picture/CSS fallback surface。
 - [x] 避免 GTK 初始同步和 IPC 状态变更把未变化的 render sync 重复投递给渲染器。
+- [x] GTK 主线程消费 renderer queue 时 drain 积压并只应用最新 render sync，避免快速状态切换反复创建中间态 GTK/GStreamer surface、pipeline 和 runtime snapshot。
 - [x] 为 daemon status/watch 路径缓存未变化的 render sync，减少性能采样时的重复 manifest IO。
 - [x] render sync 缓存只跟踪渲染相关 state，避免 properties set/get 造成无意义重算。
 - [x] render sync 缓存只跟踪渲染相关 config，避免 adapter 开关和刷新周期造成无意义重算。
@@ -261,7 +262,7 @@
 - [x] 将 GTK/headless 视频限帧改为 sink `throttle-time`，不再把 `videorate ! capsfilter` 插入 decoder 到 sink 的协商路径，并关闭 sink `last-sample` 保留。
 - [x] GTK video surface 优先使用 `glsinkbin+gtk4paintablesink`，并关闭 async preroll、preroll frame 和 render delay，减少 CPU raw frame/readback 与 paused/preroll frame 保留风险。
 - [x] GTK renderer tick 按负载动态调度：video runtime 单独存在时使用 250ms 常规 polling，frame stats 按 500ms 写回最近的 runtime snapshot；slideshow 过渡仍可使用更短 tick。
-- [x] GTK frame stats 到期判断改为直接读取 video runtime 计数，避免每个 video polling tick 触发完整 resource footprint/source size 重算。
+- [x] GTK video polling 先检查 video runtime 是否存在，并让 frame stats 到期判断直接读取 runtime 计数，避免无视频空 poll 或完整 resource footprint/source size 重算。
 - [x] 静态图运行时缓存按 fit 估算降采样收益，覆盖 `contain` 极端比例大图和 `stretch` 大面积源图，减少直接让 GTK/GDK 解码原图的场景。
 - [x] battery 性能策略支持用户可选 `pause-dynamic`，电池供电时释放 video/slideshow/web/scene-lite 资源但保留静态壁纸，并在 headless desktop policy smoke 中覆盖。
 - [x] fullscreen、unfocused、hidden 和 session 性能策略支持用户可选 `pause-dynamic`，只释放 video/slideshow/web/scene-lite 动态壁纸并保留静态壁纸，headless smoke 覆盖静态透传和 slideshow 移除。
