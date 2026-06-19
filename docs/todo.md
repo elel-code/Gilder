@@ -315,6 +315,7 @@
 - [x] 在真实 Wayland 视频 smoke 中把 planned image resource footprint 纳入 lifecycle gate：active/resumed 视频最多每输出 1 个 poster 引用，paused/hidden/fullscreen/session removal 必须为 0。
 - [x] GTK video surface 成功接管输出后释放 poster/static surface，并在 Wayland video lifecycle gate 中要求 active/resumed 最新 static/slideshow surface 为 0。
 - [x] GTK video renderer 改为视频优先同步：active 视频不再预创建 poster 静态 surface，只有 pipeline 构建或运行失败时才懒加载 poster fallback，降低启动峰值 decoded texture/私有内存。
+- [x] GTK renderer 在移除 static/video Picture surface 前显式清空 file/paintable 引用，并修复 slideshow 非动画 crossfade 切换保留旧 Picture 的问题，减少 decoded texture/frame 引用滞留。
 - [x] performance snapshot 和 headless desktop policy smoke 支持断言 renderer video pipeline source footprint，便于验证 paused/hidden/fullscreen 后运行时视频 source 是否释放。
 - [x] Wayland video surface lifecycle gate 自动断言 runtime video pipeline source footprint：active/resumed 按输出数设上限，paused/hidden/fullscreen/session removal 必须为 0。
 - [x] GTK/video renderer 在无 FPS 上限时不创建 `videorate`/`capsfilter` frame limiter，减少默认 active 视频 pipeline 的常驻 GStreamer element。
