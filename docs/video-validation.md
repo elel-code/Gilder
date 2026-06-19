@@ -491,11 +491,16 @@ surface, and video pipeline, while their latest static/slideshow surface counts
 must be zero after the video surface has taken over. Paused, hidden,
 fullscreen, inactive, and locked windows must end with zero output windows, zero
 static/slideshow/video surfaces, zero renderer video pipelines, and zero
-planned image resource references. Renderable video windows are allowed at most
-one planned poster reference per selected output and one unique planned poster
-resource for the generated smoke wallpaper; that planned poster is an error
-fallback and should not imply retained GTK static-surface memory during active
-playback. This gate uses daemon telemetry and complements
+planned image resource references. The same gate also bounds runtime video
+pipeline source footprint: renderable windows are allowed at most one video
+source reference per selected output and one unique source for the generated
+smoke wallpaper, while paused/hidden/fullscreen/inactive/locked windows must
+end with zero video source references and zero source bytes. Renderable video
+windows are allowed at most one planned poster reference per selected output
+and one unique planned poster resource for the generated smoke wallpaper; that
+planned poster is an error fallback and should not imply retained GTK
+static-surface memory during active playback. This gate uses daemon telemetry
+and complements
 `--require-video-runtime-row`, which only proves that an active phase exposed a
 live per-output runtime row. Use
 `--expect-render-sync-planned-image-resource-references-latest-at-most <count>`
@@ -523,7 +528,9 @@ Use
 to set runtime video-source footprint gates. These are useful for active,
 paused, hidden, fullscreen, and resumed samples where the process memory
 budget should be checked alongside proof that renderer video pipelines no
-longer hold source references.
+longer hold source references. When the lifecycle gate is enabled, explicit
+runtime video-source limits are combined with the per-scenario lifecycle limits
+by taking the stricter value.
 The sampler also writes `video-runtime.csv`, which records each sample's
 decoder policy status, actual decoder classes, caps report count, all memory
 features, sink-side memory features, zero-copy evidence level, playback
