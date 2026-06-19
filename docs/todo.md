@@ -201,6 +201,8 @@
 - [ ] 为常见场景定义可执行的内存预算和回归阈值，优先使用 PSS、USS 和 private 占用作为判断依据。
 - [x] 提供真实 Wayland baseline matrix 采集脚本，批量运行 active/user-paused/battery/unfocused/fullscreen/hidden/session 场景并汇总 CPU/GPU/RSS/PSS/USS/private/shared、renderer resource、decoder/caps 和 timing 证据。
 - [x] Wayland baseline matrix 支持 `scenario,phase,metric,max` 预算 CSV，将 PSS/USS/private/retained delta 等 baseline 字段变成可执行回归阈值。
+- [x] 提供 `examples/wayland-memory-budget.example.csv`，作为一输出 active 视频和生命周期场景的可执行内存/资源预算起点。
+- [x] 在验证文档中记录当前 release active 视频采样基线，区分 idle、headless video 和 GTK/Wayland video surface 的 RSS/PSS/USS/private 现状。
 - [x] 为 active -> paused/hidden/fullscreen -> active 场景输出内存 delta，区分瞬时峰值、恢复后 retained USS/private 和共享库 RSS。
 - [x] 对 paused、hidden、fullscreen 移除渲染计划后的 pipeline/window/resource 释放行为建立验证门槛。
 - [x] 在 renderer telemetry 中报告 output window、static/slideshow/video surface 和 video pipeline 计数，并让性能采样/Wayland smoke 可断言 output window lifecycle。

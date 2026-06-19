@@ -110,6 +110,7 @@ scripts/wayland-video-surface-smoke.sh --measure-fullscreen-resume --sample-perf
 scripts/wayland-video-surface-smoke.sh --simulate-session locked --sample-performance --keep
 scripts/wayland-video-surface-smoke.sh --sample-paused --keep
 scripts/wayland-baseline-matrix.sh --report-dir /tmp/gilder-wayland-baseline --sample-duration 30
+scripts/wayland-baseline-matrix.sh --report-dir /tmp/gilder-wayland-baseline --budget-csv examples/wayland-memory-budget.example.csv
 scripts/wayland-video-surface-smoke.sh --allow-missing
 scripts/wayland-video-surface-smoke.sh --no-build --keep
 ```
@@ -159,7 +160,11 @@ fullscreen,fullscreen,renderer_video_pipelines_latest,0
 Budget checks write `budget-results.csv` and fail the matrix when any matching
 numeric baseline value is missing or above its limit. Prefer PSS, USS/private,
 and retained delta limits for memory regression gates; keep RSS/shared limits
-as supplemental audit signals because they include shared library mappings.
+as supplemental audit signals because they include shared library mappings. The
+repository includes `examples/wayland-memory-budget.example.csv` as a
+conservative starting point for one-output active video and lifecycle
+scenarios. Treat it as a guardrail template: update the values from your own
+`baseline.csv` once a machine-specific baseline has been accepted.
 
 The smoke is intentionally partly visual: after the script reports success,
 confirm that the selected output shows the generated moving test video. Pass
@@ -641,6 +646,23 @@ private-footprint budgets into gates in desktop policy and Wayland smoke runs.
 and `wayland-video-surface-smoke.sh` includes the process memory and renderer
 telemetry summaries in `validation-report.txt` for active, paused, and
 fullscreen-resumed performance directories.
+
+Current local release measurements for the generated 720p/30fps H.264 video
+wallpaper are hardware- and driver-specific, but they define the latest
+optimization baseline for this repository:
+
+| Path | RSS max | PSS max | USS/private max | CPU avg | Zero-copy evidence |
+| --- | ---: | ---: | ---: | ---: | --- |
+| Idle daemon | 4100 KiB | 2018 KiB | 2000 KiB | n/a | n/a |
+| Headless video renderer | 135820 KiB | 126127 KiB | 123376 KiB | 4.11% | sink-gpu-memory-caps |
+| GTK/Wayland video surface | 356892 KiB | 272574 KiB | 241660 KiB | 14.69% | hardware-decode |
+
+The headless path is now close to the decoder/GStreamer cost floor observed on
+this host. The GTK/Wayland path is still the main memory target: it confirms
+hardware decoding, but the sink caps only showed `memory:SystemMemory`, so it
+may still copy frames through CPU memory instead of preserving a GPU/DMABuf
+path to presentation.
+
 Pass `--pid`, `--socket`, or `--gilderctl` when testing an isolated daemon such
 as the Wayland surface smoke script. The CSV, summaries, and raw status files
 are intended to be compared between scenarios.
