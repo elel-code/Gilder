@@ -155,11 +155,12 @@ By default GTK video frame-clock evidence is lightweight after-paint data;
 phase and GDK timing fields require `GILDER_GTK_VIDEO_FRAME_STATS=full`, which
 the Wayland smoke sets automatically for phase/timing expectations.
 Pass `--budget-csv <path>` to make the matrix enforce per-scenario budgets.
-The budget file is a simple CSV with `scenario,phase,metric,max`; `scenario`
-and `phase` may be `*`, and `metric` must match a `baseline.csv` column:
+The budget file is a simple CSV with `scenario,phase,metric,max` and an
+optional `min_release_from_active_kib` column. `scenario` and `phase` may be
+`*`. `max` caps a metric that must match a `baseline.csv` column:
 
 ```csv
-scenario,phase,metric,max
+scenario,phase,metric,max,min_release_from_active_kib
 active,active,max_uss_kib,250000
 active,user-paused,retained_private_delta_kib,20480
 *,*,max_pss_kib,320000
@@ -168,16 +169,22 @@ active,user-paused,retained_private_delta_kib,20480
 *,*,render_sync_package_cache_max_retained_unique_resource_bytes_latest,536870912
 *,*,render_sync_static_image_cache_bytes_latest,104857600
 fullscreen,fullscreen,renderer_video_pipelines_latest,0
+fullscreen,fullscreen,memory_category_nvidia_device_private_dirty_kib,,8192
 ```
 
 Budget checks write `budget-results.csv` and fail the matrix when any matching
-numeric baseline value is missing or above its limit. Prefer PSS, USS/private,
-and retained delta limits for memory regression gates; keep RSS/shared limits
-as supplemental audit signals because they include shared library mappings. The
-repository includes `examples/wayland-memory-budget.example.csv` as a
-conservative starting point for one-output active video and lifecycle
-scenarios. Treat it as a guardrail template: update the values from your own
-`baseline.csv` once a machine-specific baseline has been accepted.
+numeric baseline value is missing or above its `max` limit. Rows with
+`min_release_from_active_kib` use `memory-category-deltas.csv` instead and fail
+when `release_from_active_kib` is missing or below the configured minimum; this
+is intended for `memory_category_*_private_dirty_kib` lifecycle release gates.
+Prefer PSS, USS/private, retained delta, and category release limits for memory
+regression gates; keep RSS/shared limits as supplemental audit signals because
+they include shared library mappings. The repository includes
+`examples/wayland-memory-budget.example.csv` as a conservative starting point
+for one-output active video and lifecycle scenarios. Treat it as a guardrail
+template: update the values from your own `baseline.csv` and
+`memory-category-deltas.csv` once a machine-specific baseline has been
+accepted.
 For multi-output video runs, compare `renderer_video_surfaces_*` with
 `renderer_video_shared_runtimes_*`: compatible outputs can have multiple GTK
 video surfaces backed by one shared GStreamer runtime.
@@ -835,6 +842,9 @@ scenario/phase against the `active,active` baseline for those category
 `Private_Dirty` metrics. Negative `delta_from_active_kib` or positive
 `release_from_active_kib` means the lifecycle state released dirty private pages
 for that category; positive delta means the category grew relative to active.
+Budget CSV rows can set `min_release_from_active_kib` for these same metrics to
+make paused/fullscreen/hidden/resumed release expectations fail the matrix when
+they regress.
 
 Current local release measurements for the generated 720p/30fps H.264 video
 wallpaper are hardware- and driver-specific, but they define the latest

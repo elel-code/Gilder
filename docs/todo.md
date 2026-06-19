@@ -270,6 +270,9 @@
 - [x] T0: baseline matrix 输出 `memory-category-deltas.csv`，用 `active,active` baseline
   自动计算 paused/fullscreen/hidden/resumed 等 phase 的分类 `Private_Dirty` delta/release，
   让 fullscreen/game auto-suspend 是否释放 driver/heap/anonymous dirty pages 变成可直接审计的表。
+- [x] T0: baseline matrix 预算 CSV 支持 `min_release_from_active_kib`，可把
+  `memory-category-deltas.csv` 中的 anonymous、heap、driver device/library 分类 release
+  变成 paused/fullscreen/hidden/resumed 生命周期回归 gate。
 - [ ] T0: 专项压低 video active/paused/fullscreen 的 `Private_Dirty`：用
   `category_summary_by_private_dirty` 对比 active -> paused/fullscreen -> resumed，
   优先确认 `anonymous`、`heap`、driver device/library dirty pages 和 shared-memory 是否按生命周期释放。
@@ -282,9 +285,9 @@
   与用户可见内存口径对齐，并确认 `gtk::Picture`/GDK/GSK decoded texture 生命周期不会在
   切换、隐藏或暂停后保留超大纹理。
 - [ ] 为真实 Wayland active、paused、fullscreen、hidden、battery、unfocused 场景建立 CPU/GPU/RSS/PSS/USS/private/shared 基线表。
-- [ ] 为常见场景定义可执行的内存预算和回归阈值，优先使用 PSS、USS 和 private 占用作为判断依据。
+- [ ] 为常见场景定义可执行的内存预算和回归阈值，优先使用 PSS、USS、private 占用和分类 `Private_Dirty` release 作为判断依据。
 - [x] 提供真实 Wayland baseline matrix 采集脚本，批量运行 active/user-paused/battery/unfocused/fullscreen/hidden/session 场景并汇总 CPU/GPU/RSS/PSS/USS/private/shared、renderer resource、decoder/caps 和 timing 证据。
-- [x] Wayland baseline matrix 支持 `scenario,phase,metric,max` 预算 CSV，将 PSS/USS/private/retained delta 等 baseline 字段变成可执行回归阈值。
+- [x] Wayland baseline matrix 支持 `scenario,phase,metric,max[,min_release_from_active_kib]` 预算 CSV，将 PSS/USS/private/retained delta 和分类 `Private_Dirty` release 等字段变成可执行回归阈值。
 - [x] 提供 `examples/wayland-memory-budget.example.csv`，作为一输出 active 视频和生命周期场景的可执行内存/资源预算起点。
 - [x] 在验证文档中记录当前 release active 视频采样基线，区分 idle、headless video 和 GTK/Wayland video surface 的 RSS/PSS/USS/private 现状。
 - [x] 为 active -> paused/hidden/fullscreen -> active 场景输出内存 delta，区分瞬时峰值、恢复后 retained USS/private 和共享库 RSS。

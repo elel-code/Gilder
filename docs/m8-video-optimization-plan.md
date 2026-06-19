@@ -103,9 +103,10 @@ Private_Dirty 进一步突破判断：
   `memory_category_<category>_private_dirty_kib` summary/baseline 字段。下一轮采样要直接按
   `Private_Dirty` 分类比较 active、paused/fullscreen 和 resumed，而不是只看总 PSS/USS。
 - `wayland-baseline-matrix.sh` 会额外输出 `memory-category-deltas.csv`，把每个
-  scenario/phase 的分类 `Private_Dirty` 与 `active,active` baseline 相减。后续判断
-  fullscreen/game auto-suspend 是否真的释放 dirty pages，应优先看该 CSV 中 anonymous、heap、
-  nvidia/dri-device 和 nvidia-library 的 `release_from_active_kib`。
+  scenario/phase 的分类 `Private_Dirty` 与 `active,active` baseline 相减。预算 CSV 的
+  `min_release_from_active_kib` 列可以把该 CSV 中 anonymous、heap、nvidia/dri-device 和
+  nvidia-library 的 `release_from_active_kib` 变成 gate，用来判断 fullscreen/game
+  auto-suspend 是否真的释放 dirty pages。
 
 ## Guardrails Before Experiments
 
