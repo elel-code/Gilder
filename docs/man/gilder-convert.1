@@ -19,9 +19,10 @@ packs and unpacks Gilder wallpaper packages and converts local Wallpaper Engine
 projects into Gilder packages.
 .PP
 Wallpaper Engine conversion currently supports static image, video, web,
-conservative scene-lite, and playlist/collection projects. Custom shader
-effects are reported as conversion gaps rather than executed or translated into
-native shader entries. Executable application projects are reported clearly in
+explicit shader, conservative scene-lite, and playlist/collection projects.
+Shader projects are converted to fallback shader manifests; custom shaders
+embedded in Scene projects remain conversion gaps and are not executed or
+translated. Executable application projects are reported clearly in
 .I metadata/conversion-report.json
 and are not executed.
 .SH OUTPUT

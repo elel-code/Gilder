@@ -16,7 +16,7 @@
 gilder-convert wallpaper-engine <source-project-dir> <dest.gwpdir>
 ```
 
-当前实现支持静态图片、视频、Web、保守 `scene-lite` 和 image/video/web/scene 子项组成的 playlist/collection 项目的 `.gwpdir` 输出；application/executable 项目会生成转换报告并拒绝转换。Gilder 包格式已经支持手写 `shader` entry 和 fallback plan，但 Wallpaper Engine custom shader 目前仍作为 Scene 转换缺口记录，不会自动转成原生 `shader` entry。缺失预览图时，静态图片项目会从源图生成 poster/thumbnail，视频项目会优先通过本机 `ffmpeg` 从首帧生成 poster/thumbnail，失败时回退到 metadata-based SVG fallback；Scene 项目会生成 metadata-based SVG fallback。静态大图在本机同时有 `ffprobe` 和 `ffmpeg` 时，会额外生成 16:9、21:9/ultrawide 和 9:16 portrait PNG variants，供 daemon 按输出尺寸自动选择，降低常见输出上无意义解码超大原图的概率。
+当前实现支持静态图片、视频、Web、明确 Shader、保守 `scene-lite` 和 image/video/web/scene/shader 子项组成的 playlist/collection 项目的 `.gwpdir` 输出；application/executable 项目会生成转换报告并拒绝转换。明确 Shader 项目会复制 shader source，生成 `entry.type = "shader"`、uniform schema 和 fallback poster；Scene 内嵌 custom shader/effect graph 仍作为 Scene 转换缺口记录，不会执行或翻译。缺失预览图时，静态图片项目会从源图生成 poster/thumbnail，视频项目会优先通过本机 `ffmpeg` 从首帧生成 poster/thumbnail，失败时回退到 metadata-based SVG fallback；Scene 和 Shader 项目会生成 metadata-based SVG fallback。静态大图在本机同时有 `ffprobe` 和 `ffmpeg` 时，会额外生成 16:9、21:9/ultrawide 和 9:16 portrait PNG variants，供 daemon 按输出尺寸自动选择，降低常见输出上无意义解码超大原图的概率。
 
 已支持：
 
@@ -55,8 +55,8 @@ gilder-convert wallpaper-engine --allow-web <source> <dest.gwpdir>
 | Video | `video` | 高 | 复制可播放视频；必要时转码；生成 poster |
 | Web | `web` | 中 | 复制 HTML/CSS/JS/资源；注入兼容 bridge；默认禁网 |
 | Scene | `scene-lite` / `video` / `static-image` | 低到中 | 复制 Scene 入口元数据并生成 fallback；复杂效果记录为 unsupported |
-| Shader / effect | `scene-lite` fallback / 手写 `shader` | 低 | 转换器记录 custom shader 缺口；手写 Gilder 包可声明 `shader` source、uniform schema 和 fallback |
-| Playlist / collection | `playlist` | 中 | 将 image/video/web/scene 子项复制为一等 playlist item；保留 item weight；web 子项注入 bridge；scene 子项生成独立 scene-lite fallback graph |
+| Shader / effect | `shader` / `scene-lite` fallback | 低 | 明确 Shader 项目复制 shader source，生成 uniform schema 和 fallback；Scene 内 custom shader 仍记录为缺口 |
+| Playlist / collection | `playlist` | 中 | 将 image/video/web/scene/shader 子项复制为一等 playlist item；保留 item weight；web 子项注入 bridge；scene 子项生成独立 scene-lite fallback graph；shader 子项生成 `shader` fallback entry |
 | Application / executable | 不支持 | 无 | 拒绝转换，仅生成报告 |
 
 ## 静态图片转换
@@ -141,7 +141,7 @@ Wallpaper Engine scene 能力很大，v1 只实现可解释子集。
 暂不迁移：
 
 - SceneScript。
-- 自定义 shader。Gilder 包格式可手写 `shader` entry，但转换器尚不翻译 Wallpaper Engine shader graph/source。
+- Scene 内自定义 shader graph/source。明确 Shader 项目可转为 `shader` fallback entry，但 Scene graph 中的 shader/effect 仍不执行、不翻译。
 - 复杂粒子、音频响应、RGB 设备联动。
 - 3D model 行为。
 

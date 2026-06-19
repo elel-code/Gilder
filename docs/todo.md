@@ -379,6 +379,7 @@
 - [ ] 设计完整 `scene` runtime：保留可高效渲染的 scene graph，不把复杂场景长期降级为静态 fallback。
 - [ ] 增强 `web` 壁纸 runtime：WebKitGTK sandbox、输入策略、音频策略、资源权限、暂停/恢复和低功耗模式。
 - [x] 添加一等 `shader` manifest entry，记录 GLSL/WGSL 风格的时间、分辨率、鼠标和用户属性 uniform schema；runtime 完成前使用 fallback render plan，并按动态壁纸参与 `pause-dynamic` 释放策略。
+- [x] Wallpaper Engine 转换器支持明确 Shader 项目和 playlist shader 子项，生成 `shader` fallback manifest、标准 time/resolution/mouse uniform 和用户属性 uniform。
 - [ ] 实现原生 shader runtime：编译/执行 GLSL/WGSL、注入 uniform、接入 GPU memory telemetry 和 Wayland surface smoke。
 - [ ] 添加粒子/特效壁纸类型，优先覆盖 Wallpaper Engine 常见粒子发射器、纹理、速度场和 blend 模式。
 - [ ] 添加音频响应壁纸能力，定义可选 PipeWire 音频采样输入和隐私/权限开关。
