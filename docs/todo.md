@@ -240,6 +240,7 @@
 - [x] 接上更强硬解路径验证：按 codec/GPU/driver 记录实际 decoder、caps、sink caps、CPU/GPU/USS/PSS 对比。
 - [ ] 验证 GTK video surface 是否能保持 GPU/DMABuf 路径，区分“硬解但发生 CPU copy”和真正 zero-copy。
 - [x] performance snapshot 和 Wayland video smoke 支持 `--expect-zero-copy-evidence-at-least`，按证据强度做最低等级断言，避免更强 DMABuf/GLMemory 证据无法满足较低门槛。
+- [x] performance snapshot 和 Wayland video smoke 支持 `--expect-zero-copy-profile`，将硬解、sink GPU/DMABuf caps、播放推进和 GTK frame-clock 证据组合成可执行 runtime/GTK profile。
 - [ ] 继续采集 compositor presentation/frame callback 统计，补足 GTK/GDK timing 之外的 compositor 侧证据。
 - [ ] 将硬解、DMABuf/GLMemory、sink-side caps 和 compositor presentation 组合成更严格的 zero-copy validation profile。
 - [x] 扩展 adaptive monitor，让用户可选按 CPU/GPU/内存压力、电池、温度、session/output 状态自动降 FPS、暂停动态壁纸或释放资源。

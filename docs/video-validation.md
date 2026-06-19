@@ -99,7 +99,7 @@ Useful options:
 scripts/wayland-video-surface-smoke.sh --preflight --report-dir /tmp/gilder-wayland-video-preflight
 scripts/wayland-video-surface-smoke.sh --output eDP-1
 scripts/wayland-video-surface-smoke.sh --expect-compositor hyprland --require-video-runtime-row --visual-hold 20 --keep
-scripts/wayland-video-surface-smoke.sh --expect-compositor hyprland --require-video-runtime-row --expect-decoder-class hardware --expect-zero-copy-evidence sink-dmabuf-caps --expect-gtk-frame-clock --expect-gtk-frame-clock-phase all --keep
+scripts/wayland-video-surface-smoke.sh --expect-compositor hyprland --require-video-runtime-row --expect-zero-copy-profile gtk-dmabuf-surface --keep
 scripts/wayland-video-surface-smoke.sh --all-outputs --visual-hold 20 --keep
 scripts/wayland-video-surface-smoke.sh --sample-performance --keep
 scripts/wayland-video-surface-smoke.sh --visual-hold 20 --keep
@@ -581,6 +581,15 @@ known hardware decoder, `--expect-sink-memory-feature memory:DMABuf` checks for
 sink-side DMABuf caps, and
 `--expect-zero-copy-evidence-at-least sink-gpu-memory-caps` accepts either
 sink-side GLMemory or the stronger sink-side DMABuf evidence level.
+Use `--expect-zero-copy-profile <profile>` for grouped checks. Each profile
+requires one runtime row where the same output has a hardware decoder and the
+requested zero-copy evidence level or stronger. `hardware-decode` requires
+moving playback; `runtime-gpu-path` adds sink-side GPU memory caps;
+`runtime-dmabuf-path` raises that to sink-side DMABuf caps; `gtk-gpu-surface`
+and `gtk-dmabuf-surface` add a GTK frame clock and after-paint ticks;
+`gtk-timed-gpu-surface` also requires completed GDK frame timings. These
+profiles are stricter runtime evidence bundles, but they still stop short of
+direct compositor `wp_presentation` proof.
 Use `--expect-video-position-progress`, `--expect-frame-limiter-enabled`, and
 `--expect-frame-limiter-max-fps <fps>` to assert that playback moved during the
 sample window and that the runtime frame limiter is active at the expected cap.
