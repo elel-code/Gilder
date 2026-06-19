@@ -150,6 +150,10 @@ GTK/GStreamer 低内存渲染方向：
   active 视频默认不再插入 `videorate ! capsfilter`，而是使用 sink
   `throttle-time`；muted 路径只启用 video playbin flag，并关闭 sink
   `enable-last-sample`，减少无意义的 audio/deinterlace/last-sample 常驻引用。
+- GTK 视频路径优先把 `gtk4paintablesink` 包进 `glsinkbin`，让 decodebin 更容易把上游
+  caps 协商到 GLMemory/DMABuf，再落到 GTK `GdkPaintable`。如果 `glsinkbin` 不可用或构建
+  失败，则回退到直接 `gtk4paintablesink`。sink 低内存调优还会在支持时关闭 async
+  preroll、preroll frame 和 render delay，减少 paused/preroll/last-frame 路径的额外帧保留。
 - GTK renderer 已把视频运行时从单个输出对象里拆出来：对兼容的
   `(source, loop, muted/audio policy, decoder policy, start offset, target FPS)` 使用一个
   共享 GStreamer pipeline 和一个共享 `GdkPaintable`，每个输出只持有自己的

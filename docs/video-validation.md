@@ -118,7 +118,7 @@ scripts/wayland-video-surface-smoke.sh --no-build --keep
 Use `--preflight` first when validating a real compositor session. It checks
 `WAYLAND_DISPLAY`, `XDG_RUNTIME_DIR`, required tools, built binaries, and the
 GStreamer elements needed by the generated MP4/H.264 test wallpaper
-(`playbin`, `gtk4paintablesink`, `qtdemux`, and an H.264 decoder candidate)
+(`playbin`, `gtk4paintablesink`, `glsinkbin`, `qtdemux`, and an H.264 decoder candidate)
 without starting the daemon or changing the current wallpaper. With
 `--report-dir`, it writes stable `metadata.txt`, `checks.csv`,
 `validation-report.txt`, and `summary.txt` evidence that can be attached before
@@ -442,7 +442,12 @@ software volume elements are not kept in the wallpaper pipeline unless a later
 renderer path explicitly needs them. FPS limiting is applied on the sink via
 `throttle-time` instead of a `video-filter`, keeping `videorate` and
 `capsfilter` out of the negotiated video path so GPU-memory caps have fewer
-software-only elements to cross.
+software-only elements to cross. The GTK surface path also tries
+`glsinkbin+gtk4paintablesink` before direct `gtk4paintablesink`, so systems with
+working OpenGL/DMABuf support can negotiate GLMemory/DMABuf closer to the GTK
+paintable. If the GL wrapper is unavailable, the renderer falls back to direct
+`gtk4paintablesink`. `sink_tuning.sink_element` and the CSV
+`sink_element` column report which path is active.
 
 ## Remaining Surface Work
 
@@ -599,7 +604,7 @@ The sampler also writes `video-runtime.csv`, which records each sample's
 decoder policy status, actual decoder classes, caps report count, all memory
 features, sink-side memory features, zero-copy evidence level, memory path,
 allocation report count, allocation pools/allocators, playback position/duration,
-actual frame limiter state, sink low-memory tuning, and GTK frame clock phase counters. It also writes
+actual frame limiter state, sink low-memory tuning, selected sink element, and GTK frame clock phase counters. It also writes
 `video-runtime-summary.txt`, including `video_zero_copy_evidence_latest`,
 `video_zero_copy_evidence.<level>` counts, `video_memory_path_latest`,
 `video_memory_path.<level>` counts, `video_allocation_report_count_max`, latest
@@ -607,7 +612,8 @@ allocation pool/allocator summaries, `video_position_moving_outputs`,
 `video_position_delta_ms_max`, `video_frame_limiter_enabled_rows`, limiter FPS min/max,
 `video_qos_messages_max`, `video_qos_dropped_max`,
 `video_gtk_frame_clock_ticks_max`, GTK frame clock phase maxima, GTK frame
-clock interval/FPS summaries, `video_gtk_frame_timings_complete_max`, and GDK
+clock interval/FPS summaries, `video_gtk_frame_timings_complete_max`,
+`video_sink_element_latest`, low-memory sink property summaries, and GDK
 frame timing presentation interval/time summaries.
 Use that table beside CPU, PSS, USS, and RSS when checking hard decode or
 zero-copy behavior.

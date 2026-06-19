@@ -238,6 +238,7 @@
 - [x] GTK/video renderer 在无 FPS 上限时不创建 `videorate`/`capsfilter` frame limiter，减少默认 active 视频 pipeline 的常驻 GStreamer element。
 - [x] GTK/headless video renderer 使用最小 `playbin` flags，muted 路径只开 video，audible 路径只开 video+audio，避免 active 视频常驻 deinterlace、soft color balance 或 soft volume 分支。
 - [x] 将 GTK/headless 视频限帧改为 sink `throttle-time`，不再把 `videorate ! capsfilter` 插入 decoder 到 sink 的协商路径，并关闭 sink `last-sample` 保留。
+- [x] GTK video surface 优先使用 `glsinkbin+gtk4paintablesink`，并关闭 async preroll、preroll frame 和 render delay，减少 CPU raw frame/readback 与 paused/preroll frame 保留风险。
 - [x] GTK renderer tick 按负载动态调度：视频 runtime 保持 50ms，纯静态空闲或长间隔 slideshow 退到最长 250ms，并且只在 render sync 变化、slideshow 实际换帧或存在 video runtime 时刷新 renderer runtime snapshot。
 - [x] 静态图运行时缓存按 fit 估算降采样收益，覆盖 `contain` 极端比例大图和 `stretch` 大面积源图，减少直接让 GTK/GDK 解码原图的场景。
 - [x] battery 性能策略支持用户可选 `pause-dynamic`，电池供电时释放 video/slideshow/web/scene-lite 资源但保留静态壁纸，并在 headless desktop policy smoke 中覆盖。
@@ -259,6 +260,7 @@
 - [x] 为视频 runtime 增加 allocator/buffer-pool/caps 路径诊断，区分硬解后仍落到 CPU raw frame、decoder 侧 GPU memory、sink-side GPU memory 和 DMABuf/GLMemory runtime surface 线索。
 - [x] 将视频 runtime 的 decoder/caps/allocation/memory path 诊断改为每 runtime 低频缓存刷新，避免 GTK 50ms tick 或状态轮询持续遍历 GStreamer pipeline 和发 allocation query。
 - [x] headless/GTK video sink 默认启用低内存 BaseSink 调优：关闭 last-sample、开启 QoS、按目标 FPS 收紧 max-lateness，并在 runtime snapshot 中报告 sink tuning。
+- [x] runtime CSV、performance summary 和 video hardware report 报告 sink element、async、last-sample、render-delay、processing-deadline 和 preroll-frame 状态，便于验证 GTK 是否进入 GL sink 低内存路径。
 - [x] GTK 静态图普通 fit 从 CSS background-image 改为显式 `gtk::Picture` surface，切到视频、移除输出或换帧时释放 Picture 引用；`tile` 保留 CSS fallback。
 - [x] GTK renderer telemetry 拆分 static Picture/CSS/color surface，并按 Picture paintable intrinsic size 报告估算 decoded footprint，作为 retained texture 风险线索。
 - [x] desktop policy smoke、Wayland baseline matrix 和 Wayland video smoke 报告 static Picture/CSS/color surface 与估算 decoded footprint，并支持 headless 场景预算转发。
