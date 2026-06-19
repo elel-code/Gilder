@@ -145,12 +145,15 @@ Wallpaper Engine scene 能力很大，v1 只实现可解释子集。
 
 Scene 转换策略按优先级：
 
-1. 当前先生成保守 `entry.type = "scene-lite"`，复制 Scene 入口文件到 `assets/`。
-2. 如果项目提供 preview，则作为 `fallback`；缺失时生成 SVG fallback。
-3. Scene runtime 本身记录为 `scene-runtime`；SceneScript、shader、复杂粒子、timeline、
+1. 当前先生成保守 `entry.type = "scene-lite"`，`entry.source` 指向 Gilder
+   `assets/scene-lite.json`。该文档至少包含 fallback image layer，后续可扩展为原生
+   scene graph。
+2. 原始 Wallpaper Engine Scene 入口文件保留到 `metadata/source-scene.*`。
+3. 如果项目提供 preview，则作为 `fallback`；缺失时生成 SVG fallback。
+4. 完整 Scene runtime 仍记录为 `scene-runtime`；SceneScript、shader、复杂粒子、timeline、
    parallax 和音频响应会分别记录为 `scenescript`、`custom-shader`、
    `complex-particles`、`timeline-animation`、`parallax` 和 `audio-runtime`。
-4. 后续如果能识别主要视频或图片，可降级为 `video` 或 `static-image`。
+5. 后续如果能识别主要视频或图片，可降级为 `video` 或 `static-image`。
 
 ## 用户属性映射
 
@@ -191,7 +194,9 @@ Scene 转换策略按优先级：
     "scenescript",
     "timeline-animation"
   ],
-  "warnings": ["Converted Scene project to scene-lite metadata and fallback only."],
+  "copied_assets": ["metadata/source-scene.json"],
+  "generated_assets": ["assets/scene-lite.json", "previews/poster.svg", "previews/thumbnail.svg"],
+  "warnings": ["Converted Scene project to a scene-lite fallback graph; original scene metadata was preserved at metadata/source-scene.json."],
   "errors": []
 }
 ```

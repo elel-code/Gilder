@@ -341,4 +341,4 @@ action = "pause-unfocused"
 4. Wallpaper Engine 静态/视频项目转换。
 5. Hyprland/niri 输出适配器。
 6. Web wallpaper fallback 渲染计划，再扩展为受限 WebKit runtime。
-7. 部分 Scene wallpaper 转换为 Gilder scene-lite。
+7. 部分 Scene wallpaper 转换为 Gilder scene-lite graph，再扩展为原生 scene surface。
