@@ -223,9 +223,16 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   H.265 Main 源上，native parser 真实读取 profile flags、VPS/SPS DPB ordering、SPS VUI
   和 PPS 基础字段，构造 `StdVideoH265VideoParameterSet`、`StdVideoH265SequenceParameterSet`
   和 `StdVideoH265PictureParameterSet`，并成功创建 `VkVideoSessionParametersKHR`
-  (`session_parameters_created=true`, VPS/SPS/PPS count 均为 1)。这一步仍未声称 decode 成功；
-  剩余关键点是补 `vkCmdBeginVideoCodingKHR` / `VkVideoDecodeH265PictureInfoKHR` /
-  `vkCmdDecodeVideoKHR` / `vkCmdEndVideoCodingKHR`。
+  (`session_parameters_created=true`, VPS/SPS/PPS count 均为 1)。
+- `--probe-video-session --decode-first-frame --source <h265.mp4>` 已进入真实 H.265
+  Vulkan Video command buffer：2026-06-21 在 `WAYLAND_DISPLAY=wayland-1`、NVIDIA 4060、
+  3840x2160@240 H.265 Main 源上，probe 解析 IDR slice offset 2444，使用 8-layer
+  NV12 coincident DPB/output image 的 layer 0 作为 `dst_picture_resource` 和 setup reference
+  slot，按 256-byte alignment 提交 173824-byte src range，并成功完成
+  `vkCmdBeginVideoCodingKHR`、`vkCmdControlVideoCodingKHR(RESET)`、`vkCmdDecodeVideoKHR`、
+  `vkCmdEndVideoCodingKHR`、`vkQueueSubmit` 和 `vkQueueWaitIdle`
+  (`first_frame_decode.completed=true`)。这证明 driver 接受首帧 direct decode command；仍不等同于
+  像素正确性验证，下一步要把 output image 接到 NV12 shader sampling 或 GPU readback/hash。
 - `native-vulkan-gst-video` 已补 `GstVAMemory -> vaExportSurfaceHandle(DRM PRIME) -> Vulkan`
   importer scaffold，作为 Intel/AMD VA/DMABuf 路径的基础。当前混合 GPU 机器上 VA decoder
   默认会先探测 NVIDIA DRM 设备并打印 `unsupported drm device by media driver: nvid`；
