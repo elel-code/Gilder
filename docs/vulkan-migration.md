@@ -260,6 +260,11 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   slice_type=1，PTS 为 4/8/12/16/20/25/29ms，POC LSB 为 1..7。完整
   `--sample-decoded-first-frame --bitstream-samples 8` 同时验证首帧 decode/readback/sampling
   仍通过，`output_sampling.rgba_hash=7109389899594476375`。
+- 同一 AU telemetry 已继续解析 H.265 short-term reference picture set：真实 4K/240 源的
+  P-slice 不是单参考链。AU1 的 used negative delta POC 为 `[-1, -16]`，AU2 为
+  `[-1, -2, -19, -292]`，AU3/AU4/AU6/AU7 为 `[-1, -2, -21]`。这意味着连续帧 direct
+  decode 不能只把前一帧放进 reference slot；下一步要先建立 DPB slot/ring、POC 跟踪和
+  RefPicSetStCurrBefore/After 到 Vulkan reference slot index 的映射，再提交第二帧及后续帧。
 - `native-vulkan-gst-video` 已补 `GstVAMemory -> vaExportSurfaceHandle(DRM PRIME) -> Vulkan`
   importer scaffold，作为 Intel/AMD VA/DMABuf 路径的基础。当前混合 GPU 机器上 VA decoder
   默认会先探测 NVIDIA DRM 设备并打印 `unsupported drm device by media driver: nvid`；
