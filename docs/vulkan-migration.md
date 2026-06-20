@@ -290,10 +290,12 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   `WAYLAND_DISPLAY=wayland-1` 和同一 3840x2160@240 H.265 Main short-GOP 源上，2-frame
   IDR+P direct decode 通过：AU0 写 slot0，AU1 写 slot1 并引用 slot0，final readback
   layer1 的 Y/UV unique=198/248，hash=6114663086929905156/6011523946105094791。
-  脚本 `--decode-prefix` 现在要求 readback 非单值，避免把“命令完成但画面无效”的路径误判
-  为通过。当前 8-frame short-GOP submit 能完成，但 repeated IDR 后末帧 readback 会变为单值，
-  因此完整 ready-prefix decode/display 还需要补 IDR DPB reset/slot 生命周期，而不是只看
-  `vkQueueWaitIdle` 成功。
+  随后修正 repeated-IDR 的 DPB slot allocator：IDR 清空软件 DPB 后 next slot 回到 0，
+  repeated short-GOP 因此复用 slot0/slot1；同时在非首帧 IDR 前记录
+  `vkCmdControlVideoCodingKHR(RESET)`。同日真实验证 8-frame ready-prefix decode 通过：
+  ready-prefix=8、decoded=8、reset_count=4、AU7 readback layer1，Y/UV unique=205/256，
+  hash=11542476098458954487/10292639723071029932。脚本 `--decode-prefix` 要求 readback
+  非单值，避免把“命令完成但画面无效”的路径误判为通过。
 - `native-vulkan-gst-video` 已补 `GstVAMemory -> vaExportSurfaceHandle(DRM PRIME) -> Vulkan`
   importer scaffold，作为 Intel/AMD VA/DMABuf 路径的基础。当前混合 GPU 机器上 VA decoder
   默认会先探测 NVIDIA DRM 设备并打印 `unsupported drm device by media driver: nvid`；
