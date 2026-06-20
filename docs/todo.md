@@ -367,6 +367,8 @@
 - [x] 梳理 Wallpaper Engine 类型矩阵：image、video、web、scene、application、audio visualizer、shader/particle、playlist，并标注 Gilder 支持等级。
 - [x] 记录后续纯 Vulkan renderer 迁移准备路线：当前不继续压 active video copy/private dirty，
   优先扩展 web/scene-lite/shader/playlist，同时要求新增 runtime 保持后端无关。
+- [x] 将路线调整为壁纸类型扩展与 hand-rolled Vulkan spike 并行推进：类型 runtime 可以先落在
+  GTK/wgpu/helper 后端，但必须同步定义 Vulkan-facing contract。
 - [x] 让 `web` entry 在 runtime 未完成前使用 fallback render plan，缺少 fallback 时给出明确 unsupported 错误。
 - [x] 为 `scene-lite` 定义 2D image/color/group layer、transform、opacity、keyframe timeline、动画曲线和属性 binding schema，并提供 headless snapshot evaluator 与资源校验。
 - [x] 为 `scene-lite` 生成一等 render sync plan，GTK 先显示 fallback、首个 image layer 或首个 color layer，并把 fallback/layer 图片资源计入计划层与 package cache footprint。
@@ -396,3 +398,21 @@
 - [ ] 继续扩展 playlist/轮播策略：按媒体/系统信息和更复杂日历条件选择壁纸，并补更完整 Wallpaper Engine playlist 策略映射。
 - [x] 扩展 Wallpaper Engine 转换器，为 web/scene/shader/particle/audio 响应能力输出更细的 conversion report 和缺失能力提示。
 - [ ] 为每类新壁纸定义 manifest schema、示例包、转换测试、headless 计划测试和真实 Wayland smoke 验证入口。
+
+## M10: Hand-rolled Vulkan renderer spike
+
+- [ ] 定义 renderer backend contract：GTK/wgpu/helper 和 native Vulkan 后端消费同一
+  render plan、property 输入、dynamic lifecycle 和 resource telemetry。
+- [ ] 建立最小 native Vulkan layer-shell host：Wayland surface、Vulkan instance/device/swapchain、
+  resize、output selection、frame pacing 和 release。
+- [ ] 接入 static image 最小渲染路径，复用现有 static render plan、fit 和 resource telemetry。
+- [ ] 接入 shader-first 路径：fullscreen triangle、time/resolution/property uniform、Wayland smoke
+  和 GPU/resource telemetry。
+- [ ] 接入 scene-lite runtime 输出：Vulkan 后端消费同一 deterministic scene graph/timeline
+  结果，不新增 scene 专用 manifest 分支。
+- [ ] 设计 Web helper frame/texture handoff：WebKitGTK/浏览器 helper 只作为隔离实现，native Vulkan
+  后端通过稳定 helper 协议接收 frame stream 或可导入 texture。
+- [ ] 继续 video interop spike：验证 Vulkan Video、GStreamer GL/EGLImage/DMABuf、libavcodec +
+  external memory 等方案；只有同场景优于当前 native-wgpu CUDA copy path 才进入默认候选。
+- [ ] 将 native Vulkan 后端接入 baseline matrix，覆盖 static/video/web/scene-lite/shader/playlist
+  的 active、paused、hidden、fullscreen、session release 和恢复延迟。

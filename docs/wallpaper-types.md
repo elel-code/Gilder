@@ -45,22 +45,27 @@
 | 硬解证据 | video runtime decoder reports | 部分 | Codec smoke 和 Wayland runtime gates。 |
 | Zero-copy 证据 | caps 和 sink memory feature reports | 部分 | DMABuf/GLMemory gates，以及后续 compositor presentation 证据。 |
 
-## 实现顺序
+## 并行实现顺序
 
 1. 保持 static image、video 和 slideshow 作为性能基线。这些类型必须持续维持低 CPU、
    GPU、PSS、USS/private 和 wakeup。
 2. 下一步优先让 `web` runtime 可用，并默认启用 sandbox，网络和音频必须显式授权。
-   Web 壁纸常见，而且已经能映射到当前转换出的资源目录。
+   Web 壁纸常见，而且已经能映射到当前转换出的资源目录；同时定义 helper frame/texture
+   handoff，供未来 Vulkan 后端消费。
 3. 在加入原生 shader runtime 或 particle 前，先把 `scene-lite` 扩展成真正的 2D scene runtime。
    Scene graph、transform、opacity 和 timeline 行为应可在无 compositor 环境确定性测试；
-   当前 first-class render plan 已经给原生 scene surface 留出同步边界。
+   当前 first-class render plan 已经给原生 scene surface 留出同步边界；Vulkan spike 同步消费
+   同一 scene runtime 输出。
 4. 原生 shader runtime 和 particle 能力从一开始就要接入 GPU/USS/PSS 预算 gate，以及 adaptive
-   pause/throttle。
+   pause/throttle；shader runtime 是 Vulkan spike 的优先落点。
 5. Audio-responsive 壁纸必须作为 opt-in 能力实现，使用 PipeWire input，并在 status/watch
    中清晰报告权限和采样状态。
 6. Playlist 已按 first-match 条件和稳定 weighted-random 复用 static、video、slideshow、
    web、scene-lite、shader 的既有 renderer 逻辑，并支持本地时间窗口和本地星期条件；Wallpaper
    Engine playlist 已支持 image/video/web/scene 子项，后续再补复杂策略映射。
+7. 手写 Vulkan 后端与上述类型扩展并行推进：先实现 clear/static/shader/scene-lite 的最小
+   layer-shell renderer，再接 Web helper frame handoff 和 video interop；默认后端切换仍必须等
+   完整类型矩阵和真实 Wayland 验证通过。
 
 ## Renderer 后端约束
 
@@ -73,8 +78,8 @@
   当前实现和未来纯 Vulkan 后端共同消费。
 - 每个动态类型都要接入 `pause-dynamic`、fullscreen/hidden/session release、resource telemetry
   和 baseline matrix 预算，而不是只实现 active 显示。
-- pure Vulkan 后端只有在 static/video/web/scene/shader/playlist 的同一类型矩阵都能通过后，
-  才能替换当前默认后端。
+- hand-rolled Vulkan 后端可以和类型 runtime 同步开发；但只有在 static/video/web/scene/shader/
+  playlist 的同一类型矩阵都能通过后，才能替换当前默认后端。
 
 ## 转换报告要求
 

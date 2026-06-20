@@ -93,9 +93,10 @@ PSI、thermal、power_supply 和 DRM 采样。
 
 当前默认 daemon 仍以 GTK/GStreamer 路径覆盖完整壁纸类型和生命周期；native-wgpu 路径用于
 验证更底层的 Wayland/Vulkan/CUDA 能力。后续新增 web、scene-lite、shader、particle 等
-runtime 时，manifest、render plan、属性系统和 telemetry 必须保持 renderer 后端无关。纯
-Vulkan 后端的迁移准备和停止/成功条件记录在 `docs/vulkan-migration.md`；在它成为默认后端前，
-现有 GTK/wgpu 路径继续作为功能覆盖和真实 Wayland 回归基线。
+runtime 时，manifest、render plan、属性系统和 telemetry 必须保持 renderer 后端无关。类型
+runtime 扩展和 hand-rolled Vulkan renderer spike 并行推进，路线和停止/成功条件记录在
+`docs/vulkan-migration.md`；在 Vulkan 成为默认后端前，现有 GTK/wgpu 路径继续作为功能覆盖和
+真实 Wayland 回归基线。
 
 静态图片：
 
