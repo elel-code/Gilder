@@ -476,9 +476,12 @@
   DPB/POC reference plan，将多个 H.265 AU 逐帧 `vkCmdDecodeVideoKHR` 到 NV12 array layer，并由
   present queue 的 native Vulkan NV12 shader 采样到 Wayland swapchain；新增 4K/240 source smoke
   验证 8 帧 decode/present、PTS delta 和 layer 序列。
-- [ ] 将 visible direct H.265 ready-prefix 从 smoke 推进到真实播放循环：移除 per-frame
-  `queue_wait_idle`，补 timeline/binary semaphore、持续 AU demux/parser、loop/seek 和更长时间
-  240Hz frame pacing telemetry。
+- [x] 将 visible direct H.265 ready-prefix 的跨队列同步从 CPU wait-idle 改为 GPU binary
+  semaphore：video decode queue 每帧 signal `decode_finished`，graphics/present queue 同时等待
+  `image_available` 和 `decode_finished` 后采样 decoded NV12 layer；真实 Wayland 4K/240 smoke
+  验证 24 个 AU 连续 decode/present，策略为 `per-frame-binary-semaphore-decode-signal-present-wait`。
+- [ ] 将 visible direct H.265 ready-prefix 从 smoke 推进到真实播放循环：补持续 AU demux/parser、
+  timeline semaphore 或更完整的 pacing/scheduling、loop/seek 和更长时间 240Hz frame pacing telemetry。
 - [ ] 接入 shader-first 路径：fullscreen triangle、time/resolution/property uniform、Wayland smoke
   和 GPU/resource telemetry。
 - [ ] 接入 scene-lite runtime 输出：Vulkan 后端消费同一 deterministic scene graph/timeline

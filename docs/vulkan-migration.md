@@ -174,6 +174,17 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   这一步证明连续 decoded NV12 array layers 可以直接进入可见 native Vulkan present；当前仍用
   per-frame `queue_wait_idle` 保守同步，后续要补 semaphore/timeline、持续 demux/parser、loop
   和长时间 240Hz pacing。
+- 同一路径已移除 ready-prefix visible path 的 per-frame video queue `wait_idle`：video queue 每帧
+  signal 一个 binary `decode_finished` semaphore，graphics/present queue submit 同时等待
+  `image_available` 和 `decode_finished`，再执行 NV12 shader sampling 和 present。真实 Wayland
+  smoke `scripts/native-vulkan-h265-ready-prefix-video-smoke.sh --output-name HDMI-A-1
+  --decode-prefix 24 --frames 26` 通过，证据目录
+  `/tmp/gilder-vulkan-h265-ready-prefix-video.38sK0Y`：`decoded_frame_count=24`、
+  `presented_frame_count=24`、策略
+  `per-frame-binary-semaphore-decode-signal-present-wait`、layer 序列
+  `[0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1]`、PTS delta `4..=5ms`、
+  average present `238.128fps`、max decode submit `79us`、max present `4834us`。下一步不再是
+  wait-idle removal，而是持续 parser/demux、loop/seek、timeline/pacing 和长时间 240Hz telemetry。
 - `--run-clear` 已接入 logical device、swapchain、command buffer、semaphore/fence 和 clear present
   loop；同场景 `--duration 3 --target-fps 240` 跑到 720 frames，平均 239.996fps，swapchain 为
   `B8G8R8A8_UNORM`、1707x1067、3 images、FIFO present。
