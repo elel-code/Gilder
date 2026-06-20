@@ -212,6 +212,14 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   256 bytes。该 buffer 的 memory requirement 为 8388864 bytes、alignment 256、
   `memory_type_bits=31`。这已经越过“只创建 session/resource image”的阶段，下一步是从
   demux/parser 提取 codec parameters，创建 session parameters，并提交 `vkCmdDecodeVideoKHR`。
+- `--probe-video-session --extract-bitstream --source <h265.mp4>` 已把 native Vulkan Video
+  输入推进到真实 encoded front-end：2026-06-21 在 `WAYLAND_DISPLAY=wayland-1` 下，用本机
+  生成的 3840x2160@240 H.265 MP4 验证 `qtdemux ! h265parse` 只负责容器 demux 和 parser，
+  输出 `stream-format=byte-stream, alignment=au` 的 encoded access unit；probe 识别出
+  VPS/SPS/PPS/IDR NAL，并把选中的 176187-byte AU 写入 `VIDEO_DECODE_SRC_KHR` buffer
+  (`mapped_write_source=extracted-h265-access-unit`，hash=2638242451184452965)。这一步仍未声称
+  decode 成功；剩余关键点是把 VPS/SPS/PPS 转成 Vulkan STD H.265 session parameters，并记录
+  `vkCmdBeginVideoCodingKHR` / `vkCmdDecodeVideoKHR` / `vkCmdEndVideoCodingKHR`。
 - `native-vulkan-gst-video` 已补 `GstVAMemory -> vaExportSurfaceHandle(DRM PRIME) -> Vulkan`
   importer scaffold，作为 Intel/AMD VA/DMABuf 路径的基础。当前混合 GPU 机器上 VA decoder
   默认会先探测 NVIDIA DRM 设备并打印 `unsupported drm device by media driver: nvid`；
@@ -242,7 +250,7 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   GStreamer 可以继续负责 demux、硬解选择、音频和时钟，但最终 present 必须由 native
   Vulkan swapchain/render pass 完成。
 - NVIDIA direct 的下一步是把已验证的 H.265/AV1 `VkVideoSessionKHR`、NV12 video resource
-  image 和 `VIDEO_DECODE_SRC_KHR` bitstream buffer 扩展成真正 decode：
+  image、真实 H.265 encoded AU 和 `VIDEO_DECODE_SRC_KHR` bitstream buffer 扩展成真正 decode：
   GStreamer 或等价前端只负责 demux/parser/audio/clock，Vulkan Video 模块负责 codec
   parameters、session parameters 和 `vkCmdDecodeVideoKHR`，再复用现有 native Vulkan NV12
   shader 合成。H.264 仍可实现 baseline/main/high，但 4K/240 H.264 level 6.1 不能作为
