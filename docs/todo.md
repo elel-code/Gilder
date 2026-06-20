@@ -480,8 +480,14 @@
   semaphore：video decode queue 每帧 signal `decode_finished`，graphics/present queue 同时等待
   `image_available` 和 `decode_finished` 后采样 decoded NV12 layer；真实 Wayland 4K/240 smoke
   验证 24 个 AU 连续 decode/present，策略为 `per-frame-binary-semaphore-decode-signal-present-wait`。
-- [ ] 将 visible direct H.265 ready-prefix 从 smoke 推进到真实播放循环：补持续 AU demux/parser、
-  timeline semaphore 或更完整的 pacing/scheduling、loop/seek 和更长时间 240Hz frame pacing telemetry。
+- [x] 为 visible direct H.265 ready-prefix 增加受控播放循环：CLI/smoke 新增
+  `--playback-frames N`，用已抽取的 ready-prefix AU window 循环提交
+  `vkCmdDecodeVideoKHR` + present，并在 loop boundary 强制 reset video coding；真实 Wayland
+  4K/240 背景层 20s 样本验证 24 AU window -> 4800 decode/present、200 loops、
+  199 次 loop-boundary reset、平均 `240.006fps`。
+- [ ] 将 visible direct H.265 ready-prefix 从受控窗口循环推进到完整播放循环：补持续 AU
+  demux/parser、timeline semaphore 或更完整的 pacing/scheduling、loop/seek、音频/时钟接入和更长时间
+  240Hz frame pacing telemetry。
 - [ ] 接入 shader-first 路径：fullscreen triangle、time/resolution/property uniform、Wayland smoke
   和 GPU/resource telemetry。
 - [ ] 接入 scene-lite runtime 输出：Vulkan 后端消费同一 deterministic scene graph/timeline

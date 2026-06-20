@@ -185,6 +185,21 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   `[0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1]`、PTS delta `4..=5ms`、
   average present `238.128fps`、max decode submit `79us`、max present `4834us`。下一步不再是
   wait-idle removal，而是持续 parser/demux、loop/seek、timeline/pacing 和长时间 240Hz telemetry。
+- 已为同一 visible direct H.265 path 增加受控 ready-prefix playback loop：CLI 和 smoke 支持
+  `--playback-frames N`，`ready_prefix_frame_count` 只决定 GStreamer `qtdemux+h265parse`
+  抽取和 Vulkan bitstream payload，`requested_playback_frame_count` 决定实际 decode/present
+  帧数；loop boundary 会强制 reset video coding，并在 runtime JSON 中记录
+  `playback_loop_count`、`loop_boundary_reset_count`、pacing sleep/miss 和每帧
+  `playback_loop_index`。真实 Wayland 20s smoke
+  `scripts/native-vulkan-h265-ready-prefix-video-smoke.sh --no-build --output-name HDMI-A-1
+  --source /tmp/gilder-vulkan-h265-ready-prefix-video.WeoJFj/source/h265-main-short-gop-3840x2160-240fps.mp4
+  --decode-prefix 24 --playback-frames 4800` 通过，证据目录
+  `/tmp/gilder-vulkan-h265-ready-prefix-video.SwDOks`：`decoded_frame_count=4800`、
+  `presented_frame_count=4800`、`playback_loop_count=200`、
+  `loop_boundary_reset_count=199`、average present `240.006fps`、max decode submit `732us`、
+  avg decode submit `20us`、max present `4952us`、avg present `2812us`、
+  `missed_frame_pacing_count=4`、max pacing late `846us`。这仍是受控 AU window 循环，不等价于完整
+  continuous demux/parser/audio/seek runtime；下一步要把窗口替换为持续 AU supply 和 timeline/clock。
 - `--run-clear` 已接入 logical device、swapchain、command buffer、semaphore/fence 和 clear present
   loop；同场景 `--duration 3 --target-fps 240` 跑到 720 frames，平均 239.996fps，swapchain 为
   `B8G8R8A8_UNORM`、1707x1067、3 images、FIFO present。
