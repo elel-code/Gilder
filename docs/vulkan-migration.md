@@ -251,6 +251,15 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   hash=7109389899594476375、nonzero=27480639、unique=256。这一步证明 Vulkan Video
   输出已经能不经 CPU NV12 copy 进入 Vulkan shader 合成；下一步是连续帧 decode/display、
   visible surface smoke 和 frame pacing。
+- H.265 encoded 前端已为 continuous decode 补 AU timeline telemetry：`--extract-bitstream`
+  现在会继续收集 `--bitstream-samples` 个 access unit，同时仍选择第一个带 VPS/SPS/PPS 的
+  IDR AU 作为首帧 decode 输入。2026-06-21 在 `WAYLAND_DISPLAY=wayland-1`、NVIDIA 4060、
+  3840x2160@240 H.265 Main 源上，`--bitstream-samples 8` 真实输出 8 个 AU、
+  total bytes=369716、selected index=0；AU0 为 173754 bytes、PTS 0ms、duration 4ms、
+  IDR `idr-n-lp`、slice_type=2、hash=5201191167619689341；AU1..AU7 为 `trail-r`、
+  slice_type=1，PTS 为 4/8/12/16/20/25/29ms，POC LSB 为 1..7。完整
+  `--sample-decoded-first-frame --bitstream-samples 8` 同时验证首帧 decode/readback/sampling
+  仍通过，`output_sampling.rgba_hash=7109389899594476375`。
 - `native-vulkan-gst-video` 已补 `GstVAMemory -> vaExportSurfaceHandle(DRM PRIME) -> Vulkan`
   importer scaffold，作为 Intel/AMD VA/DMABuf 路径的基础。当前混合 GPU 机器上 VA decoder
   默认会先探测 NVIDIA DRM 设备并打印 `unsupported drm device by media driver: nvid`；
