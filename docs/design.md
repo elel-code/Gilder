@@ -231,9 +231,13 @@ Native Wayland host 方向：
   `native-wayland-host`，再按内容类型接入不同 runtime。
 - 该 host 可以借鉴 linux-wallpaperengine 的 wlr-layer-shell/smithay-client-toolkit
   做法：为每个输出创建 `Layer::Background` surface，锚定四边，处理 fractional scale
-  与 viewporter，并把 raw Wayland display/surface 交给内容 runtime。但 Gilder 主 crate
-  当前禁止 `unsafe`，所以 raw handle、GStreamer overlay 或 GPU surface 创建这类不可避免的
-  `unsafe` 应隔离到 helper crate 或 helper 进程中。
+  与 viewporter，并把 raw Wayland display/surface 交给内容 runtime。Gilder 主 crate
+  已把 `unsafe_code` 从 forbid 放宽为 warn；raw handle、GStreamer overlay 或 GPU surface
+  创建这类不可避免的 `unsafe` 必须留在明确的 native Wayland/GPU 边界内，并通过实测和代码审计
+  逐步证明为 safe wrapper。
+- 第一阶段 `native-wayland-renderer` 只建立 host/surface 生命周期、configure/scale 状态和
+  capability 暴露；raw Wayland handle 导出会在接入 wgpu/GStreamer overlay 前以单独 safe
+  wrapper 落地，避免依赖 Wayland crate 私有指针布局。
 - static image、slideshow 和 scene-lite 可以优先走同一套 wgpu/CPU upload renderer，
   在静态或暂停状态只按 configure/属性变化重绘；video 走 GStreamer sink/overlay 或后续
   DMABuf-aware sink；shader 走 wgpu shader runtime；这些路径共享 host 生命周期和性能策略。
