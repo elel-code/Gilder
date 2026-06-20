@@ -272,6 +272,16 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   提交。结论是：当前真实 4K/240 源不能用“IDR 后直接解第二帧”的简单 smoke 验证 continuous
   decode。下一步应补 closed-GOP/自包含 H.265 4K/240 测试源，或实现明确的缺失 reference
   策略后再提交多帧 `vkCmdDecodeVideoKHR`。
+- 已补 reference-ready 基准源和 gate：`--extract-bitstream` 现在输出
+  `h265_decode_ready_count`、`h265_decode_ready_prefix_count`、
+  first-unready AU 和 missing POC；`--require-h265-ready-prefix N` 可把该条件变成 probe
+  失败条件。`scripts/native-vulkan-h265-ready-prefix-smoke.sh` 会生成 H.265 Main
+  3840x2160@240 short-GOP 源（`keyint=2`、no-B、HRD off），再运行真实 native Vulkan
+  session/bitstream probe。2026-06-21 在 `WAYLAND_DISPLAY=wayland-1` 验证 8 个 AU、
+  ready-prefix=8、`session_parameters_created=true`，为下一步多帧 `vkCmdDecodeVideoKHR`
+  提供不受窗口外 reference 干扰的基准输入。该轮还把非预测 SPS short-term RPS 接入
+  `StdVideoH265SequenceParameterSet.pShortTermRefPicSet`；extract-only probe 遇到暂不支持的
+  参数集时记录 `session_parameters_error`，不再丢失 AU/RPS telemetry。
 - `native-vulkan-gst-video` 已补 `GstVAMemory -> vaExportSurfaceHandle(DRM PRIME) -> Vulkan`
   importer scaffold，作为 Intel/AMD VA/DMABuf 路径的基础。当前混合 GPU 机器上 VA decoder
   默认会先探测 NVIDIA DRM 设备并打印 `unsupported drm device by media driver: nvid`；
