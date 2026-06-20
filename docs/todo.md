@@ -421,6 +421,11 @@
 - [x] 开始接入 video wallpaper type：`--run-video` 消费 `VideoWallpaperPlan` 字段，复用 native
   Vulkan surface/swapchain 生命周期，当前渲染 poster/clear placeholder 并输出 GStreamer
   handoff telemetry，不让 GStreamer sink 接管显示。
+- [x] 添加 `native-vulkan-gst-video` appsink 前端：`--run-video` 启动 GStreamer decodebin 到
+  appsink，记录 decoder、caps、memory feature、sample format/size 和 handoff 计数；真实 Wayland
+  已验证 `nvh264dec` + `memory:CUDAMemory` + `NV12` sample 到达 appsink。
+- [ ] 将 native Vulkan appsink sample 导入 Vulkan texture：优先 CUDAMemory/DMABuf/EGLImage
+  到 NV12/YUV plane sampling，失败时只保留显式诊断 fallback，不能让 GStreamer sink 接管显示。
 - [ ] 接入 shader-first 路径：fullscreen triangle、time/resolution/property uniform、Wayland smoke
   和 GPU/resource telemetry。
 - [ ] 接入 scene-lite runtime 输出：Vulkan 后端消费同一 deterministic scene graph/timeline

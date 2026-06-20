@@ -158,6 +158,11 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   生命周期并输出 video handoff telemetry；当前只渲染 poster/clear placeholder，不启动 GStreamer
   解码，也不使用 GStreamer sink 接管显示。下一步是 GStreamer appsink/DMABuf/GPU-memory frame
   handoff。
+- `native-vulkan-gst-video` feature 已接入 GStreamer appsink 前端：`--run-video` 会启动
+  `decodebin -> appsink`，只拉取 sample 和记录 caps/memory/decoder evidence，不使用 GStreamer
+  显示 sink。真实 Wayland smoke 已观察到 `nvh264dec`、`video/x-raw(memory:CUDAMemory)`、
+  `NV12` sample 和 appsink handoff active；当前仍未把 sample 导入 Vulkan texture，最终画面仍是
+  poster/clear placeholder。
 - 建立最小 native Vulkan layer-shell renderer：clear/static/shader。
 - 接入同一 render plan，不新增 manifest 分支。
 - 验证单输出、多输出、resize、output selection、pause/release。
@@ -167,8 +172,8 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
 
 ### Phase 4: Vulkan video/Web interop
 
-- 在 `--run-video` lifecycle/telemetry 基础上，尝试 Vulkan Video、GStreamer
-  GL/EGLImage/DMABuf/CUDAMemory handoff、libavcodec +
+- 在 `--run-video` lifecycle/telemetry 和 `native-vulkan-gst-video` appsink evidence 基础上，
+  尝试 Vulkan Video、GStreamer GL/EGLImage/DMABuf/CUDAMemory handoff、libavcodec +
   external memory 等方案。GStreamer 可以继续负责 demux、硬解选择、音频和时钟，但最终
   present 必须由 native Vulkan swapchain/render pass 完成。
 - 成功标准是同场景优于当前 native-wgpu/GStreamer CUDA copy 路线，而不是理论零拷贝。
