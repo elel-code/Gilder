@@ -141,6 +141,12 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   `B8G8R8A8_UNORM`、1707x1067、3 images、FIFO present。
 - `--type-support` 暴露完整壁纸类型矩阵：static/video/slideshow/scene-lite 已有 Vulkan render item
   入口；web/shader/playlist 仍按 helper/fallback/selection contract 推进。
+- `--run-static` 已接入静态图片最小显示路径：使用 `image 0.25.10` 解码 PNG/JPEG/WebP，按
+  `cover/contain/stretch/center/tile` CPU fit 到 swapchain 尺寸，通过 host-visible staging buffer
+  copy 到 swapchain image。真实 Wayland smoke：`--duration 3 --target-fps 240 --source
+  /tmp/gilder-vulkan-static.png --fit contain` 跑到 719 frames，平均 239.517fps，staging bytes
+  7285476。当前仍是最小 copy path，下一步要换成 sampled texture + shader pass，并让静态壁纸
+  render-on-change 后 idle。
 - 建立最小 native Vulkan layer-shell renderer：clear/static/shader。
 - 接入同一 render plan，不新增 manifest 分支。
 - 验证单输出、多输出、resize、output selection、pause/release。

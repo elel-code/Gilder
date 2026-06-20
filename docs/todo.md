@@ -415,7 +415,9 @@
   render plan、property 输入、dynamic lifecycle 和 resource telemetry。
 - [ ] 建立最小 native Vulkan layer-shell host：Wayland surface、Vulkan instance/device/swapchain、
   resize、output selection、frame pacing 和 release。
-- [ ] 接入 static image 最小渲染路径，复用现有 static render plan、fit 和 resource telemetry。
+- [x] 接入 static image 最小渲染路径：`--run-static` 复用现有 static render plan 的 source/fit/
+  background，CPU decode/fit 后通过 Vulkan staging buffer copy 到 swapchain image；后续替换为
+  sampled texture + shader pass，并补静态 idle 策略。
 - [ ] 接入 shader-first 路径：fullscreen triangle、time/resolution/property uniform、Wayland smoke
   和 GPU/resource telemetry。
 - [ ] 接入 scene-lite runtime 输出：Vulkan 后端消费同一 deterministic scene graph/timeline
