@@ -153,7 +153,8 @@
 - [x] 为 native Vulkan 添加 `--probe-video`，枚举 Vulkan Video decode 扩展、codec operations 和 `VIDEO_DECODE` queue family；本机 NVIDIA 4060 Laptop GPU 已确认 H.264/H.265/AV1/VP9 decode ready。
 - [x] 扩展 native Vulkan `--probe-video` 的 H.264 profile/format capability：NVIDIA 4060 已确认 baseline/main/high、NV12 DPB/output/sampled image 可用，但 H.264 max level 5.2 低于当前 4K/240 测试源 level 6.1。
 - [x] 补 native Vulkan Video H.265/AV1 profile/format probe：NVIDIA 4060 的 H.265 main-8 为 level 6.1、AV1 main-8/main-10 为 level 7.3，二者均具备 4K/240 direct 首版优先级。
-- [ ] 实现 NVIDIA native Vulkan Video decode path：优先 H.265 main-8 或 AV1 main-8，demux/parser 只供码流与 codec parameters，Vulkan Video 负责 decode 到 NV12 Vulkan image，替代当前 `CUDAMemory -> CUDA copy -> Vulkan` fallback；H.264 首版只承诺驱动 level 5.2 覆盖范围内的源。
+- [x] 为 native Vulkan 添加 `--probe-video-session`，真实创建并绑定 H.265 main-8 / AV1 main-8 `VkVideoSessionKHR`：2026-06-21 在 NVIDIA 4060、3840x2160 参数下验证 `vkCreateVideoSessionKHR`、session memory requirements、allocation 和 `vkBindVideoSessionMemoryKHR` 均成功。
+- [ ] 实现 NVIDIA native Vulkan Video decode path：优先 H.265 main-8 或 AV1 main-8，demux/parser 供码流、codec parameters 和音频/时钟，Vulkan Video 负责 session parameters、bitstream buffer、DPB/output NV12 sampled image 和 `vkCmdDecodeVideoKHR`，替代当前 `CUDAMemory -> CUDA copy -> Vulkan` fallback；H.264 首版只承诺驱动 level 5.2 覆盖范围内的源。
 - [ ] 为 H.265/AV1 main-10 direct path 补 10-bit 2-plane 420 sampled shader/import path，当前 probe 已确认 `G10X6_B10X6R10X6_2PLANE_420_UNORM_3PACK16` 可用。
 - [ ] 稳定 Intel/AMD VA/DMABuf path：显式选择 render node，解决 `decodebin -> appsink` 的 VAMemory/DMABuf negotiation，并在同 GPU Vulkan device 上验证 `vaExportSurfaceHandle` importer。
 
