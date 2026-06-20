@@ -282,6 +282,18 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   提供不受窗口外 reference 干扰的基准输入。该轮还把非预测 SPS short-term RPS 接入
   `StdVideoH265SequenceParameterSet.pShortTermRefPicSet`；extract-only probe 遇到暂不支持的
   参数集时记录 `session_parameters_error`，不再丢失 AU/RPS telemetry。
+- `--decode-h265-ready-prefix N` 已开始把 ready-prefix AU 真正提交给 Vulkan Video：
+  probe 会把多个 AU 按 `min_bitstream_buffer_offset_alignment` 和
+  `min_bitstream_buffer_size_alignment` 排进同一个 `VIDEO_DECODE_SRC_KHR` buffer，按
+  `h265_decode_reference_plan` 的 DPB slot 创建 setup/reference slots，连续录制
+  `vkCmdDecodeVideoKHR`，最后把末帧 NV12 layer copy 到 host readback。2026-06-21 在
+  `WAYLAND_DISPLAY=wayland-1` 和同一 3840x2160@240 H.265 Main short-GOP 源上，2-frame
+  IDR+P direct decode 通过：AU0 写 slot0，AU1 写 slot1 并引用 slot0，final readback
+  layer1 的 Y/UV unique=198/248，hash=6114663086929905156/6011523946105094791。
+  脚本 `--decode-prefix` 现在要求 readback 非单值，避免把“命令完成但画面无效”的路径误判
+  为通过。当前 8-frame short-GOP submit 能完成，但 repeated IDR 后末帧 readback 会变为单值，
+  因此完整 ready-prefix decode/display 还需要补 IDR DPB reset/slot 生命周期，而不是只看
+  `vkQueueWaitIdle` 成功。
 - `native-vulkan-gst-video` 已补 `GstVAMemory -> vaExportSurfaceHandle(DRM PRIME) -> Vulkan`
   importer scaffold，作为 Intel/AMD VA/DMABuf 路径的基础。当前混合 GPU 机器上 VA decoder
   默认会先探测 NVIDIA DRM 设备并打印 `unsupported drm device by media driver: nvid`；
