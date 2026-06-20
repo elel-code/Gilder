@@ -418,6 +418,9 @@
 - [x] 接入 static image 最小渲染路径：`--run-static` 复用现有 static render plan 的 source/fit/
   background，CPU decode/fit 后通过 Vulkan staging buffer copy 到 swapchain image；后续替换为
   sampled texture + shader pass，并补静态 idle 策略。
+- [x] 开始接入 video wallpaper type：`--run-video` 消费 `VideoWallpaperPlan` 字段，复用 native
+  Vulkan surface/swapchain 生命周期，当前渲染 poster/clear placeholder 并输出 GStreamer
+  handoff telemetry，不让 GStreamer sink 接管显示。
 - [ ] 接入 shader-first 路径：fullscreen triangle、time/resolution/property uniform、Wayland smoke
   和 GPU/resource telemetry。
 - [ ] 接入 scene-lite runtime 输出：Vulkan 后端消费同一 deterministic scene graph/timeline
