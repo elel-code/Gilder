@@ -154,6 +154,16 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   因此 visible direct path 不能假设同 queue，必须创建同一 logical device 的 video queue +
   graphics/present queue，并通过 semaphore/ownership 或 concurrent sharing 把 decoded NV12
   image 交给 shader render。
+- `--run-h265-first-frame-video` 已接通首个可见 direct Vulkan Video path：真实 Wayland smoke
+  `scripts/native-vulkan-h265-first-frame-video-smoke.sh --output-name HDMI-A-1` 生成
+  3840x2160@240 H.265 Main 源，使用 NVIDIA 4060 queue family 3 执行 `vkCmdDecodeVideoKHR`
+  解码首个 IDR 到 `G8_B8R8_2PLANE_420_UNORM` video resource image，再由 queue family 0 的
+  graphics/present queue 通过 native Vulkan NV12 shader 采样到 Wayland swapchain。2026-06-21
+  证据目录 `/tmp/gilder-vulkan-h265-first-frame-video.VBQdoH`：decode elapsed `4909us`，
+  3 秒 present `720` 帧、平均 `239.709fps`，swapchain `B8G8R8A8_UNORM`、`2561x1601`、
+  source extent `3840x2160`，video image memory `100139008` bytes，session memory
+  `33775616` bytes。当前这是首帧静态重复 present，用 `queue_wait_idle` 做首版跨队列同步；
+  下一步要把 ready-prefix sequence 接到同一可见 swapchain，并以 semaphore/timeline 替代 wait-idle。
 - `--run-clear` 已接入 logical device、swapchain、command buffer、semaphore/fence 和 clear present
   loop；同场景 `--duration 3 --target-fps 240` 跑到 720 frames，平均 239.996fps，swapchain 为
   `B8G8R8A8_UNORM`、1707x1067、3 images、FIFO present。

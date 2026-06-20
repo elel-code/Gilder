@@ -465,6 +465,13 @@
 - [ ] 将 H.265 direct Vulkan Video visible path 改为同 device 多 queue 架构：video queue 负责
   `vkCmdDecodeVideoKHR`，graphics/present queue 负责 decoded NV12 sampled render 到 swapchain，
   中间用 semaphore 和 image ownership/sharing 保证不经 CPU NV12 copy。
+- [x] 接通首个可见 direct H.265 Vulkan Video path：`--run-h265-first-frame-video` 在真实
+  Wayland background surface 上创建同一 logical device 的 video decode queue + present queue，
+  将首个 H.265 IDR 解码到 NV12 video resource image，再由 native Vulkan Y/UV shader 直接采样到
+  swapchain；新增 4K/240 source smoke 固化 decode/present 证据。
+- [ ] 将 visible direct H.265 从首帧推进到 ready-prefix sequence：复用已有 DPB/POC 计划，按 AU
+  连续 decode，使用 semaphore/timeline 替代 per-run `queue_wait_idle`，并按 PTS/target FPS present
+  到 swapchain。
 - [ ] 接入 shader-first 路径：fullscreen triangle、time/resolution/property uniform、Wayland smoke
   和 GPU/resource telemetry。
 - [ ] 接入 scene-lite runtime 输出：Vulkan 后端消费同一 deterministic scene graph/timeline
