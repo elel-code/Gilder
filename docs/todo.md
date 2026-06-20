@@ -406,6 +406,11 @@
   DMABuf/direct texture handoff。
 - [x] 添加最小 Vulkan Wayland surface probe：复用 native Wayland layer-shell host，创建
   Vulkan instance、`VK_KHR_wayland_surface`，枚举可 present 的 GPU/queue，仍不进入默认路径。
+- [x] 添加 native Vulkan device/swapchain/clear present loop：`gilder-native-vulkan --run-clear`
+  可在真实 Wayland 输出上按目标 FPS present，并输出 runtime JSON。
+- [x] 添加 Vulkan-facing 壁纸类型矩阵和 render item 映射：当前 `StaticRenderSyncPlan`
+  中的 static/video/slideshow/scene-lite 可转换为 Vulkan item，web/shader/playlist 记录 helper/
+  fallback/selection contract。
 - [ ] 定义 renderer backend contract：GTK/wgpu/helper 和 native Vulkan 后端消费同一
   render plan、property 输入、dynamic lifecycle 和 resource telemetry。
 - [ ] 建立最小 native Vulkan layer-shell host：Wayland surface、Vulkan instance/device/swapchain、
