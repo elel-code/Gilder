@@ -314,6 +314,13 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   8-frame sequence decode + sampling 通过：result=`h265-ready-prefix-decode-output-sequence-sampled-and-readback-completed`、
   sampled_sequence_count=8、layers=`[0,1,0,1,0,1,0,1]`、distinct RGBA hashes=4、
   每帧 RGBA unique=256。
+- sequence smoke 现在还记录逐帧 timing/pacing telemetry：每帧包含 PTS delta、
+  decode submit/wait、NV12 readback、RGBA sampling/readback 和 total frame elapsed；
+  sequence 级别包含 max/avg 与 PTS delta min/max，脚本会把这些字段作为 gate。2026-06-21
+  同一真实 4K/240 source 上，PTS delta min/max=4/5ms，max decode submit/wait=5951us，
+  max NV12 readback=38720us，max RGBA sampling+readback=65580us，avg debug frame=92997us。
+  这些 frame timings 包含 host readback 验证成本；它们用于定位 debug smoke 的瓶颈，不代表
+  后续 visible swapchain path 的 240fps present 成本。
 - `native-vulkan-gst-video` 已补 `GstVAMemory -> vaExportSurfaceHandle(DRM PRIME) -> Vulkan`
   importer scaffold，作为 Intel/AMD VA/DMABuf 路径的基础。当前混合 GPU 机器上 VA decoder
   默认会先探测 NVIDIA DRM 设备并打印 `unsupported drm device by media driver: nvid`；
