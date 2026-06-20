@@ -231,8 +231,15 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   slot，按 256-byte alignment 提交 173824-byte src range，并成功完成
   `vkCmdBeginVideoCodingKHR`、`vkCmdControlVideoCodingKHR(RESET)`、`vkCmdDecodeVideoKHR`、
   `vkCmdEndVideoCodingKHR`、`vkQueueSubmit` 和 `vkQueueWaitIdle`
-  (`first_frame_decode.completed=true`)。这证明 driver 接受首帧 direct decode command；仍不等同于
-  像素正确性验证，下一步要把 output image 接到 NV12 shader sampling 或 GPU readback/hash。
+  (`first_frame_decode.completed=true`)。
+- 同一个 `--decode-first-frame` smoke 已继续验证 decode output image 内容：首帧 decode 后将
+  NV12 array layer 0 追加 `TRANSFER_SRC` usage，转为 `TRANSFER_SRC_OPTIMAL`，把 plane 0/1
+  copy 到 host-visible readback buffer 并记录 hash/非零数/min/max/unique。2026-06-21 的真实
+  Wayland 结果为 `output_readback.copied=true`，Y plane 8294400 bytes、
+  hash=8710880026335779165、unique=256，UV plane 4147200 bytes、
+  hash=8699452048464794797、unique=169，combined hash=17815028520596919621。这一步证明
+  driver 不只接受 command buffer，decode 后的 NV12 plane 数据也可从 Vulkan image 读出；
+  下一步转为现有 NV12 shader sampling/可见首帧 smoke，然后扩展连续帧。
 - `native-vulkan-gst-video` 已补 `GstVAMemory -> vaExportSurfaceHandle(DRM PRIME) -> Vulkan`
   importer scaffold，作为 Intel/AMD VA/DMABuf 路径的基础。当前混合 GPU 机器上 VA decoder
   默认会先探测 NVIDIA DRM 设备并打印 `unsupported drm device by media driver: nvid`；
