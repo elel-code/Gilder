@@ -13,6 +13,9 @@ dirty 做底层压榨；下一阶段同时推进壁纸类型扩展和手写 Vulk
 - video 路径为 `gst-dmabuf` + `cuda-direct-vulkan-images-timeline`。
 - CPU 和 `Private_Dirty` 仍有 driver/GStreamer/CUDA runtime floor，但 active video 已可作为
   当前高刷视频基线。
+- `gpu-video` crate 路线因 codec/container 限制和维护面过窄已退休；后续 video/audio 前端保留
+  GStreamer，native Vulkan 后端只消费 GStreamer 产出的 frame/texture handoff，不让
+  GStreamer sink 接管显示。
 
 暂时不继续深挖的点：
 
@@ -95,6 +98,9 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
 - shader 和 scene 使用同一套 property/time/uniform 输入。
 - Web runtime 至少能通过 helper 进程输出可导入 texture 或 frame stream；WebKitGTK 可以留在 helper
   内，但不应污染 daemon/core 的后端抽象。
+- Web helper 初期可以用 GTK-rs/WebKitGTK 承载页面，但 `native-vulkan-renderer` feature 不直接依赖
+  GTK-rs；helper 和 renderer 之间只保留稳定 frame/texture handoff 协议，便于后续替换为 C
+  WebKitGTK、WPE/WebKit 或其他 web runtime。
 - 所有动态类型都支持 `pause-dynamic`、fullscreen/hidden/session release、resource telemetry 和
   baseline matrix 预算。
 
@@ -156,7 +162,9 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
 
 ### Phase 4: Vulkan video/Web interop
 
-- 尝试 Vulkan Video、GStreamer GL/EGLImage/DMABuf、libavcodec + external memory 等方案。
+- 尝试 Vulkan Video、GStreamer GL/EGLImage/DMABuf/CUDAMemory handoff、libavcodec +
+  external memory 等方案。GStreamer 可以继续负责 demux、硬解选择、音频和时钟，但最终
+  present 必须由 native Vulkan swapchain/render pass 完成。
 - 成功标准是同场景优于当前 native-wgpu/GStreamer CUDA copy 路线，而不是理论零拷贝。
 - Web helper 输出要以 texture/frame stream 形式进入后端，避免把 WebKitGTK 当作最终 renderer 架构。
 

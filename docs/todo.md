@@ -424,7 +424,9 @@
   结果，不新增 scene 专用 manifest 分支。
 - [ ] 设计 Web helper frame/texture handoff：WebKitGTK/浏览器 helper 只作为隔离实现，native Vulkan
   后端通过稳定 helper 协议接收 frame stream 或可导入 texture。
-- [ ] 继续 video interop spike：验证 Vulkan Video、GStreamer GL/EGLImage/DMABuf、libavcodec +
-  external memory 等方案；只有同场景优于当前 native-wgpu CUDA copy path 才进入默认候选。
+- [ ] 继续 video interop spike：删除 `gpu-video` 依赖路线后，以 GStreamer 作为 video/audio
+  前端验证 GL/EGLImage/DMABuf/CUDAMemory handoff、Vulkan Video、libavcodec + external
+  memory 等方案；GStreamer 不接管显示 sink，native Vulkan 后端负责最终 present，只有同场景
+  优于当前 native-wgpu CUDA copy path 才进入默认候选。
 - [ ] 将 native Vulkan 后端接入 baseline matrix，覆盖 static/video/web/scene-lite/shader/playlist
   的 active、paused、hidden、fullscreen、session release 和恢复延迟。
