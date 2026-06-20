@@ -130,6 +130,12 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
 
 ### Phase 3: Vulkan spike
 
+- 2026-06-20 已开始落地 `native-vulkan-renderer` feature：先提供 capabilities、后端 contract
+  和 `gilder-native-vulkan` JSON 入口；当前不改默认 renderer，也不宣称已拥有 device/swapchain/render loop。
+- 同日新增 `--probe-surface`：复用 native Wayland layer-shell host 创建 `VK_KHR_wayland_surface`
+  并枚举 present-capable GPU/queue；下一步才是 device/swapchain/clear。
+- 真实 Wayland probe 已在 `WAYLAND_DISPLAY=wayland-1`、`HDMI-A-1` 通过：选中 NVIDIA GeForce
+  RTX 4060 Laptop GPU 的 graphics/present queue 0，surface image count 范围为 2..=8。
 - 建立最小 native Vulkan layer-shell renderer：clear/static/shader。
 - 接入同一 render plan，不新增 manifest 分支。
 - 验证单输出、多输出、resize、output selection、pause/release。

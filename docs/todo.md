@@ -401,6 +401,11 @@
 
 ## M10: Hand-rolled Vulkan renderer spike
 
+- [x] 新增 `native-vulkan-renderer` feature、`native_vulkan` capability/contract 模块和
+  `gilder-native-vulkan` JSON 入口，明确当前尚未接管渲染、目标是 Wayland Vulkan surface +
+  DMABuf/direct texture handoff。
+- [x] 添加最小 Vulkan Wayland surface probe：复用 native Wayland layer-shell host，创建
+  Vulkan instance、`VK_KHR_wayland_surface`，枚举可 present 的 GPU/queue，仍不进入默认路径。
 - [ ] 定义 renderer backend contract：GTK/wgpu/helper 和 native Vulkan 后端消费同一
   render plan、property 输入、dynamic lifecycle 和 resource telemetry。
 - [ ] 建立最小 native Vulkan layer-shell host：Wayland surface、Vulkan instance/device/swapchain、
