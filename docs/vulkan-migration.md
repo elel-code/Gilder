@@ -265,6 +265,13 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   `[-1, -2, -19, -292]`，AU3/AU4/AU6/AU7 为 `[-1, -2, -21]`。这意味着连续帧 direct
   decode 不能只把前一帧放进 reference slot；下一步要先建立 DPB slot/ring、POC 跟踪和
   RefPicSetStCurrBefore/After 到 Vulkan reference slot index 的映射，再提交第二帧及后续帧。
+- `h265_decode_reference_plan` 已把上述 AU/RPS 转成 DPB/POC 可提交性计划：按当前 8-slot
+  smoke，AU0 规划到 slot 0 且 `ready_for_decode_submit=true`；AU1 需要 POC 0 和 POC -15，
+  其中 POC 0 可由 AU0/slot0 提供，但 POC -15 不在当前 decode window，故 AU1
+  `ready_for_decode_submit=false`；后续 AU 因 AU1 未进入 DPB 且还引用窗口外 POC，也不能直接
+  提交。结论是：当前真实 4K/240 源不能用“IDR 后直接解第二帧”的简单 smoke 验证 continuous
+  decode。下一步应补 closed-GOP/自包含 H.265 4K/240 测试源，或实现明确的缺失 reference
+  策略后再提交多帧 `vkCmdDecodeVideoKHR`。
 - `native-vulkan-gst-video` 已补 `GstVAMemory -> vaExportSurfaceHandle(DRM PRIME) -> Vulkan`
   importer scaffold，作为 Intel/AMD VA/DMABuf 路径的基础。当前混合 GPU 机器上 VA decoder
   默认会先探测 NVIDIA DRM 设备并打印 `unsupported drm device by media driver: nvid`；
