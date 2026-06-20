@@ -146,6 +146,14 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   并枚举 present-capable GPU/queue。
 - 真实 Wayland probe 已在 `WAYLAND_DISPLAY=wayland-1`、`HDMI-A-1` 通过：选中 NVIDIA GeForce
   RTX 4060 Laptop GPU 的 graphics/present queue 0，surface image count 范围为 2..=8。
+- `--probe-surface` 现在同时记录 selected present queue 的 video flags/codec operations、同设备
+  H.265 decode queue 和 `h265_decode_requires_cross_queue_sync`。真实 Wayland smoke
+  `scripts/native-vulkan-surface-video-queue-smoke.sh --output-name HDMI-A-1` 固化当前机器拓扑：
+  surface/present 选中 NVIDIA 4060 queue family 0 (`graphics|compute|transfer|sparse-binding`)，
+  同设备 H.265 Vulkan Video decode 在 queue family 3 (`transfer|sparse-binding|video-decode`)；
+  因此 visible direct path 不能假设同 queue，必须创建同一 logical device 的 video queue +
+  graphics/present queue，并通过 semaphore/ownership 或 concurrent sharing 把 decoded NV12
+  image 交给 shader render。
 - `--run-clear` 已接入 logical device、swapchain、command buffer、semaphore/fence 和 clear present
   loop；同场景 `--duration 3 --target-fps 240` 跑到 720 frames，平均 239.996fps，swapchain 为
   `B8G8R8A8_UNORM`、1707x1067、3 images、FIFO present。

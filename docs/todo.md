@@ -430,6 +430,10 @@
   DMABuf/direct texture handoff。
 - [x] 添加最小 Vulkan Wayland surface probe：复用 native Wayland layer-shell host，创建
   Vulkan instance、`VK_KHR_wayland_surface`，枚举可 present 的 GPU/queue，仍不进入默认路径。
+- [x] 扩展 Vulkan Wayland surface probe 的 video queue telemetry：记录 selected present queue
+  的 queue flags、Vulkan Video codec operations、同设备 H.265 decode queue，以及是否必须走
+  same-device cross-queue sync；新增真实 Wayland smoke 固化该判断，避免后续误把 present queue
+  当成 decode queue。
 - [x] 添加 native Vulkan device/swapchain/clear present loop：`gilder-native-vulkan --run-clear`
   可在真实 Wayland 输出上按目标 FPS present，并输出 runtime JSON。
 - [x] 添加 Vulkan-facing 壁纸类型矩阵和 render item 映射：当前 `StaticRenderSyncPlan`
@@ -458,6 +462,9 @@
   `last_sample_pts_delta_ms=4`。当前 HDMI-A-1 mode 是 `2560x1600@239.999`，不是 4K 输出。
 - [ ] 补 AMD/Intel 同级 importer：`DMABuf/VAAPI -> Vulkan external memory/image` 到同一套
   NV12/YUV sampling；CUDA 不能成为 video 后端的核心抽象，只能是 NVIDIA importer。
+- [ ] 将 H.265 direct Vulkan Video visible path 改为同 device 多 queue 架构：video queue 负责
+  `vkCmdDecodeVideoKHR`，graphics/present queue 负责 decoded NV12 sampled render 到 swapchain，
+  中间用 semaphore 和 image ownership/sharing 保证不经 CPU NV12 copy。
 - [ ] 接入 shader-first 路径：fullscreen triangle、time/resolution/property uniform、Wayland smoke
   和 GPU/resource telemetry。
 - [ ] 接入 scene-lite runtime 输出：Vulkan 后端消费同一 deterministic scene graph/timeline
