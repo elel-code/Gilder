@@ -238,8 +238,19 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   Wayland 结果为 `output_readback.copied=true`，Y plane 8294400 bytes、
   hash=8710880026335779165、unique=256，UV plane 4147200 bytes、
   hash=8699452048464794797、unique=169，combined hash=17815028520596919621。这一步证明
-  driver 不只接受 command buffer，decode 后的 NV12 plane 数据也可从 Vulkan image 读出；
-  下一步转为现有 NV12 shader sampling/可见首帧 smoke，然后扩展连续帧。
+  driver 不只接受 command buffer，decode 后的 NV12 plane 数据也可从 Vulkan image 读出。
+- `--probe-video-session --sample-decoded-first-frame --source <h265.mp4>` 已把 H.265 decode
+  output 接到现有 native Vulkan NV12 shader sampling：2026-06-21 在
+  `WAYLAND_DISPLAY=wayland-1`、NVIDIA 4060、3840x2160@240 H.265 Main 源上，probe 发现
+  video decode queue family 3 只有 `transfer|sparse-binding|video-decode`，因此同时创建
+  graphics queue family device queue，并把 NV12 video resource image 按需设为 concurrent
+  sharing。decode queue signal semaphore 后，graphics queue 等待该 semaphore，将 decoded
+  NV12 layer 0 的 plane 0/1 创建为 `R8_UNORM`/`R8G8_UNORM` sampled view，复用已有 Y/UV
+  shader 渲染到 3840x2160 `R8G8B8A8_UNORM` offscreen color target，再 copy 到 readback
+  buffer。真实结果为 `output_sampling.rendered=true`、`copied=true`、RGBA 33177600 bytes、
+  hash=7109389899594476375、nonzero=27480639、unique=256。这一步证明 Vulkan Video
+  输出已经能不经 CPU NV12 copy 进入 Vulkan shader 合成；下一步是连续帧 decode/display、
+  visible surface smoke 和 frame pacing。
 - `native-vulkan-gst-video` 已补 `GstVAMemory -> vaExportSurfaceHandle(DRM PRIME) -> Vulkan`
   importer scaffold，作为 Intel/AMD VA/DMABuf 路径的基础。当前混合 GPU 机器上 VA decoder
   默认会先探测 NVIDIA DRM 设备并打印 `unsupported drm device by media driver: nvid`；
@@ -270,14 +281,14 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   GStreamer 可以继续负责 demux、硬解选择、音频和时钟，但最终 present 必须由 native
   Vulkan swapchain/render pass 完成。
 - NVIDIA direct 的下一步是把已验证的 H.265 `VkVideoSessionKHR`、NV12 video resource
-  image、真实 H.265 encoded AU、`VIDEO_DECODE_SRC_KHR` bitstream buffer 和
-  `VkVideoSessionParametersKHR` 扩展成真正 decode：GStreamer 或等价前端只负责
-  demux/parser/audio/clock，Vulkan Video 模块负责 picture info、reference slots 和
-  `vkCmdDecodeVideoKHR`，再复用现有 native Vulkan NV12 shader 合成。H.264 仍可实现
-  baseline/main/high，但 4K/240 H.264 level 6.1 不能作为首个 direct 成功标准。AV1 direct
-  仍需补 AV1 sequence header/session parameters。10-bit H.265/AV1 已有 sampled 2-plane 420
-  format evidence，后续需要单独补 P010/10-bit shader path。CUDA copy path 只保留为 fallback
-  和对照基线。
+  image、真实 H.265 encoded AU、`VIDEO_DECODE_SRC_KHR` bitstream buffer、
+  `VkVideoSessionParametersKHR`、首帧 `vkCmdDecodeVideoKHR` 和离屏 NV12 shader sampling
+  扩展成连续帧 decode/display：GStreamer 或等价前端只负责 demux/parser/audio/clock，
+  Vulkan Video 模块负责 picture info、reference slots 和 queue 同步，再复用 native Vulkan
+  NV12 shader 合成到 visible swapchain。H.264 仍可实现 baseline/main/high，但 4K/240
+  H.264 level 6.1 不能作为首个 direct 成功标准。AV1 direct 仍需补 AV1 sequence
+  header/session parameters。10-bit H.265/AV1 已有 sampled 2-plane 420 format evidence，
+  后续需要单独补 P010/10-bit shader path。CUDA copy path 只保留为 fallback 和对照基线。
 - 成功标准是同场景优于当前 native-wgpu/GStreamer CUDA copy 路线，而不是理论零拷贝。
 - Web helper 输出要以 texture/frame stream 形式进入后端，避免把 WebKitGTK 当作最终 renderer 架构。
 
