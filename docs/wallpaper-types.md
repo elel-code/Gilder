@@ -16,10 +16,10 @@
 | Wallpaper Engine 输入 | 当前 Gilder 类型 | 转换 | 运行时 | 当前行为 | 主要缺口 |
 | --- | --- | --- | --- | --- | --- |
 | Image | `static-image` | 完整 | 完整 | 复制源图、preview/poster、fit 意图；足够大的光栅图可生成 16:9、21:9/ultrawide 和 9:16 portrait variants；带尺寸 metadata 的超大静态图可生成输出尺寸级运行时缓存。 | 更多编码 variant、真实 Wayland USS/PSS 基线和不同 fit 模式的质量/内存阈值还需要继续优化。 |
-| Video | `video` | 完整 | 完整 | 复制可播放视频，必要时生成 poster，支持 loop、静音/音频意图、max FPS、decoder policy 和运行时证据。 | 硬解/DMABuf zero-copy 验证和同源多输出解码复用仍未完成。 |
-| Web | `web` | 部分 | fallback plan | 复制 HTML/CSS/JS 资源，注入兼容 bridge，映射用户属性；renderer 可显示 fallback poster，并按动态壁纸参与 `pause-dynamic` 资源释放。 | Web runtime 需要独立浏览器 helper；WebKitGTK/GTK 可先隔离到 helper 内，sandbox、输入/audio/FPS bridge 和权限模型未完成。 |
-| Scene | `scene-lite` | 部分 | first-class plan + static snapshot | 生成 Gilder scene-lite graph，支持 2D image/color/rectangle/ellipse/text/path/group layer、transform、opacity、keyframe/timeline 曲线和属性 binding；daemon 生成 `scene_lite_plans`，GTK 当前把 time=0 snapshot 合成为受控缓存 SVG surface，IPC 数值/布尔属性可影响 snapshot layer，并统计 snapshot/layer 图片资源。 | GTK 原生动画 scene surface、effect stack、particle system、shader node 和 audio response 未完成。 |
-| Shader / shader effect | `shader`（手写包或明确 WE Shader）/ `scene-lite` fallback（Scene 内 shader） | 部分 | fallback plan | Gilder 包格式可声明一等 `shader` entry，记录 GLSL/WGSL source、time/resolution/mouse/property uniform、max FPS 和 fallback poster；明确 Wallpaper Engine Shader 项目和 playlist shader 子项可转为 `shader` fallback entry；当前 renderer 显示 fallback，并按动态壁纸参与 `pause-dynamic` 资源释放。Scene 内 custom shader/effect graph 仍记录为缺失能力。 | 原生 GPU shader compile/render、uniform 注入、GPU memory telemetry 和 Wayland shader surface smoke 未完成。 |
+| Video | `video` | 完整 | 完整 | 复制可播放视频，必要时生成 poster，支持 loop、静音/音频意图、max FPS、decoder policy 和运行时证据；native-wgpu 4K/240fps CUDA/Vulkan image path 已作为当前高刷基线。 | active video copy/private dirty 暂不继续深挖；后续更大突破按 `docs/vulkan-migration.md` 评估纯 Vulkan 或更底层 interop。 |
+| Web | `web` | 部分 | fallback plan | 复制 HTML/CSS/JS 资源，注入兼容 bridge，映射用户属性；renderer 可显示 fallback poster，并按动态壁纸参与 `pause-dynamic` 资源释放。 | Web runtime 需要独立浏览器 helper；WebKitGTK/GTK 可先隔离到 helper 内，sandbox、输入/audio/FPS bridge、权限模型和后端无关 frame/texture handoff 未完成。 |
+| Scene | `scene-lite` | 部分 | first-class plan + static snapshot | 生成 Gilder scene-lite graph，支持 2D image/color/rectangle/ellipse/text/path/group layer、transform、opacity、keyframe/timeline 曲线和属性 binding；daemon 生成 `scene_lite_plans`，GTK 当前把 time=0 snapshot 合成为受控缓存 SVG surface，IPC 数值/布尔属性可影响 snapshot layer，并统计 snapshot/layer 图片资源。 | 原生动画 scene runtime、effect stack、particle system、shader node 和 audio response 未完成；新增 runtime 必须保持后端无关，避免绑定 GTK snapshot 路径。 |
+| Shader / shader effect | `shader`（手写包或明确 WE Shader）/ `scene-lite` fallback（Scene 内 shader） | 部分 | fallback plan | Gilder 包格式可声明一等 `shader` entry，记录 GLSL/WGSL source、time/resolution/mouse/property uniform、max FPS 和 fallback poster；明确 Wallpaper Engine Shader 项目和 playlist shader 子项可转为 `shader` fallback entry；当前 renderer 显示 fallback，并按动态壁纸参与 `pause-dynamic` 资源释放。Scene 内 custom shader/effect graph 仍记录为缺失能力。 | 原生 GPU shader compile/render、uniform 注入、GPU memory telemetry 和 Wayland shader surface smoke 未完成；uniform/schema 不能绑定单一后端。 |
 | Application / executable | 无 | 阻塞 | 阻塞 | 拒绝转换并生成 conversion report。 | 为安全和可移植性，原生可执行壁纸不作为目标能力。 |
 | Playlist / collection | `playlist` / `slideshow` | 部分 | 部分 | 静态图片序列可转为 `slideshow`；Wallpaper Engine playlist/collection 中的 image/video/web/scene 子项可转为一等 `playlist` item 并保留 weight，web 子项注入 bridge，scene 子项降级为独立 `scene-lite` fallback graph；GTK renderer 支持定时切换和非 `tile` fit 的 crossfade；一等 `playlist` entry 可按 first-match 条件或稳定 weighted-random 在 static/video/slideshow/web/scene-lite/shader 子 entry 间选择，支持 item weight、输出、电源、本地时间窗口、本地星期、focused/visible/fullscreen 和 session 条件。 | 媒体/系统信息、更复杂日历选择和更完整 Wallpaper Engine playlist 策略映射仍需补。 |
 
@@ -61,6 +61,20 @@
 6. Playlist 已按 first-match 条件和稳定 weighted-random 复用 static、video、slideshow、
    web、scene-lite、shader 的既有 renderer 逻辑，并支持本地时间窗口和本地星期条件；Wallpaper
    Engine playlist 已支持 image/video/web/scene 子项，后续再补复杂策略映射。
+
+## Renderer 后端约束
+
+后续扩展其他壁纸类型时，必须按 `docs/vulkan-migration.md` 的边界实现：
+
+- manifest、conversion report、render plan 和 headless evaluator 不引用 GTK、GDK、wgpu、
+  ash、GStreamer 等后端具体类型。
+- WebKitGTK 可以作为 Web helper 的内部实现，但不能成为 daemon/core 的架构依赖。
+- scene-lite 和 shader runtime 的属性、time、resolution、mouse 和资源输入必须可被 GTK/wgpu
+  当前实现和未来纯 Vulkan 后端共同消费。
+- 每个动态类型都要接入 `pause-dynamic`、fullscreen/hidden/session release、resource telemetry
+  和 baseline matrix 预算，而不是只实现 active 显示。
+- pure Vulkan 后端只有在 static/video/web/scene/shader/playlist 的同一类型矩阵都能通过后，
+  才能替换当前默认后端。
 
 ## 转换报告要求
 

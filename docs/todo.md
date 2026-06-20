@@ -365,6 +365,8 @@
 ## M9: 壁纸类型对齐 Wallpaper Engine
 
 - [x] 梳理 Wallpaper Engine 类型矩阵：image、video、web、scene、application、audio visualizer、shader/particle、playlist，并标注 Gilder 支持等级。
+- [x] 记录后续纯 Vulkan renderer 迁移准备路线：当前不继续压 active video copy/private dirty，
+  优先扩展 web/scene-lite/shader/playlist，同时要求新增 runtime 保持后端无关。
 - [x] 让 `web` entry 在 runtime 未完成前使用 fallback render plan，缺少 fallback 时给出明确 unsupported 错误。
 - [x] 为 `scene-lite` 定义 2D image/color/group layer、transform、opacity、keyframe timeline、动画曲线和属性 binding schema，并提供 headless snapshot evaluator 与资源校验。
 - [x] 为 `scene-lite` 生成一等 render sync plan，GTK 先显示 fallback、首个 image layer 或首个 color layer，并把 fallback/layer 图片资源计入计划层与 package cache footprint。
@@ -378,9 +380,13 @@
 - [ ] 扩展 `scene-lite`：补齐常见 2D scene 图层、transform、opacity、动画曲线、时间轴和属性映射。
 - [ ] 设计完整 `scene` runtime：保留可高效渲染的 scene graph，不把复杂场景长期降级为静态 fallback。
 - [ ] 增强 `web` 壁纸 runtime：WebKitGTK sandbox、输入策略、音频策略、资源权限、暂停/恢复和低功耗模式。
+- [ ] 将 Web runtime 设计为独立 helper：WebKitGTK/浏览器进程只作为 helper 内部实现，
+  daemon/core 只接收属性、权限、生命周期和 frame/texture handoff，避免阻碍未来 Vulkan 后端。
 - [x] 添加一等 `shader` manifest entry，记录 GLSL/WGSL 风格的时间、分辨率、鼠标和用户属性 uniform schema；runtime 完成前使用 fallback render plan，并按动态壁纸参与 `pause-dynamic` 释放策略。
 - [x] Wallpaper Engine 转换器支持明确 Shader 项目和 playlist shader 子项，生成 `shader` fallback manifest、标准 time/resolution/mouse uniform 和用户属性 uniform。
 - [ ] 实现原生 shader runtime：编译/执行 GLSL/WGSL、注入 uniform、接入 GPU memory telemetry 和 Wayland surface smoke。
+- [ ] 为 native scene/shader/web runtime 建立后端无关 renderer 接口，当前 GTK/wgpu 后端和未来
+  Vulkan 后端必须消费同一 render plan、property 输入和 lifecycle telemetry。
 - [ ] 添加粒子/特效壁纸类型，优先覆盖 Wallpaper Engine 常见粒子发射器、纹理、速度场和 blend 模式。
 - [ ] 添加音频响应壁纸能力，定义可选 PipeWire 音频采样输入和隐私/权限开关。
 - [ ] 添加时钟、系统监控、媒体信息等 Linux 桌面常见信息型壁纸组件，但默认不采集敏感信息。
