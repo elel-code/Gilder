@@ -185,6 +185,13 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   但当前 4K/240 H.264 测试源 caps 为 level 6.1，高于驱动报告的 H.264 max level 5.2，
   因此 direct Vulkan Video 首版不能假设覆盖该 H.264 源，必须同时验证 H.265/AV1 direct
   path 或保留 CUDA/NVDEC fallback。
+- `--probe-video` 已补 H.265/AV1 profile/format capabilities：NVIDIA 4060 的 H.265 main-8
+  报告 `max_level=6.1`、`max_coded_extent=8192x8192`，NV12 sampled output 可用；H.265
+  main-10 也可用，输出格式为 `G10X6_B10X6R10X6_2PLANE_420_UNORM_3PACK16`。AV1
+  main-8/main-10 均报告 `max_level=7.3`、`max_coded_extent=8192x8192`，main-8 的 NV12
+  sampled output 可用，main-10 同样返回 10-bit 2-plane 420 sampled format。结论：4K/240
+  direct Vulkan Video 首版应优先验证 H.265/AV1；H.264 level 6.1 源继续由 CUDA/NVDEC
+  fallback 覆盖，直到证明驱动/源参数可落入 H.264 level 5.2。
 - `native-vulkan-gst-video` 已补 `GstVAMemory -> vaExportSurfaceHandle(DRM PRIME) -> Vulkan`
   importer scaffold，作为 Intel/AMD VA/DMABuf 路径的基础。当前混合 GPU 机器上 VA decoder
   默认会先探测 NVIDIA DRM 设备并打印 `unsupported drm device by media driver: nvid`；
@@ -214,11 +221,11 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   `DMABuf/VAAPI`、可选 `GL/EGLImage`、Vulkan Video 或 libavcodec + external memory。
   GStreamer 可以继续负责 demux、硬解选择、音频和时钟，但最终 present 必须由 native
   Vulkan swapchain/render pass 完成。
-- NVIDIA direct 的下一步是新增 `vulkan_video` 解码模块：先把 H.264 baseline/main/high
-  的 session/DPB/NV12 sampled image 打通，并补 H.265/AV1 profile/format probe。当前
-  NVIDIA H.264 probe 只报告 max level 5.2，而 4K/240 H.264 源是 level 6.1，所以 4K/240
-  direct 首版很可能要优先落到 H.265/AV1 或继续让 CUDA/NVDEC fallback 覆盖超出 Vulkan
-  H.264 level 的源。CUDA copy path 只保留为 fallback 和对照基线。
+- NVIDIA direct 的下一步是新增 `vulkan_video` 解码模块：优先实现 H.265 main-8 或 AV1
+  main-8 的 session/DPB/NV12 sampled image，再复用现有 native Vulkan NV12 shader 合成；
+  H.264 仍可实现 baseline/main/high，但 4K/240 H.264 level 6.1 不能作为首个 direct 成功
+  标准。10-bit H.265/AV1 已有 sampled 2-plane 420 format evidence，后续需要单独补
+  P010/10-bit shader path。CUDA copy path 只保留为 fallback 和对照基线。
 - 成功标准是同场景优于当前 native-wgpu/GStreamer CUDA copy 路线，而不是理论零拷贝。
 - Web helper 输出要以 texture/frame stream 形式进入后端，避免把 WebKitGTK 当作最终 renderer 架构。
 
