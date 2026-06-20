@@ -17,7 +17,7 @@
 | --- | --- | --- | --- | --- | --- |
 | Image | `static-image` | 完整 | 完整 | 复制源图、preview/poster、fit 意图；足够大的光栅图可生成 16:9、21:9/ultrawide 和 9:16 portrait variants；带尺寸 metadata 的超大静态图可生成输出尺寸级运行时缓存。 | 更多编码 variant、真实 Wayland USS/PSS 基线和不同 fit 模式的质量/内存阈值还需要继续优化。 |
 | Video | `video` | 完整 | 完整 | 复制可播放视频，必要时生成 poster，支持 loop、静音/音频意图、max FPS、decoder policy 和运行时证据。 | 硬解/DMABuf zero-copy 验证和同源多输出解码复用仍未完成。 |
-| Web | `web` | 部分 | fallback plan | 复制 HTML/CSS/JS 资源，注入兼容 bridge，映射用户属性；renderer 可显示 fallback poster，并按动态壁纸参与 `pause-dynamic` 资源释放。 | WebKitGTK runtime、sandbox、输入/audio/FPS bridge 和权限模型未完成。 |
+| Web | `web` | 部分 | fallback plan | 复制 HTML/CSS/JS 资源，注入兼容 bridge，映射用户属性；renderer 可显示 fallback poster，并按动态壁纸参与 `pause-dynamic` 资源释放。 | Web runtime 需要独立浏览器 helper；WebKitGTK/GTK 可先隔离到 helper 内，sandbox、输入/audio/FPS bridge 和权限模型未完成。 |
 | Scene | `scene-lite` | 部分 | first-class plan + static snapshot | 生成 Gilder scene-lite graph，支持 2D image/color/rectangle/ellipse/text/path/group layer、transform、opacity、keyframe/timeline 曲线和属性 binding；daemon 生成 `scene_lite_plans`，GTK 当前把 time=0 snapshot 合成为受控缓存 SVG surface，IPC 数值/布尔属性可影响 snapshot layer，并统计 snapshot/layer 图片资源。 | GTK 原生动画 scene surface、effect stack、particle system、shader node 和 audio response 未完成。 |
 | Shader / shader effect | `shader`（手写包或明确 WE Shader）/ `scene-lite` fallback（Scene 内 shader） | 部分 | fallback plan | Gilder 包格式可声明一等 `shader` entry，记录 GLSL/WGSL source、time/resolution/mouse/property uniform、max FPS 和 fallback poster；明确 Wallpaper Engine Shader 项目和 playlist shader 子项可转为 `shader` fallback entry；当前 renderer 显示 fallback，并按动态壁纸参与 `pause-dynamic` 资源释放。Scene 内 custom shader/effect graph 仍记录为缺失能力。 | 原生 GPU shader compile/render、uniform 注入、GPU memory telemetry 和 Wayland shader surface smoke 未完成。 |
 | Application / executable | 无 | 阻塞 | 阻塞 | 拒绝转换并生成 conversion report。 | 为安全和可移植性，原生可执行壁纸不作为目标能力。 |
@@ -33,7 +33,7 @@
 | Slideshow / 普通动态图片 | `slideshow` entry | 完整 | Render plan 测试、GTK 定时切换/crossfade、adaptive、battery、fullscreen、unfocused、hidden 和 session `pause-dynamic` 测试。 |
 | Playlist 条件选择 | `playlist` entry | 部分 | Manifest/schema 测试、Wallpaper Engine image/video/web/scene playlist 转换测试、power 条件 render plan 测试、本地时间/星期条件 selection 测试、稳定 weighted-random/weight 测试、battery `pause-dynamic` 静态选择测试；媒体/系统信息和复杂日历策略后续补。 |
 | Web 壁纸资源 | `web` entry | 部分 | Converter 测试、manifest 校验和 fallback render plan 测试。 |
-| Web runtime bridge | `assets/web/gilder-bridge.js` | fallback | 后续 WebKitGTK smoke 和属性更新测试。 |
+| Web runtime bridge | `assets/web/gilder-bridge.js` | fallback | 后续 web helper smoke、WebKitGTK/浏览器进程内存预算和属性更新测试。 |
 | Scene fallback/snapshot | `scene-lite` entry display | 部分 | Converter 测试、scene-lite render plan 测试、静态 snapshot SVG cache 测试和 fallback/首图/纯色 GTK 显示路径。 |
 | Scene layer 和 transform | `core::scene_lite` graph | 部分 | Headless scene graph 解析、shape/text/path layer、资源校验和 snapshot evaluator 测试。 |
 | Timeline 动画 | `core::scene_lite` keyframes | 部分 | 确定性 timeline 曲线求值测试；原生 scene surface 和真实 renderer frame budget telemetry 后续补。 |

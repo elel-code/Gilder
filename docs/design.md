@@ -224,6 +224,29 @@ GTK/GStreamer 低内存渲染方向：
   来自同场景实测：硬解已满足但 sink caps 只能到 SystemMemory、PSS/private/GPU 显存无法压到
   T0 预算、或 compositor presentation 证明长期掉帧。
 
+Native Wayland host 方向：
+
+- 更低层重构不应把所有壁纸类型都塞进一个 renderer。目标是把 Wayland/layer-shell
+  surface 生命周期、输出匹配、缩放、viewport、frame callback 和暂停/恢复策略抽成
+  `native-wayland-host`，再按内容类型接入不同 runtime。
+- 该 host 可以借鉴 linux-wallpaperengine 的 wlr-layer-shell/smithay-client-toolkit
+  做法：为每个输出创建 `Layer::Background` surface，锚定四边，处理 fractional scale
+  与 viewporter，并把 raw Wayland display/surface 交给内容 runtime。但 Gilder 主 crate
+  当前禁止 `unsafe`，所以 raw handle、GStreamer overlay 或 GPU surface 创建这类不可避免的
+  `unsafe` 应隔离到 helper crate 或 helper 进程中。
+- static image、slideshow 和 scene-lite 可以优先走同一套 wgpu/CPU upload renderer，
+  在静态或暂停状态只按 configure/属性变化重绘；video 走 GStreamer sink/overlay 或后续
+  DMABuf-aware sink；shader 走 wgpu shader runtime；这些路径共享 host 生命周期和性能策略。
+- web 壁纸是单独的浏览器 runtime，不是 video sink 的延伸。最现实的第一阶段是
+  `gilder-web-renderer` helper：内部可使用 WebKitGTK/GTK layer-shell 或等价 C/GObject
+  绑定，主 daemon 只通过 IPC 下发 root/index、属性、mute、pause、FPS/可见性和权限策略。
+  这样 GTK/WebKit 的固定内存与崩溃面被限制在 web helper 内，主 renderer 不再依赖
+  gtk-rs；后续如果 WPE WebKit、CEF/Ozone Wayland 或 offscreen texture 路径能用实测证明
+  更低内存，再替换 helper 内部实现。
+- 是否替换 GTK 默认路径必须用同一批证据 gate：4K/240fps video 的 CPU、PSS/USS、
+  `Private_Dirty`、NVIDIA/DRM 显存、QoS/drop、presentation/frame callback、active ->
+  paused/fullscreen/hidden 的资源释放，以及 static/web/scene/shader 的空闲 wakeup 和恢复延迟。
+
 轻量动态壁纸：
 
 - v1 不引入复杂脚本运行时。
