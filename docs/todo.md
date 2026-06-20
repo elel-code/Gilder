@@ -424,8 +424,16 @@
 - [x] 添加 `native-vulkan-gst-video` appsink 前端：`--run-video` 启动 GStreamer decodebin 到
   appsink，记录 decoder、caps、memory feature、sample format/size 和 handoff 计数；真实 Wayland
   已验证 `nvh264dec` + `memory:CUDAMemory` + `NV12` sample 到达 appsink。
-- [ ] 将 native Vulkan appsink sample 导入 Vulkan texture：优先 CUDAMemory/DMABuf/EGLImage
-  到 NV12/YUV plane sampling，失败时只保留显式诊断 fallback，不能让 GStreamer sink 接管显示。
+- [x] 将 native Vulkan appsink sample 导入 Vulkan texture 的第一条路径：当前已实现
+  `CUDAMemory -> CUDA copy -> Vulkan external image planes -> NV12 shader sampling`，
+  由 native Vulkan render pass present，不让 GStreamer sink 接管显示。
+- [x] 修复 4K/240 短视频在 loop 末尾卡顿：native Vulkan GStreamer frontend 改为
+  `Paused -> segment seek -> Playing`，收到 `SegmentDone` 后回到 0，避免 EOS 后硬 seek。
+  真实 Wayland 20s 验证：`3840x2160@240` 源、`nvh264dec`、`CUDAMemory/NV12`、
+  `frames_rendered=4800`、`frames_imported=4790`、`eos_messages=0`、
+  `last_sample_pts_delta_ms=4`。当前 HDMI-A-1 mode 是 `2560x1600@239.999`，不是 4K 输出。
+- [ ] 补 AMD/Intel 同级 importer：`DMABuf/VAAPI -> Vulkan external memory/image` 到同一套
+  NV12/YUV sampling；CUDA 不能成为 video 后端的核心抽象，只能是 NVIDIA importer。
 - [ ] 接入 shader-first 路径：fullscreen triangle、time/resolution/property uniform、Wayland smoke
   和 GPU/resource telemetry。
 - [ ] 接入 scene-lite runtime 输出：Vulkan 后端消费同一 deterministic scene graph/timeline

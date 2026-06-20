@@ -161,8 +161,19 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
 - `native-vulkan-gst-video` feature 已接入 GStreamer appsink 前端：`--run-video` 会启动
   `decodebin -> appsink`，只拉取 sample 和记录 caps/memory/decoder evidence，不使用 GStreamer
   显示 sink。真实 Wayland smoke 已观察到 `nvh264dec`、`video/x-raw(memory:CUDAMemory)`、
-  `NV12` sample 和 appsink handoff active；当前仍未把 sample 导入 Vulkan texture，最终画面仍是
-  poster/clear placeholder。
+  `NV12` sample 和 appsink handoff active。
+- native Vulkan video 已开始实际 texture import：当前实现了 NVIDIA 机器上的
+  `CUDAMemory -> CUDA copy -> Vulkan external image planes -> NV12 shader sampling` 路径，
+  由 native Vulkan render pass 合成到 swapchain。CUDA 只是一个 importer 实现，不是 video
+  架构边界；AMD/Intel 后续必须补同级的 `DMABuf/VAAPI -> Vulkan external memory` importer，
+  复用同一套 Vulkan Y/UV sampling 和 present。
+- 4K/240 测试使用明确的 `3840x2160@240` H.264 源，不再用低清源判断画质。当前真实
+  Wayland 证据来自 HDMI-A-1：该输出在 niri 中是 `2560x1600@239.999`、scale 1.5，
+  所以这是 4K source 到 2560x1600@240 surface 的 downscale 验证，不是 4K 输出验证。
+  20s run：`frames_rendered=4800`、`frames_imported=4790`、`eos_messages=0`、
+  `segment_done_messages=2`、`last_sample_pts_delta_ms=4`、`last_import_size=3840x2160`。
+- loop 使用 segment seek：启动顺序为 `Paused -> SEGMENT seek -> Playing`，收到
+  `SegmentDone` 后立即 seek 回 0，避免短视频到 EOS 后硬切造成末尾抖动/卡顿。
 - 建立最小 native Vulkan layer-shell renderer：clear/static/shader。
 - 接入同一 render plan，不新增 manifest 分支。
 - 验证单输出、多输出、resize、output selection、pause/release。
@@ -173,9 +184,10 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
 ### Phase 4: Vulkan video/Web interop
 
 - 在 `--run-video` lifecycle/telemetry 和 `native-vulkan-gst-video` appsink evidence 基础上，
-  尝试 Vulkan Video、GStreamer GL/EGLImage/DMABuf/CUDAMemory handoff、libavcodec +
-  external memory 等方案。GStreamer 可以继续负责 demux、硬解选择、音频和时钟，但最终
-  present 必须由 native Vulkan swapchain/render pass 完成。
+  将 importer 明确拆成多个同级实现：NVIDIA `CUDAMemory/CUDA`、AMD/Intel
+  `DMABuf/VAAPI`、可选 `GL/EGLImage`、Vulkan Video 或 libavcodec + external memory。
+  GStreamer 可以继续负责 demux、硬解选择、音频和时钟，但最终 present 必须由 native
+  Vulkan swapchain/render pass 完成。
 - 成功标准是同场景优于当前 native-wgpu/GStreamer CUDA copy 路线，而不是理论零拷贝。
 - Web helper 输出要以 texture/frame stream 形式进入后端，避免把 WebKitGTK 当作最终 renderer 架构。
 
