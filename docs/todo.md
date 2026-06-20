@@ -151,7 +151,9 @@
 - [x] `web` 壁纸在 WebKit runtime 完成前先支持 fallback 静态 render plan，并按动态壁纸参与 `pause-dynamic` 释放策略。
 - [ ] 研究 GTK/GSK paintable/texture 生命周期和 GStreamer allocator/buffer-pool 协商，减少静态图 decoded texture、视频 CPU copy 与 buffer pool 保留内存。
 - [x] 为 native Vulkan 添加 `--probe-video`，枚举 Vulkan Video decode 扩展、codec operations 和 `VIDEO_DECODE` queue family；本机 NVIDIA 4060 Laptop GPU 已确认 H.264/H.265/AV1/VP9 decode ready。
-- [ ] 实现 NVIDIA native Vulkan Video H.264 decode path：demux/parser 只供码流与 SPS/PPS，Vulkan Video 负责 decode 到 NV12 Vulkan image，替代当前 `CUDAMemory -> CUDA copy -> Vulkan` fallback。
+- [x] 扩展 native Vulkan `--probe-video` 的 H.264 profile/format capability：NVIDIA 4060 已确认 baseline/main/high、NV12 DPB/output/sampled image 可用，但 H.264 max level 5.2 低于当前 4K/240 测试源 level 6.1。
+- [ ] 补 native Vulkan Video H.265/AV1 profile/format probe，确认 4K/240 direct path 是否应优先覆盖 H.265/AV1，而不是被 NVIDIA H.264 level 5.2 限制卡住。
+- [ ] 实现 NVIDIA native Vulkan Video decode path：demux/parser 只供码流与 codec parameters，Vulkan Video 负责 decode 到 NV12 Vulkan image，替代当前 `CUDAMemory -> CUDA copy -> Vulkan` fallback；H.264 首版只承诺驱动 level 覆盖范围内的源。
 - [ ] 稳定 Intel/AMD VA/DMABuf path：显式选择 render node，解决 `decodebin -> appsink` 的 VAMemory/DMABuf negotiation，并在同 GPU Vulkan device 上验证 `vaExportSurfaceHandle` importer。
 
 ## M5: 合成器适配

@@ -177,6 +177,14 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   `video_decode_ready=true`，有 `VK_KHR_video_queue`、`VK_KHR_video_decode_queue`、
   H.264/H.265/AV1/VP9 decode 扩展，并在 queue family 3 暴露独立 `VIDEO_DECODE` queue；
   Intel Iris Xe 当前 Vulkan probe 中 `video_decode_ready=false`。
+- `--probe-video` 已进一步查询 H.264 Vulkan Video profile/format capabilities：NVIDIA
+  4060 的 baseline/main/high 8-bit 4:2:0 progressive 都可用，`max_coded_extent=4096x4096`，
+  `max_level=5.2`，decode flags 为 `dpb-and-output-coincide`，NV12
+  `G8_B8R8_2PLANE_420_UNORM` 同时支持 `video-decode-dst`、`video-decode-dpb` 和
+  `sampled`。这证明 H.264 direct decode 到 sampled NV12 Vulkan image 是真实候选；
+  但当前 4K/240 H.264 测试源 caps 为 level 6.1，高于驱动报告的 H.264 max level 5.2，
+  因此 direct Vulkan Video 首版不能假设覆盖该 H.264 源，必须同时验证 H.265/AV1 direct
+  path 或保留 CUDA/NVDEC fallback。
 - `native-vulkan-gst-video` 已补 `GstVAMemory -> vaExportSurfaceHandle(DRM PRIME) -> Vulkan`
   importer scaffold，作为 Intel/AMD VA/DMABuf 路径的基础。当前混合 GPU 机器上 VA decoder
   默认会先探测 NVIDIA DRM 设备并打印 `unsupported drm device by media driver: nvid`；
@@ -187,8 +195,9 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
 - 4K/240 测试使用明确的 `3840x2160@240` H.264 源，不再用低清源判断画质。当前真实
   Wayland 证据来自 HDMI-A-1：该输出在 niri 中是 `2560x1600@239.999`、scale 1.5，
   所以这是 4K source 到 2560x1600@240 surface 的 downscale 验证，不是 4K 输出验证。
-  20s run：`frames_rendered=4800`、`frames_imported=4790`、`eos_messages=0`、
-  `segment_done_messages=2`、`last_sample_pts_delta_ms=4`、`last_import_size=3840x2160`。
+  最新 20s run：`average_render_fps=239.947`、`frames_rendered=4799`、
+  `frames_imported=4778`、`eos_messages=0`、`segment_done_messages=2`、
+  `last_sample_pts_delta_ms=4`、`last_import_size=3840x2160`。
 - loop 使用 segment seek：启动顺序为 `Paused -> SEGMENT seek -> Playing`，收到
   `SegmentDone` 后立即 seek 回 0，避免短视频到 EOS 后硬切造成末尾抖动/卡顿。
 - 建立最小 native Vulkan layer-shell renderer：clear/static/shader。
@@ -205,10 +214,11 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   `DMABuf/VAAPI`、可选 `GL/EGLImage`、Vulkan Video 或 libavcodec + external memory。
   GStreamer 可以继续负责 demux、硬解选择、音频和时钟，但最终 present 必须由 native
   Vulkan swapchain/render pass 完成。
-- NVIDIA direct 的下一步是新增 `vulkan_video` 解码模块：先覆盖 H.264 baseline/high，
-  解析 SPS/PPS 和 slice bitstream，创建 video session、DPB、bitstream buffer 和 NV12 output
-  image，再复用现有 native Vulkan NV12 shader 合成。CUDA copy path 只保留为 fallback 和
-  对照基线。
+- NVIDIA direct 的下一步是新增 `vulkan_video` 解码模块：先把 H.264 baseline/main/high
+  的 session/DPB/NV12 sampled image 打通，并补 H.265/AV1 profile/format probe。当前
+  NVIDIA H.264 probe 只报告 max level 5.2，而 4K/240 H.264 源是 level 6.1，所以 4K/240
+  direct 首版很可能要优先落到 H.265/AV1 或继续让 CUDA/NVDEC fallback 覆盖超出 Vulkan
+  H.264 level 的源。CUDA copy path 只保留为 fallback 和对照基线。
 - 成功标准是同场景优于当前 native-wgpu/GStreamer CUDA copy 路线，而不是理论零拷贝。
 - Web helper 输出要以 texture/frame stream 形式进入后端，避免把 WebKitGTK 当作最终 renderer 架构。
 
