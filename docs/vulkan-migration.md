@@ -296,6 +296,15 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   ready-prefix=8、decoded=8、reset_count=4、AU7 readback layer1，Y/UV unique=205/256，
   hash=11542476098458954487/10292639723071029932。脚本 `--decode-prefix` 要求 readback
   非单值，避免把“命令完成但画面无效”的路径误判为通过。
+- `--sample-h265-ready-prefix` 已把多帧 direct decode 的末帧 NV12 output 接到现有 Vulkan
+  shader sampling/offscreen render path。decoded texture 的 plane image view 和 shader
+  read barrier 现在按实际 `base_array_layer` 创建，避免多帧 DPB/output 复用时仍假设 layer0。
+  `scripts/native-vulkan-h265-ready-prefix-smoke.sh --sample-prefix` 会要求 sampled RGBA
+  readback 非单值，并要求 sampled layer 与 final readback layer 一致。2026-06-21 在
+  `WAYLAND_DISPLAY=wayland-1`、NVIDIA 4060、3840x2160@240 H.265 Main short-GOP 源上，
+  8-frame direct decode + sampling 通过：result=`h265-ready-prefix-decode-output-sampled-and-readback-completed`、
+  decoded=8、reset_count=4、AU7 readback/sample layer1、RGBA hash=14093713610652448641、
+  RGBA unique=256、nonzero=24967096。
 - `native-vulkan-gst-video` 已补 `GstVAMemory -> vaExportSurfaceHandle(DRM PRIME) -> Vulkan`
   importer scaffold，作为 Intel/AMD VA/DMABuf 路径的基础。当前混合 GPU 机器上 VA decoder
   默认会先探测 NVIDIA DRM 设备并打印 `unsupported drm device by media driver: nvid`；
