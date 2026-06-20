@@ -25,6 +25,10 @@ dirty 做底层压榨；下一阶段同时推进壁纸类型扩展和手写 Vulk
   fd 不能被 Vulkan image import 直接消费。
 - 不再回到 `playbin+waylandsink` 作为主线；它已经证明不是后续默认方向。
 - 不为了减少十几 MiB active video dirty memory 牺牲稳定性、frame pacing 或其他壁纸类型推进。
+- NVIDIA direct 不再押注 gst-va/DMABuf。当前本机 `nvh264dec` 只暴露 `CUDAMemory`、
+  `GLMemory` 和 system memory，没有 `DMABuf` 或 `VulkanImage`；GStreamer `vulkanupload`
+  也不接 `CUDAMemory`/`GLMemory`。因此 NVIDIA 的真正 zero-copy/direct 主线改为
+  Vulkan Video decode 产出 Vulkan image，而不是安装 CUDA toolkit 或强行走 VAAPI。
 
 保留的底层方向：
 
@@ -167,6 +171,19 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   由 native Vulkan render pass 合成到 swapchain。CUDA 只是一个 importer 实现，不是 video
   架构边界；AMD/Intel 后续必须补同级的 `DMABuf/VAAPI -> Vulkan external memory` importer，
   复用同一套 Vulkan Y/UV sampling 和 present。
+- `--probe-video` 已加入 native Vulkan CLI，用 `vkGetPhysicalDeviceQueueFamilyProperties2`
+  枚举 Vulkan Video decode 扩展和 queue family，不创建 surface、不解码。2026-06-21 在
+  `WAYLAND_DISPLAY=wayland-1` 下验证：NVIDIA GeForce RTX 4060 Laptop GPU 报告
+  `video_decode_ready=true`，有 `VK_KHR_video_queue`、`VK_KHR_video_decode_queue`、
+  H.264/H.265/AV1/VP9 decode 扩展，并在 queue family 3 暴露独立 `VIDEO_DECODE` queue；
+  Intel Iris Xe 当前 Vulkan probe 中 `video_decode_ready=false`。
+- `native-vulkan-gst-video` 已补 `GstVAMemory -> vaExportSurfaceHandle(DRM PRIME) -> Vulkan`
+  importer scaffold，作为 Intel/AMD VA/DMABuf 路径的基础。当前混合 GPU 机器上 VA decoder
+  默认会先探测 NVIDIA DRM 设备并打印 `unsupported drm device by media driver: nvid`；
+  指定 Intel render node `/dev/dri/renderD129` 时显式
+  `qtdemux ! h264parse ! vah264dec ! VAMemory ! fakesink` 可谈通，但项目内
+  `decodebin -> appsink` 仍会 not-negotiated。VA/DMABuf 路线后续要改成显式 codec pipeline
+  或补 allocator/render-node 协商；这不是 NVIDIA direct 的主线 blocker。
 - 4K/240 测试使用明确的 `3840x2160@240` H.264 源，不再用低清源判断画质。当前真实
   Wayland 证据来自 HDMI-A-1：该输出在 niri 中是 `2560x1600@239.999`、scale 1.5，
   所以这是 4K source 到 2560x1600@240 surface 的 downscale 验证，不是 4K 输出验证。
@@ -188,6 +205,10 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   `DMABuf/VAAPI`、可选 `GL/EGLImage`、Vulkan Video 或 libavcodec + external memory。
   GStreamer 可以继续负责 demux、硬解选择、音频和时钟，但最终 present 必须由 native
   Vulkan swapchain/render pass 完成。
+- NVIDIA direct 的下一步是新增 `vulkan_video` 解码模块：先覆盖 H.264 baseline/high，
+  解析 SPS/PPS 和 slice bitstream，创建 video session、DPB、bitstream buffer 和 NV12 output
+  image，再复用现有 native Vulkan NV12 shader 合成。CUDA copy path 只保留为 fallback 和
+  对照基线。
 - 成功标准是同场景优于当前 native-wgpu/GStreamer CUDA copy 路线，而不是理论零拷贝。
 - Web helper 输出要以 texture/frame stream 形式进入后端，避免把 WebKitGTK 当作最终 renderer 架构。
 
