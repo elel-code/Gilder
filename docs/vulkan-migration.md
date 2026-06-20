@@ -321,6 +321,12 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   max NV12 readback=38720us，max RGBA sampling+readback=65580us，avg debug frame=92997us。
   这些 frame timings 包含 host readback 验证成本；它们用于定位 debug smoke 的瓶颈，不代表
   后续 visible swapchain path 的 240fps present 成本。
+- sequence smoke 同时补了 render-only telemetry：每帧 readback 验证后，复用同一个 offscreen
+  color target 和 `NativeVulkanVideoRenderer` 对对应 decoded NV12 layer 再做一次 shader render，
+  但不做 CPU copy/readback。2026-06-21 同一真实 4K/240 source 上，render_sequence_count=8，
+  layers=`[0,1,0,1,0,1,0,1]`，PTS delta min/max=4/5ms，average render-only=934us，
+  max render-only=1559us。这条证据更接近下一步 visible swapchain/present 的渲染成本，并确认
+  当前 90ms 级 debug frame 主要来自 host readback 验证链路。
 - `native-vulkan-gst-video` 已补 `GstVAMemory -> vaExportSurfaceHandle(DRM PRIME) -> Vulkan`
   importer scaffold，作为 Intel/AMD VA/DMABuf 路径的基础。当前混合 GPU 机器上 VA decoder
   默认会先探测 NVIDIA DRM 设备并打印 `unsupported drm device by media driver: nvid`；
