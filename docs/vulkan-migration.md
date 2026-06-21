@@ -451,7 +451,24 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   `h265_packet_queue_eos_count=2`、`h265_packet_queue_loop_count=2`、
   `loop_skip=39`、`bootstrap_discarded=39`、`loop_first_non_idr_count=0`、
   `queue_retained=0`。同轮 `cargo test --features native-vulkan-gst-video` 通过
-  297 个库测试、7 个 `gilderctl` 测试和 16 个 `gilderd` 测试。
+  297 个库测试、7 个 `gilderctl` 测试和 16 个 `gilderd` 测试。后续同日把 H.264
+  complex arbitrary-entry 和 H.265 B/ref arbitrary-entry 继续推进到真实 Wayland gate：
+  H.264 planner 不再把 planned output slot 里的引用从默认 ref list 中提前删除，而是保留
+  telemetry 并按实际 selected references 标记 unavailable，避免复杂 x264 GOP 把“声明 active
+  ref count”误判成缺引用。`/tmp/gilder-vulkan-h264-arbitrary-entry-complex-gated-v3`
+  在 `HDMI-A-1` 上使用 720p/60、`refs=3`、`bframes=2`、`weightp=2`、`weightb=1`、
+  非关键帧入口 `0.35s`，通过 `decoded/presented=160/160`、`playback_loop_count=3`、
+  `loop_boundary_reset_count=2`、`p_frames=53`、`b_frames=102`、`max_reference_count=4`、
+  `queue_retained=0`、`average_present_fps=242.031`。H.265 planner 则改为先计算当前帧
+  RPS 需要保护的 POC，再选择不会覆盖这些 POC 的 DPB output slot；新增单测复现
+  POC 顺序 `0,3,2,1,6,5` 中 POC5 仍需要 `3,2,0,6`，旧轮转会覆盖 POC0 的问题。
+  `/tmp/gilder-vulkan-h265-arbitrary-entry-brefs-gated-v2` 在 `HDMI-A-1` 上使用 720p/60、
+  `refs=2`、`bframes=2`、非关键帧入口 `0.35s`，通过 `decoded/presented=160/160`、
+  `playback_loop_count=3`、`loop_boundary_reset_count=2`、`p_frames=53`、`b_frames=102`、
+  `max_reference_count=4`、`queue_retained=0`、`average_present_fps=241.434`。同轮
+  `cargo test --features native-vulkan-gst-video` 通过 298 个库测试、7 个 `gilderctl`
+  测试和 16 个 `gilderd` 测试；真实 smoke 后 `niri msg layers` 只剩 quickshell/dms
+  正常 layer，未发现残留 `gilder-native-vulkan`/`gilderd` 进程。
 - H.264 GPU-memory/native-wgpu 对照是另一条口径：真实 Wayland 证据
   `/tmp/gilder-native-wgpu.SWqa42` 使用 `gst-dmabuf`、`pipeline_kind=cuda-direct`、
   `video_last_memory_types=gst.cuda.memory`、`video_last_export_source=cuda-direct-vulkan-staging`，
