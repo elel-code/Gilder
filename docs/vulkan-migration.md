@@ -580,6 +580,18 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   top/bottom field key 可并存，以及 Vulkan reference flags 正确设置 top/bottom 位。当前
   progressive 行为不变，field picture gate 仍保持关闭；下一步要在真实 interlaced/field
   H.264 源和 driver smoke 通过后才允许任意 field picture 连续解码。
+- H.265 visible/sequence submit 侧不再把 active DPB 简化成 `POC` 数组：新增
+  `NativeVulkanH265ActiveDpbReference { poc, used_for_long_term_reference }`，并在
+  `vkCmdBeginVideoCodingKHR` 的 begin reference slots 中用当前 entry 的 reference usage
+  覆盖 active slot 状态，避免 planner 已识别 long-term reference、但 begin slot 的
+  `StdVideoDecodeH265ReferenceInfoFlags.used_for_long_term_reference` 仍被写成 0。新增单测
+  `h265_begin_slots_preserve_current_long_term_reference_flags` 覆盖该路径。验证：
+  `cargo test --features native-vulkan-gst-video` 通过 308 个库测试、7 个 `gilderctl` 测试和
+  16 个 `gilderd` 测试，release 构建通过；真实 Wayland `HDMI-A-1` 回归
+  `/tmp/gilder-vulkan-h265-active-dpb-reference-state` 使用 720p/60、`refs=2`、`bframes=2`、
+  非关键帧入口 `0.35s`，结果为 `decoded/presented=160/160`、`h265_input_mode=streaming-queue`、
+  `bootstrap_discarded=36`、`loop_skip=36`、`queue_retained=0`、`max_reference_count=4`、
+  `missed_frame_pacing_count=0`。真实 long-term coded stream smoke 仍未补齐。
 - H.264 GPU-memory/native-wgpu 对照是另一条口径：真实 Wayland 证据
   `/tmp/gilder-native-wgpu.SWqa42` 使用 `gst-dmabuf`、`pipeline_kind=cuda-direct`、
   `video_last_memory_types=gst.cuda.memory`、`video_last_export_source=cuda-direct-vulkan-staging`，
