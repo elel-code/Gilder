@@ -354,6 +354,17 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   `source=native-rust-av1-sequence-header-to-vulkan-std`、sequence extent 为 640x368；
   selected temporal unit 现在还会报告 frame/tile readiness，当前为 sequence-header + frame OBU，
   `av1_decode_candidate=true`、`av1_frame_payload_bytes=2697`、`av1_first_frame_header_obu_offset=13`。
+- H.265/AV1 Main10 已推进到 session/resource/bitstream gate，而不是只停留在 capability
+  probe：`--video-codec h265-main-10|av1-main-10` 现在会选择 10-bit profile 和
+  `G10X6_B10X6R10X6_2PLANE_420_UNORM_3PACK16`。2026-06-21 真实
+  `WAYLAND_DISPLAY=wayland-1` 证据 `/tmp/gilder-vulkan-h265-main10-bitstream.Y0bB5M`
+  显示 H.265 Main10 成功创建 P010-like resource image、上传 encoded AU、创建
+  `VkVideoSessionParametersKHR`，`session_parameters_codec=h265-main-10`、
+  `video_image_format=G10X6_B10X6R10X6_2PLANE_420_UNORM_3PACK16`；AV1 Main10 证据
+  `/tmp/gilder-vulkan-av1-bitstream.S4rPZG` 显示 `av1_sequence_bit_depth=10`、
+  `session_parameters_codec=av1-main-10`、`av1_decode_candidate=true`。当前边界仍是
+  10-bit 可见路径：P010 sampling shader、plane view/readback size 和 direct present path
+  需要单独实现，不能复用现有 NV12/8-bit visible smoke。
 - `--probe-video-session --decode-first-frame --source <h265.mp4>` 已进入真实 H.265
   Vulkan Video command buffer：2026-06-21 在 `WAYLAND_DISPLAY=wayland-1`、NVIDIA 4060、
   3840x2160@240 H.265 Main 源上，probe 解析 IDR slice offset 2444，使用 8-layer

@@ -57,6 +57,8 @@ Useful variants:
 scripts/native-vulkan-h265-ready-prefix-video-smoke.sh --no-build --source /tmp/loop-h265.mp4 --output-name HDMI-A-1
 scripts/native-vulkan-h265-ready-prefix-video-smoke.sh --no-build --output-name HDMI-A-1 --decode-prefix 240 --playback-frames 4800
 scripts/native-vulkan-av1-bitstream-smoke.sh --no-build
+scripts/native-vulkan-av1-bitstream-smoke.sh --no-build --bit-depth 10
+scripts/native-vulkan-h265-main10-bitstream-smoke.sh --no-build
 scripts/native-vulkan-h265-first-frame-video-smoke.sh --output-name HDMI-A-1
 scripts/native-vulkan-surface-video-queue-smoke.sh --output-name HDMI-A-1
 ```
