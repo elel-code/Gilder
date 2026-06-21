@@ -595,6 +595,18 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   “GStreamer caps 看起来是 DMA” 与 “目标 Vulkan device 真的能 import 这个 fd” 分开。
   `scripts/native-vulkan-visible-codec-smoke.sh` 也把这些字段写进 summary，后续 VA/DMABUF
   真机 smoke 不再需要手翻 runtime JSON。
+- 同日继续把 Sunshine 的 render-node/device identity 思路落到 `gst-dma` telemetry：
+  native Vulkan runtime 现在通过 `VK_EXT_physical_device_drm` 记录 selected physical device
+  的 primary/render DRM major/minor、Linux `dev_t` 和可推导的 `/dev/dri/card*` /
+  `/dev/dri/renderD*` 路径，并同时写入顶层 runtime 和 `video_runtime`。这不是把 DMABUF fd
+  伪装成 render-node 匹配证明；它用于把“GStreamer/VA/DMABUF 来源在哪个 DRM device 上”
+  与“Gilder 目标 Vulkan physical device 是哪个 DRM device”放到同一份证据里，后续 AMD/VA
+  direct smoke 可以直接 gate 跨设备/隐式 copy 风险。本轮真实 Wayland `HDMI-A-1`
+  `/tmp/gilder-vulkan-visible-h264-sunshine-drm-identity-final` 使用 `nvh264dec`，
+  `frames_rendered=120`、`frames_imported=118`、`memory_route=cuda-vulkan-copy`、
+  `direct_import_confirmed=false`、`selected_vulkan_drm_render_node=/dev/dri/renderD128`、
+  `selected_vulkan_drm_render_dev_t=57984`、`last_dmabuf_import=null`，符合当前 NVIDIA
+  GStreamer 路线仍是 CUDAMemory fallback、不是 DMABUF direct 的事实。
 - H.264 direct 路线的 picture-layout probe 已从单一 `PROGRESSIVE` 扩展为
   `PROGRESSIVE`、`INTERLACED_INTERLEAVED_LINES`、`INTERLACED_SEPARATE_PLANES` 三种
   layout；`--probe-video` 的 H.264 profile matrix 会分别报告 layout。真实本机 probe
