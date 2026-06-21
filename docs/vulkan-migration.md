@@ -383,6 +383,19 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   `reset_control_count=8`，Y/UV 非零 `8294400/4147183`。这一步证明 H.264 direct
   不是只会解首帧，但仍是 all-IDR gate；当前 H.264 direct 边界改为 P/B reference
   tracking、无 per-frame reset 的 DPB 维护、visible surface presentation 和 frame pacing。
+- H.264 direct 已从 all-IDR gate 推进到普通 IDR+P ready-prefix gate：
+  `scripts/native-vulkan-h264-ready-prefix-smoke.sh` 生成 `bframes=0/ref=1/keyint>prefix`
+  的 High 8-bit 源，`--decode-h264-ready-prefix N` 会解析 P slice 的 active L0 reference
+  count、reference-list-modification flag 和 reference marking，生成
+  `h264_decode_reference_plan[]`，并在 `vkCmdDecodeVideoKHR` 中为 P 帧传入真实
+  `reference_slots`。2026-06-21 `WAYLAND_DISPLAY=wayland-1` 证据：720p/60
+  `/tmp/gilder-vulkan-h264-ready-prefix.U6E7hC` 和 4K/240 level 5.2
+  `/tmp/gilder-vulkan-h264-ready-prefix.e1aTOo`；后者 `decoded_frame_count=8`、
+  `non_idr_frames=7`、`reference_frames=7`、`reset_control_count=1`、
+  `reference_plan_dpb_slots=2`，frame reference counts 为 `[0,1,1,1,1,1,1,1]`，
+  planned DPB slots 为 `[0,1,0,1,0,1,0,1]`，Y/UV 非零 `8294400/4147194`。
+  当前边界仍是不支持 B slice、reference list modification、adaptive MMCO、
+  long-term reference 和任意入口点 DPB 重建；这些是继续靠近“任意连续”的下一组问题。
 - `--probe-video-session --extract-bitstream` 已继续把 H.265 VPS/SPS/PPS 转成 Vulkan STD
   session parameters：2026-06-21 在 `WAYLAND_DISPLAY=wayland-1`、NVIDIA 4060、3840x2160@240
   H.265 Main 源上，native parser 真实读取 profile flags、VPS/SPS DPB ordering、SPS VUI
