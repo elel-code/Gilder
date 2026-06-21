@@ -503,6 +503,22 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   `playback_loop_count=3`、`loop_boundary_reset_count=2`、`queue_retained=0`、
   `average_present_fps=241.425`；该 synthetic source 没有 long-term refs，因此仍不能
   作为真实 long-term coded stream smoke 证明。
+- 同日继续修 H.264 long-term/short-term 混合 DPB 窗口：planner 不再只按
+  short-term reference 数量做滑动窗口，而是按 active short-term + long-term 总数约束
+  `max_num_ref_frames`/driver session 计划，避免已有 long-term reference 时继续保留过多
+  short-term refs。新增单测
+  `slides_h264_short_term_window_with_existing_long_term_reference` 覆盖 IDR long-term
+  加后续 short-term 滑动的场景；同轮 `cargo test --features native-vulkan-gst-video`
+  通过 302 个库测试、7 个 `gilderctl` 测试和 16 个 `gilderd` 测试。
+  release 构建 `cargo build --release --features native-vulkan-gst-video --bin gilder-native-vulkan`
+  通过；真实 Wayland `HDMI-A-1` 回归
+  `/tmp/gilder-vulkan-h264-total-ref-window-regression` 使用 720p/60、`refs=3`、
+  `bframes=2`、`weightp=2`、`weightb=1`、非关键帧入口 `0.35s`，结果为
+  `decoded/presented=160/160`、`playback_loop_count=3`、`loop_boundary_reset_count=2`、
+  `p_frames=53`、`b_frames=102`、`max_reference_count=4`、`queue_retained=0`、
+  `average_present_fps=243.750`。该回归证明 H.264 visible direct streaming queue 没被
+  total-reference 修正打退；它仍不是 H.264 4K/240 满帧证明，也不是真实 long-term coded
+  stream smoke。
 - H.264 GPU-memory/native-wgpu 对照是另一条口径：真实 Wayland 证据
   `/tmp/gilder-native-wgpu.SWqa42` 使用 `gst-dmabuf`、`pipeline_kind=cuda-direct`、
   `video_last_memory_types=gst.cuda.memory`、`video_last_export_source=cuda-direct-vulkan-staging`，
