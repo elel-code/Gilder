@@ -233,6 +233,16 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   resource/session/bitstream 合计约 59.1MB。NVIDIA H.265 session memory 没随
   `maxActiveReferencePictures` 从 2-ref 降到 1-ref 明显下降，当前更像驱动对 H.265
   session/extent/profile 的固定成本。
+- visible H.265 ready-prefix 的 4K/240 长窗口内存尖峰已定位并修掉：旧路径把所有 AU payload
+  保存在 `Vec<Vec<u8>>`，所以即使 Vulkan bitstream buffer 已经是单个 249KiB reusable slot，
+  4800 AU 的 `bitstream_window_payload_bytes=499056595` 仍会变成进程私有内存。当前路径改为
+  GStreamer demux/parse 后写入临时 spool 文件，播放时只按 AU offset 读入一个复用 upload buffer；
+  runtime JSON 仍报告同样的 encoded window/upload 字节用于吞吐统计，但不再保留为 RSS/USS。
+  2026-06-21 真实 Wayland `HDMI-A-1` 证据 `/tmp/gilder-vulkan-h265-memory-spooled.d8pybb`
+  在 3840x2160@240、4800 frames 下达到 `average_present_fps=239.977`，
+  `RSS/PSS/USS/Private_Dirty max=117732/85864/68248/37664 KiB`；旧 in-memory payload
+  证据 `/tmp/gilder-vulkan-h265-memory.GIYC3r` 为
+  `1089060/1069592/1061636/1008992 KiB`。
 - H.264 GPU-memory/native-wgpu 对照是另一条口径：真实 Wayland 证据
   `/tmp/gilder-native-wgpu.SWqa42` 使用 `gst-dmabuf`、`pipeline_kind=cuda-direct`、
   `video_last_memory_types=gst.cuda.memory`、`video_last_export_source=cuda-direct-vulkan-staging`，
