@@ -431,6 +431,27 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   `/tmp/gilder-vulkan-h264-arbitrary-entry-current-regression` 为 `decoded/presented=60/60`、
   `bootstrap_discarded=39`、`loop_skip=39`、`first_frame_idr=true`、`max_reference_count=2`、
   `queue_retained=0`。
+- 2026-06-22 将 H.264/H.265 arbitrary-entry 的失败和回环证据继续收紧：direct visible
+  path 在创建 Wayland surface/swapchain 前先启动 bounded streaming packet queue、执行
+  bootstrap realignment，并要求 queue 填满 ready-prefix window；如果非关键帧入口后的下一个
+  IDR 到 EOS 不足以形成窗口，会在可见 surface 创建前失败，避免短源测试把桌面背景切黑。
+  短源负测试 `/tmp/gilder-vulkan-h264-short-window-preflight-v3` 使用不存在的
+  `WAYLAND_DISPLAY=gilder-missing-display` 仍在 0.23s 内返回
+  `H.264 streaming bootstrap found a decodable entry, but the source ended after 9/30 queued AU(s)`，
+  证明失败发生在 Wayland connect 之前。H.264/H.265 smoke 新增
+  `--require-loop-skip-replay`，arbitrary-entry 且 playback 跨过 decode-prefix 时自动要求
+  `packet_queue_eos_count > 0`、`packet_queue_loop_count > 0`、loop boundary reset、loop skip
+  和每个 playback loop 的首帧 IDR。真实 Wayland `HDMI-A-1` gated 证据：
+  H.264 `/tmp/gilder-vulkan-h264-arbitrary-entry-eos-loop-gated`
+  `decoded/presented=140/140`、`playback_loop_count=3`、`loop_boundary_reset_count=2`、
+  `h264_packet_queue_eos_count=2`、`h264_packet_queue_loop_count=2`、
+  `loop_skip=38`、`bootstrap_discarded=38`、`loop_first_non_idr_count=0`、
+  `queue_retained=0`；H.265 `/tmp/gilder-vulkan-h265-arbitrary-entry-eos-loop-gated`
+  `decoded/presented=140/140`、`playback_loop_count=3`、`loop_boundary_reset_count=2`、
+  `h265_packet_queue_eos_count=2`、`h265_packet_queue_loop_count=2`、
+  `loop_skip=39`、`bootstrap_discarded=39`、`loop_first_non_idr_count=0`、
+  `queue_retained=0`。同轮 `cargo test --features native-vulkan-gst-video` 通过
+  297 个库测试、7 个 `gilderctl` 测试和 16 个 `gilderd` 测试。
 - H.264 GPU-memory/native-wgpu 对照是另一条口径：真实 Wayland 证据
   `/tmp/gilder-native-wgpu.SWqa42` 使用 `gst-dmabuf`、`pipeline_kind=cuda-direct`、
   `video_last_memory_types=gst.cuda.memory`、`video_last_export_source=cuda-direct-vulkan-staging`，
