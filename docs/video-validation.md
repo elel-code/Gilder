@@ -62,6 +62,8 @@ env WAYLAND_DISPLAY=wayland-1 scripts/native-vulkan-h264-first-frame-smoke.sh --
 env WAYLAND_DISPLAY=wayland-1 scripts/native-vulkan-h264-idr-prefix-smoke.sh --no-build --width 3840 --height 2160 --rate 240 --level 5.2 --decode-prefix 8 --samples 8
 env WAYLAND_DISPLAY=wayland-1 scripts/native-vulkan-h264-ready-prefix-smoke.sh --no-build --width 3840 --height 2160 --rate 240 --level 5.2 --decode-prefix 8 --samples 8
 env WAYLAND_DISPLAY=wayland-1 scripts/native-vulkan-h264-ready-prefix-video-smoke.sh --no-build --output-name HDMI-A-1 --decode-prefix 240 --playback-frames 480 --refs 2
+env WAYLAND_DISPLAY=wayland-1 scripts/native-vulkan-h264-ready-prefix-video-smoke.sh --no-build --streaming-queue --output-name HDMI-A-1 --decode-prefix 240 --playback-frames 240 --refs 2
+env WAYLAND_DISPLAY=wayland-1 scripts/native-vulkan-h265-ready-prefix-video-smoke.sh --no-build --streaming-queue --output-name HDMI-A-1 --decode-prefix 240 --playback-frames 240
 scripts/native-vulkan-av1-bitstream-smoke.sh --no-build
 scripts/native-vulkan-av1-bitstream-smoke.sh --no-build --bit-depth 10
 scripts/native-vulkan-h265-main10-bitstream-smoke.sh --no-build
@@ -90,7 +92,12 @@ presentation contract: GStreamer only supplies parsed H.264 AU buffers, while
 Vulkan Video owns `vkCmdDecodeVideoKHR` and native Vulkan owns the Wayland
 swapchain. Valid H.264 evidence should include non-zero `presented_frame_count`,
 `max_reference_count`/`requested_reference_count` for P frames, DPB slot reuse,
-and the fixed-capacity bitstream ring telemetry.
+and the fixed-capacity bitstream ring telemetry. Passing `--streaming-queue`
+switches H.264 encoded input from retained ready-prefix/spool to a bounded
+parser/appsink packet queue. In that mode, valid evidence should report
+`h264_input_mode=streaming-queue`, non-zero
+`h264_packet_queue_pulled_count`, and
+`h264_packet_queue_retained_payload_bytes=0` at shutdown.
 
 The visible codec smokes are native Wayland + native Vulkan presentation gates:
 GStreamer owns demux/decode/appsink and may output GPU memory, but it does not
