@@ -272,6 +272,22 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   平均 CPU `15.13%`、`average_present_fps=212.375`。当前内存问题已不在 packet retention；
   H.264 4K/240 剩余瓶颈在 present pacing/同步或驱动 codec 路径。剩余码流边界是 B slice、
   long-term reference、adaptive MMCO、weighted prediction、field picture 和任意入口点 DPB 重建。
+- 2026-06-21 CI 修复复测同一路线时增加了 per-frame present telemetry 和 3-image swapchain
+  preference。真实 Wayland `HDMI-A-1`、3840x2160@240、2400-frame streaming queue evidence
+  `/tmp/gilder-vulkan-h264-ci-fix-smoke` 为 `decoded/presented=2400/2400`、
+  `average_present_fps=214.29452814312305`、`queue_retained=0`、
+  `vkQueuePresentKHR avg/p95/max=4373/4868/6231us`；匹配 smaps 证据
+  `/tmp/gilder-vulkan-h264-ci-fix-smaps-keep/performance` 为
+  `RSS/PSS/USS/Private_Dirty max=112080/78517/61032/29176 KiB`、平均 CPU `13.48%`。
+  同机 H.265 对照 `/tmp/gilder-vulkan-h265-ci-fix-smoke` 为
+  `average_present_fps=238.60528994743973`，smaps
+  `/tmp/gilder-vulkan-h265-ci-fix-smaps-keep/performance` 为
+  `RSS/PSS/USS/Private_Dirty max=112800/79293/61652/29836 KiB`。结论不变：
+  H.264 当前不是码流 retention 或 bitstream ring 内存问题，而是 FIFO present/codec path 的稳定
+  240Hz 缺口；下一步需要 multi-in-flight/decode-ahead/present 解耦，而不是回退到
+  playbin/waylandsink 或继续压 packet queue。
+  `GILDER_VULKAN_H264_PRESENT_DELAY_US=400` 诊断只把 `vkQueuePresentKHR` avg 降到
+  `3934us`，但总 FPS 降到 `212.855`，说明简单 CPU sleep 不是有效方向，已移除该临时开关。
 - H.265 visible direct input 也已接到 bounded streaming packet queue：新增
   `--h265-input streaming-queue` 和脚本 `--streaming-queue`，按需拉 AU、上传到 bitstream ring
   后释放 payload，runtime JSON 报告 `h265_packet_queue_*`。2026-06-21 真实 Wayland

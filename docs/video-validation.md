@@ -234,6 +234,35 @@ GStreamer parser/decoder plugins. Arch-like systems typically need:
 - `vulkan-icd-loader`
 - `wayland-protocols`
 
+Ubuntu CI for `native-vulkan-renderer` also needs `libxkbcommon-dev`; without
+it `smithay-client-toolkit` cannot find `xkbcommon.pc` while building the
+Wayland host.
+
+Current direct Vulkan Video streaming evidence from 2026-06-21 on
+`WAYLAND_DISPLAY=wayland-1`, output `HDMI-A-1`, 3840x2160@240:
+
+- H.264 direct Vulkan Video streaming queue:
+  `/tmp/gilder-vulkan-h264-ci-fix-smoke`,
+  `decoded_frame_count=2400`, `presented_frame_count=2400`,
+  `average_present_fps=214.29452814312305`, `queue_retained=0`.
+  Matching smaps evidence:
+  `/tmp/gilder-vulkan-h264-ci-fix-smaps-keep/performance`,
+  `RSS/PSS/USS/Private_Dirty max=112080/78517/61032/29176 KiB`,
+  average CPU `13.48%`.
+- H.265 direct Vulkan Video streaming queue:
+  `/tmp/gilder-vulkan-h265-ci-fix-smoke`,
+  `decoded_frame_count=2400`, `presented_frame_count=2400`,
+  `average_present_fps=238.60528994743973`, `queue_retained=0`.
+  Matching smaps evidence:
+  `/tmp/gilder-vulkan-h265-ci-fix-smaps-keep/performance`,
+  `RSS/PSS/USS/Private_Dirty max=112800/79293/61652/29836 KiB`,
+  average CPU `15.84%`.
+
+The same run shows H.264 is still present-limited, not packet-retention limited:
+`vkQueuePresentKHR` averages about `4373us` for H.264 versus about `3831us` for
+H.265, while both paths report zero retained packet payload and the same
+1,036,800-byte bitstream ring.
+
 ## Performance Sampling
 
 For an already running daemon, collect resource evidence with:
