@@ -291,6 +291,12 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   由 native Vulkan render pass 合成到 swapchain。CUDA 只是一个 importer 实现，不是 video
   架构边界；AMD/Intel 后续必须补同级的 `DMABuf/VAAPI -> Vulkan external memory` importer，
   复用同一套 Vulkan Y/UV sampling 和 present。
+- native Vulkan video importer 已补 10-bit/P010 可见采样：GStreamer sample meta 现在区分
+  `NV12` 与 `P010_10LE`，P010 使用
+  `G10X6_B10X6R10X6_2PLANE_420_UNORM_3PACK16` image format，plane view 使用
+  `R16_UNORM` / `R16G16_UNORM`，CUDA external image 导入按 8-bit/16-bit channel
+  分别选择 array format。VA/DMABuf scaffold 同步保留 `DRM_FORMAT_P010`、
+  `DRM_FORMAT_R16` 和 `DRM_FORMAT_GR1616`，后续 AMD/Intel importer 可复用同一格式模型。
 - `--probe-video` 已加入 native Vulkan CLI，用 `vkGetPhysicalDeviceQueueFamilyProperties2`
   枚举 Vulkan Video decode 扩展和 queue family，不创建 surface、不解码。2026-06-21 在
   `WAYLAND_DISPLAY=wayland-1` 下验证：NVIDIA GeForce RTX 4060 Laptop GPU 报告
@@ -501,6 +507,20 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   最新 20s run：`average_render_fps=239.947`、`frames_rendered=4799`、
   `frames_imported=4778`、`eos_messages=0`、`segment_done_messages=2`、
   `last_sample_pts_delta_ms=4`、`last_import_size=3840x2160`。
+- visible codec smoke 已覆盖 H.264、AV1 和 H.265 Main10：新增
+  `scripts/native-vulkan-h264-visible-video-smoke.sh`、
+  `scripts/native-vulkan-av1-visible-video-smoke.sh` 和
+  `scripts/native-vulkan-h265-main10-visible-video-smoke.sh`，均以 GStreamer
+  demux/decode/appsink 为前端，native Vulkan importer/shader/swapchain 负责可见输出。
+  2026-06-21 `WAYLAND_DISPLAY=wayland-1`、`HDMI-A-1` 证据：H.264 720p/240
+  `/tmp/gilder-vulkan-visible-h264.dqQnsN`，4K/240
+  `/tmp/gilder-vulkan-visible-h264.K0XXrj`；AV1 640x368/60
+  `/tmp/gilder-vulkan-visible-av1.fBQmOz`，4K/60
+  `/tmp/gilder-vulkan-visible-av1.yAKhDg`；H.265 Main10 640x368/60
+  `/tmp/gilder-vulkan-visible-h265-main10.GxYmkr`，4K/60
+  `/tmp/gilder-vulkan-visible-h265-main10.0nZH7D`。这组证据验证的是第二条路线的
+  native Vulkan visible importer/present，不把 H.264/AV1/Main10 误标为 direct Vulkan
+  Video picture-info decode 已完成。
 - loop 使用 segment seek：启动顺序为 `Paused -> SEGMENT seek -> Playing`，收到
   `SegmentDone` 后立即 seek 回 0，避免短视频到 EOS 后硬切造成末尾抖动/卡顿。
 - 建立最小 native Vulkan layer-shell renderer：clear/static/shader。
@@ -523,9 +543,12 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   扩展成连续帧 decode/display：GStreamer 或等价前端只负责 demux/parser/audio/clock，
   Vulkan Video 模块负责 picture info、reference slots 和 queue 同步，再复用 native Vulkan
   NV12 shader 合成到 visible swapchain。H.264 仍可实现 baseline/main/high，但 4K/240
-  H.264 level 6.1 不能作为首个 direct 成功标准。AV1 direct 仍需补 AV1 sequence
-  header/session parameters。10-bit H.265/AV1 已有 sampled 2-plane 420 format evidence，
-  后续需要单独补 P010/10-bit shader path。CUDA copy path 只保留为 fallback 和对照基线。
+  H.264 level 6.1 不能作为首个 direct 成功标准。AV1 direct 已完成 sequence header
+  到 Vulkan STD session parameters 的 gate，仍需把 picture info/tile payload 和
+  `vkCmdDecodeVideoKHR` 接到连续 present。10-bit H.265/AV1 已有 sampled 2-plane 420
+  format evidence，P010 visible importer 已跑通；direct Vulkan Video Main10 还需要单独补
+  P010 resource sampling、DPB 和 visible decode/present。CUDA copy path 只保留为 fallback
+  和对照基线。
 - 成功标准是同场景优于历史 native-wgpu/GStreamer CUDA copy 路线，而不是理论零拷贝。
 - Web helper 输出要以 texture/frame stream 形式进入后端，避免把 WebKitGTK 当作最终 renderer 架构。
 

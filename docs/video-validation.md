@@ -60,6 +60,9 @@ scripts/native-vulkan-h264-bitstream-smoke.sh --no-build
 scripts/native-vulkan-av1-bitstream-smoke.sh --no-build
 scripts/native-vulkan-av1-bitstream-smoke.sh --no-build --bit-depth 10
 scripts/native-vulkan-h265-main10-bitstream-smoke.sh --no-build
+env WAYLAND_DISPLAY=wayland-1 scripts/native-vulkan-h264-visible-video-smoke.sh --no-build --output-name HDMI-A-1 --target-fps 240 --duration 2
+env WAYLAND_DISPLAY=wayland-1 scripts/native-vulkan-av1-visible-video-smoke.sh --no-build --output-name HDMI-A-1 --target-fps 60 --duration 3
+env WAYLAND_DISPLAY=wayland-1 scripts/native-vulkan-h265-main10-visible-video-smoke.sh --no-build --output-name HDMI-A-1 --target-fps 60 --duration 3
 scripts/native-vulkan-h265-first-frame-video-smoke.sh --output-name HDMI-A-1
 scripts/native-vulkan-surface-video-queue-smoke.sh --output-name HDMI-A-1
 ```
@@ -78,7 +81,34 @@ ring, so valid evidence should report
 non-zero `bitstream_ring_capacity_bytes`, and increasing/wrapping
 `frames[].src_buffer_offset` / `frames[].bitstream_ring_wrap_count`.
 
-The H.264 and AV1 bitstream smokes are not visible playback tests yet. H.264
+The visible codec smokes are native Wayland + native Vulkan presentation gates:
+GStreamer owns demux/decode/appsink and may output GPU memory, but it does not
+own a display sink or Wayland surface. They validate importer, shader sampling,
+swapchain present, output selection and visible pacing. They are not direct
+Vulkan Video picture-info decode evidence.
+
+Current visible codec evidence from 2026-06-21:
+
+- H.264 720p/240: `/tmp/gilder-vulkan-visible-h264.dqQnsN`,
+  `frames_rendered=480`, `average_render_fps=239.99340618116517`,
+  `last_sample_format=NV12`, decoder `nvh264dec`.
+- H.264 4K/240 source: `/tmp/gilder-vulkan-visible-h264.K0XXrj`,
+  `frames_rendered=240`, `average_render_fps=239.98185473198185`,
+  `last_sample_size=[3840,2160]`, decoder `nvh264dec`.
+- AV1 640x368/60: `/tmp/gilder-vulkan-visible-av1.fBQmOz`,
+  `frames_rendered=180`, `average_render_fps=59.99921519026557`,
+  `last_sample_format=NV12`, decoder `nvav1dec`.
+- AV1 4K/60 source: `/tmp/gilder-vulkan-visible-av1.yAKhDg`,
+  `frames_rendered=60`, `average_render_fps=59.996364880248265`,
+  `last_sample_size=[3840,2160]`, decoder `nvav1dec`.
+- H.265 Main10 640x368/60: `/tmp/gilder-vulkan-visible-h265-main10.GxYmkr`,
+  `frames_rendered=180`, `average_render_fps=59.99883480262852`,
+  `last_sample_format=P010_10LE`.
+- H.265 Main10 4K/60 source: `/tmp/gilder-vulkan-visible-h265-main10.0nZH7D`,
+  `frames_rendered=60`, `average_render_fps=59.99589508085857`,
+  `last_sample_size=[3840,2160]`, `last_sample_format=P010_10LE`.
+
+The H.264 and AV1 bitstream smokes are not visible playback tests. H.264
 verifies the direct Vulkan Video session/resource/input gate for the driver
 level range it reports: `qtdemux ! h264parse ! appsink` produces Annex-B access
 units, the probe sees SPS/PPS/IDR NALs, and the selected AU is uploaded into a
