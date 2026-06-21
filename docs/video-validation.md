@@ -48,21 +48,26 @@ presentation evidence.
 Run inside a real niri, Hyprland or other Wayland session:
 
 ```sh
-scripts/native-vulkan-h265-ready-prefix-video-smoke.sh --output HDMI-A-1 --playback-frames 4800 --target-fps 240 --keep
+scripts/native-vulkan-h265-ready-prefix-video-smoke.sh --output-name HDMI-A-1 --playback-frames 4800 --target-fps 240
 ```
 
 Useful variants:
 
 ```sh
-scripts/native-vulkan-h265-ready-prefix-video-smoke.sh --no-build --source /tmp/loop-h265.mp4 --output HDMI-A-1 --keep
-scripts/native-vulkan-h265-first-frame-video-smoke.sh --output HDMI-A-1 --keep
-scripts/native-vulkan-surface-video-queue-smoke.sh --output HDMI-A-1 --keep
+scripts/native-vulkan-h265-ready-prefix-video-smoke.sh --no-build --source /tmp/loop-h265.mp4 --output-name HDMI-A-1
+scripts/native-vulkan-h265-ready-prefix-video-smoke.sh --no-build --output-name HDMI-A-1 --decode-prefix 240 --playback-frames 4800
+scripts/native-vulkan-h265-first-frame-video-smoke.sh --output-name HDMI-A-1
+scripts/native-vulkan-surface-video-queue-smoke.sh --output-name HDMI-A-1
 ```
 
-The ready-prefix smoke is a decode/present/resource gate. It loops an extracted
-AU window, so loop boundaries can visibly jump unless the source itself is
-seamless. For full playback validation, the next gate is continuous demux/parser
-handoff into the same native Vulkan importer/present path.
+The ready-prefix smoke is a decode/present/resource gate. When
+`--playback-frames` is set and `--decode-prefix` is not set, it now generates and
+decodes a continuous source long enough for that playback window. This keeps the
+first Vulkan Video route comparable with the second GStreamer/appsink route's
+continuous 4K/240 source. Passing an explicit shorter `--decode-prefix` keeps
+the old loop-window diagnostic mode; loop boundaries can visibly jump unless the
+source is authored to be seamless. For full playback validation, the next gate is
+continuous demux/parser handoff into the same native Vulkan importer/present path.
 
 ## Current Architecture Gates
 

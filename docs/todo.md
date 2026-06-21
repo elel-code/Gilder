@@ -491,6 +491,9 @@
   `vkCmdDecodeVideoKHR` + present，并在 loop boundary 强制 reset video coding；真实 Wayland
   4K/240 背景层 20s 样本验证 24 AU window -> 4800 decode/present、200 loops、
   199 次 loop-boundary reset、平均 `240.006fps`。
+- [x] 将第一条 H.265 direct smoke 的默认测试源改成连续 4K/240 口径：未显式传
+  `--decode-prefix` 时，`--playback-frames 4800` 会生成并解码同长度 ready prefix，避免默认测试
+  结果被短窗口 `AU239 -> AU0` loop boundary 污染；短 ready-prefix loop 只保留为显式诊断模式。
 - [ ] 将 visible direct H.265 ready-prefix 从受控窗口循环推进到完整播放循环：补持续 AU
   demux/parser、timeline semaphore 或更完整的 pacing/scheduling、loop/seek、音频/时钟接入和更长时间
   240Hz frame pacing telemetry。

@@ -206,13 +206,19 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   continuous demux/parser/audio/seek runtime；下一步要把窗口替换为持续 AU supply 和 timeline/clock。
 - 2026-06-21 复测确认可见抖动不能再用 8 帧 window 判断：8-frame ready-prefix 在 240Hz 下每
   33ms 回到 AU0，20 秒会循环 600 次，肉眼必然像抖动。`scripts/native-vulkan-h265-ready-prefix-video-smoke.sh`
-  默认已改成 `decode_prefix=target_fps`、生成源 `gop_size=target_fps`；如果 looped visible
-  playback 的 ready-prefix 短于 1 秒，脚本会失败，除非显式传 `--allow-short-loop` 做诊断。
-  最新真实 Wayland 20s evidence：`/tmp/gilder-vulkan-h265-ready-prefix-video.YS2xQf`，
-  源为 242 帧 `hevc/Main`、3840x2160@240，`ready_prefix_frame_count=240`、
+  先改成 `decode_prefix=target_fps`、生成源 `gop_size=target_fps`；如果 looped visible playback
+  的 ready-prefix 短于 1 秒，脚本会失败，除非显式传 `--allow-short-loop` 做诊断。该阶段真实
+  Wayland 20s evidence：`/tmp/gilder-vulkan-h265-ready-prefix-video.YS2xQf`，源为 242 帧
+  `hevc/Main`、3840x2160@240，`ready_prefix_frame_count=240`、
   `requested_playback_frame_count=4800`、`decoded_frame_count=4800`、
   `presented_frame_count=4800`、`playback_loop_count=20`、`average_present_fps=239.99556876981734`，
   FIFO present 下 `frame_sleep_count=0`、`missed_frame_pacing_count=0`。
+- 第一条 H.265 direct smoke 的默认测试源已进一步改为接近第二条 GStreamer/appsink 路线的连续
+  4K/240 口径：当调用
+  `scripts/native-vulkan-h265-ready-prefix-video-smoke.sh --output-name HDMI-A-1 --playback-frames 4800`
+  且没有显式 `--decode-prefix` 时，脚本会把 `decode_prefix` 扩到 `playback_frames`，生成
+  `testsrc2-continuous-closed-gop-h265-main` 源，并只在显式传入较短 `--decode-prefix` 时保留旧的
+  AU window loop/reset 诊断模式。这样第一条路线不再默认把视觉平滑度和 `AU239 -> AU0` 边界混在一起。
 - 同一 evidence 下的约 70MB private dirty 主要来自显式 Vulkan Video 资源，而不是残留 CPU
   copy：2-ref H.265 source 需要 `stream_dpb_slots=session_max_dpb_slots=3`，
   `video_resource_memory_bytes=37552128`，加上 NVIDIA driver 报告的
