@@ -484,6 +484,25 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   `/tmp/gilder-h265-rps-probe-640x368.mp4` 没有产生
   `inter_ref_pic_set_prediction_flag=true` 的真实码流，因此 predicted RPS 目前是
   parser/STD 单测覆盖和普通 H.265 回归覆盖，仍缺真实 predicted-RPS 可见 smoke 源。
+- 同日继续补 H.265 long-term reference 基础：SPS parser 不再只跳过
+  `long_term_ref_pics_present_flag`，而是保留 `lt_ref_pic_poc_lsb_sps` 和
+  `used_by_curr_pic_lt_sps_flag`，并把该表映射到
+  `StdVideoH265LongTermRefPicsSps`；slice parser 记录 `num_long_term_sps`、
+  `num_long_term_pics`、SPS long-term index、显式 POC LSB、`used_by_curr_pic_lt_flag`
+  和 `delta_poc_msb_cycle_lt`。H.265 planner 会把 long-term references 标记为
+  `used_for_long_term_reference`，按 POC LSB 或 delta-MSB 推导匹配 DPB POC，submit
+  则把 short-term negative/positive refs 分别写入 `RefPicSetStCurrBefore/After`，
+  把 long-term refs 写入 `RefPicSetLtCurr`，并设置
+  `StdVideoDecodeH265ReferenceInfoFlags.used_for_long_term_reference`。新增单测
+  `maps_h265_sps_long_term_refs_to_vulkan_std` 和
+  `plans_h265_long_term_reference_by_poc_lsb`；同轮
+  `cargo test --features native-vulkan-gst-video` 通过 301 个库测试、7 个 `gilderctl`
+  测试和 16 个 `gilderd` 测试。真实 Wayland 回归
+  `/tmp/gilder-vulkan-h265-longterm-foundation-regression` 继续覆盖 H.265 B/ref
+  arbitrary-entry streaming queue，结果为 `decoded/presented=160/160`、
+  `playback_loop_count=3`、`loop_boundary_reset_count=2`、`queue_retained=0`、
+  `average_present_fps=241.425`；该 synthetic source 没有 long-term refs，因此仍不能
+  作为真实 long-term coded stream smoke 证明。
 - H.264 GPU-memory/native-wgpu 对照是另一条口径：真实 Wayland 证据
   `/tmp/gilder-native-wgpu.SWqa42` 使用 `gst-dmabuf`、`pipeline_kind=cuda-direct`、
   `video_last_memory_types=gst.cuda.memory`、`video_last_export_source=cuda-direct-vulkan-staging`，
