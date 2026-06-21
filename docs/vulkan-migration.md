@@ -377,6 +377,24 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   已主要落在 driver/Vulkan Video/session/heap floor，packet queue 没有 retained payload；
   但 H.264 4K/240 仍未稳定满 240fps。剩余 direct H.264 边界收敛为真实 long-term coded
   stream、field/interlaced picture、任意入口点 DPB 重建和 frame pacing/同步优化。
+- H.264/H.265 visible direct input 已冒险合并为一套共用 streaming packet queue：
+  `NativeVulkanStreamingAccessUnit` 提供 codec hook，泛型队列统一持有 GStreamer
+  pipeline/appsink/bus、bootstrap 参数集选择、EOS seek loop、payload retained accounting 和
+  bitstream ring sizing；H.264/H.265 只保留 pipeline、appsink 名称、参数集解析和 snapshot
+  hook。这样后续 AV1/音频 clock/metadata ring 可以接同一个输入层，而不是继续维护两份
+  H.264/H.265 队列代码。2026-06-21 真实 Wayland `HDMI-A-1` 回归：
+  H.264 720p/60 `/tmp/gilder-vulkan-common-queue-h264-720p60` 为
+  `decoded/presented=60/60`、`queue_retained=0`、`average_present_fps=247.329`；
+  H.264 4K/240 `/tmp/gilder-vulkan-common-queue-h264-4k240` 为
+  `decoded/presented=240/240`、`b_frames=119`、`queue_retained=0`、
+  `average_present_fps=199.922`；H.265 4K/240
+  `/tmp/gilder-vulkan-common-queue-h265-4k240` 为 `decoded/presented=240/240`、
+  `queue_retained=0`、`average_present_fps=238.368`。同轮 H.264 4K/240 长跑
+  `/tmp/gilder-vulkan-common-queue-h264-4k240-memory/performance` 为
+  `decoded/presented=2400/2400`、`average_present_fps=204.900`、`queue_eos/loops=9/9`、
+  `queue_retained=0`，8 个 samples 中 `RSS/PSS/USS/Private_Dirty max=105404/63269/45272/26844 KiB`、
+  平均 CPU `12.49%`、NVIDIA 进程 GPU memory `104 MiB`。这证明本次大重构没有把 H.265
+  4K/240 路线打退，也再次确认 H.264 4K/240 的剩余缺口不是 packet retention。
 - H.264 GPU-memory/native-wgpu 对照是另一条口径：真实 Wayland 证据
   `/tmp/gilder-native-wgpu.SWqa42` 使用 `gst-dmabuf`、`pipeline_kind=cuda-direct`、
   `video_last_memory_types=gst.cuda.memory`、`video_last_export_source=cuda-direct-vulkan-staging`，
