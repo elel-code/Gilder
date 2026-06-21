@@ -338,6 +338,16 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   输出 `stream-format=byte-stream, alignment=au` 的 encoded access unit；probe 识别出
   VPS/SPS/PPS/IDR NAL，并把选中的 173754-byte AU 写入 `VIDEO_DECODE_SRC_KHR` buffer
   (`mapped_write_source=extracted-encoded-video-unit`，hash=5201191167619689341)。
+- direct H.264 已从 capability probe 推进到 session/resource/bitstream gate：`--video-codec h264`
+  选择 H.264 High 8-bit progressive profile，`scripts/native-vulkan-h264-bitstream-smoke.sh`
+  通过 `qtdemux ! h264parse ! appsink` 输出 `stream-format=byte-stream, alignment=au`，
+  真实创建 H.264 `VkVideoSessionKHR`、NV12 decode resource image 和
+  `VIDEO_DECODE_SRC_KHR` bitstream buffer。2026-06-21 `WAYLAND_DISPLAY=wayland-1`
+  证据 `/tmp/gilder-vulkan-h264-bitstream.Pbeh9g`：`h264_parameter_sets_present=true`、
+  `h264_idr_count=11`、`mapped_write_bytes=52450`、`session_memory_bytes=2215936`。
+  当前 H.264 边界是 SPS/PPS -> Vulkan STD session parameters 与 `vkCmdDecodeVideoKHR`
+  尚未接通；4K/240 H.264 仍受 NVIDIA 报告的 max level 5.2 约束，不能直接拿旧
+  level 6.1 源做 direct path 结论。
 - `--probe-video-session --extract-bitstream` 已继续把 H.265 VPS/SPS/PPS 转成 Vulkan STD
   session parameters：2026-06-21 在 `WAYLAND_DISPLAY=wayland-1`、NVIDIA 4060、3840x2160@240
   H.265 Main 源上，native parser 真实读取 profile flags、VPS/SPS DPB ordering、SPS VUI

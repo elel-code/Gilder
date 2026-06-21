@@ -56,6 +56,7 @@ Useful variants:
 ```sh
 scripts/native-vulkan-h265-ready-prefix-video-smoke.sh --no-build --source /tmp/loop-h265.mp4 --output-name HDMI-A-1
 scripts/native-vulkan-h265-ready-prefix-video-smoke.sh --no-build --output-name HDMI-A-1 --decode-prefix 240 --playback-frames 4800
+scripts/native-vulkan-h264-bitstream-smoke.sh --no-build
 scripts/native-vulkan-av1-bitstream-smoke.sh --no-build
 scripts/native-vulkan-av1-bitstream-smoke.sh --no-build --bit-depth 10
 scripts/native-vulkan-h265-main10-bitstream-smoke.sh --no-build
@@ -77,9 +78,13 @@ ring, so valid evidence should report
 non-zero `bitstream_ring_capacity_bytes`, and increasing/wrapping
 `frames[].src_buffer_offset` / `frames[].bitstream_ring_wrap_count`.
 
-The AV1 smoke is not a visible playback test yet. It verifies the next codec
-front-end stage: demux/parser/appsink produces AV1 temporal units, the native
-parser extracts sequence-header fields, and Vulkan accepts the resulting
+The H.264 and AV1 bitstream smokes are not visible playback tests yet. H.264
+verifies the direct Vulkan Video session/resource/input gate for the driver
+level range it reports: `qtdemux ! h264parse ! appsink` produces Annex-B access
+units, the probe sees SPS/PPS/IDR NALs, and the selected AU is uploaded into a
+`VIDEO_DECODE_SRC_KHR` buffer. AV1 verifies the next codec front-end stage:
+demux/parser/appsink produces AV1 temporal units, the native parser extracts
+sequence-header fields, and Vulkan accepts the resulting
 `StdVideoAV1SequenceHeader` via `VkVideoSessionParametersKHR`. It also requires
 the selected temporal unit to be a decode candidate: sequence header plus a frame
 OBU, or sequence header plus frame-header/tile-group OBUs.
