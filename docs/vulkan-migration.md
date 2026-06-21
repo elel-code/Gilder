@@ -278,8 +278,20 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   P-slice weighted prediction 已补 `pred_weight_table` 解析并通过真实 Wayland 4K/240
   `/tmp/gilder-vulkan-h264-weightp-4k240-smoke`，结果为 `decoded/presented=240/240`、
   `p_frames=239`、`max_reference_count=2`、`queue_retained=0`、`average_present_fps=214.9888566483139`。
-  B-slice 显式短期 L1 reference list modification 已补 parser/planner 单测覆盖；
-  剩余码流边界是 long-term reference、field picture 和任意入口点 DPB 重建。
+  B-slice 显式短期 L1 reference list modification 已补 parser/planner 单测覆盖。H.264
+  long-term reference/MMCO 状态机已推进到 planner + visible submit 同步：planner 维护
+  short-term/long-term DPB key，支持 ref-list modification idc 2、IDR long-term flag、
+  MMCO op=2/3/4/5/6、long-term index replacement，并把
+  `used_for_long_term_reference` 传入 `StdVideoDecodeH264ReferenceInfo`。新增单测覆盖
+  IDR long-term、MMCO6 当前图 long-term、MMCO4 上限裁剪、MMCO5 全清、long-term index
+  replacement 和 long-term L0 modification。2026-06-21 真实 Wayland `HDMI-A-1` 回归：
+  720p/60 B-frame `/tmp/gilder-vulkan-h264-longterm-planner-regression` 为
+  `decoded/presented=60/60`、`h264_input_mode=streaming-queue`、`queue_retained=0`；
+  4K/240 B-frame `/tmp/gilder-vulkan-h264-longterm-planner-4k240-regression` 为
+  `decoded/presented=240/240`、`b_frames=119`、`queue_retained=0`、
+  `average_present_fps=194.8709`。这证明普通连续 B-frame 路径未因 long-term 改动退化；
+  真实 long-term coded stream smoke 仍待补充，剩余码流边界是 field picture 和任意入口点
+  DPB 重建。
 - 2026-06-21 CI 修复复测同一路线时增加了 per-frame present telemetry 和 3-image swapchain
   preference。真实 Wayland `HDMI-A-1`、3840x2160@240、2400-frame streaming queue evidence
   `/tmp/gilder-vulkan-h264-ci-fix-smoke` 为 `decoded/presented=2400/2400`、
@@ -305,6 +317,11 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   `decoded/presented=120/120`、`b_frames=59`、`max_reference_count=2`、`queue_retained=0`；
   `/tmp/gilder-vulkan-h264-bslice-streaming-smoke-final` 为 `decoded/presented=180/180`、
   `b_frames=119`、`max_reference_count=3`、`h264_input_mode=streaming-queue`、`queue_retained=0`。
+  long-term reference 增量继续沿用同一路线，单测覆盖 IDR long-term、MMCO 2/3/4/5/6
+  和 long-term list modification，visible submit 同步 active DPB 的 long-term flag。
+  真实 long-term coded stream 仍缺 source/smoke；当前 4K/240 B-frame 回归
+  `/tmp/gilder-vulkan-h264-longterm-planner-4k240-regression` 为
+  `decoded/presented=240/240`、`queue_retained=0`、`average_present_fps=194.8709`。
 - H.265 visible direct input 也已接到 bounded streaming packet queue，并同样默认使用
   `h265_input_mode=streaming-queue`；显式 spool CLI 参数会报错，visible video runtime 已移除
   可选 spool 分支。按需拉 AU、上传到 bitstream ring
@@ -315,7 +332,11 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   `decoded/presented=4800/4800`、`average_present_fps=240.027`、`queue_eos/loops=19/19`、
   `RSS/PSS/USS/Private_Dirty max=115480/71078/51800/33892 KiB`、平均 CPU `20.11%`。
   默认 streaming 回归 `/tmp/gilder-vulkan-h265-streaming-default-regression` 为
-  `decoded/presented=240/240`、`average_present_fps=240.915`、`queue_retained=0`。
+  `decoded/presented=240/240`、`average_present_fps=240.915`、`queue_retained=0`。本轮
+  H.264 long-term planner 改动后复测 H.265 4K/240 direct streaming
+  `/tmp/gilder-vulkan-h265-longterm-planner-4k240-regression` 为
+  `decoded/presented=240/240`、`h265_input_mode=streaming-queue`、`queue_retained=0`、
+  `average_present_fps=240.4747`。
 - H.264 GPU-memory/native-wgpu 对照是另一条口径：真实 Wayland 证据
   `/tmp/gilder-native-wgpu.SWqa42` 使用 `gst-dmabuf`、`pipeline_kind=cuda-direct`、
   `video_last_memory_types=gst.cuda.memory`、`video_last_export_source=cuda-direct-vulkan-staging`，
