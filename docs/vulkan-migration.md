@@ -290,8 +290,9 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   4K/240 B-frame `/tmp/gilder-vulkan-h264-longterm-planner-4k240-regression` 为
   `decoded/presented=240/240`、`b_frames=119`、`queue_retained=0`、
   `average_present_fps=194.8709`。这证明普通连续 B-frame 路径未因 long-term 改动退化；
-  真实 long-term coded stream smoke 仍待补充，剩余码流边界是 field picture 和任意入口点
-  DPB 重建。
+  短期 reference list 默认排序和 ref-list modification idc 0/1 已改为按 PicNum 处理，覆盖
+  `frame_num` wrap 后的参考查找；真实 long-term coded stream smoke 仍待补充，剩余码流边界是
+  field picture、gaps-in-frame-num/non-existing refs 和任意入口点 DPB 重建。
 - 2026-06-21 CI 修复复测同一路线时增加了 per-frame present telemetry 和 3-image swapchain
   preference。真实 Wayland `HDMI-A-1`、3840x2160@240、2400-frame streaming queue evidence
   `/tmp/gilder-vulkan-h264-ci-fix-smoke` 为 `decoded/presented=2400/2400`、
@@ -318,7 +319,8 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   `/tmp/gilder-vulkan-h264-bslice-streaming-smoke-final` 为 `decoded/presented=180/180`、
   `b_frames=119`、`max_reference_count=3`、`h264_input_mode=streaming-queue`、`queue_retained=0`。
   long-term reference 增量继续沿用同一路线，单测覆盖 IDR long-term、MMCO 2/3/4/5/6
-  和 long-term list modification，visible submit 同步 active DPB 的 long-term flag。
+  和 long-term list modification，visible submit 同步 active DPB 的 long-term flag；短期
+  reference list 默认排序和 idc 0/1 modification 按 PicNum 处理，覆盖 `frame_num` wrap。
   真实 long-term coded stream 仍缺 source/smoke；当前 4K/240 B-frame 回归
   `/tmp/gilder-vulkan-h264-longterm-planner-4k240-regression` 为
   `decoded/presented=240/240`、`queue_retained=0`、`average_present_fps=194.8709`。
