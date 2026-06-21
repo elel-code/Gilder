@@ -152,6 +152,10 @@ Native Vulkan + GStreamer/DMA 方向：
 - GStreamer appsink 前端负责把 sample/caps/allocator/DMABuf 或 GPU-memory 证据暴露给
   native Vulkan；如果样本只能落到 CPU raw frame，应明确记录为 copy path，不把它当成
   direct path。
+- DMA importer 必须按 Sunshine 类似的边界处理完整外部内存描述：DRM fourcc、modifier、
+  每 plane fd/offset/pitch、modifier plane count，以及 producer GPU/render node 与 native
+  Vulkan physical device 的匹配关系。`memory:DMABuf` caps 只是候选线索，不是 zero-copy
+  或可导入证明。
 - `renderer_runtime.video_pipelines` 中的 `gtk_frame_*` 字段暂时作为兼容 telemetry 名称保留；
   native Vulkan 路径下它们通常为空或 0，真实 presentation 证据应来自 Vulkan present
   telemetry、Wayland frame callback 或 `wp_presentation`。

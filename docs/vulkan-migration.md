@@ -548,6 +548,21 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   结果为 `decoded/presented=160/160`、`playback_loop_count=3`、
   `loop_boundary_reset_count=2`、`max_reference_count=4`、`queue_retained=0`、
   `average_present_fps=243.810`；runtime JSON 中 frame/reference 均输出 `pic_order_cnt`。
+- 2026-06-22 开始把 Sunshine 作为 native Vulkan/video interop 参考，而不是把某条路线照搬：
+  Sunshine 的 `platform/linux/vulkan_encode.cpp` 把 Vulkan device/render-node 选择、DMA-BUF
+  import、DRM fourcc/modifier/plane layout、FFmpeg hardware frame 和 shader/compute conversion
+  分开处理；`cbs.cpp` 使用 FFmpeg Coded Bitstream API 处理 H.264/H.265 SPS/VUI，而不是把
+  bitstream patch、picture identity 和 GPU submit 混在一起。Gilder 对应结论是：direct
+  Vulkan Video 侧继续拆清 demux/parser、picture/reference planner、Vulkan session/queue 和
+  present loop；GStreamer/DMA 侧的 importer 也必须拿到完整 DMA-BUF contract，包括 DRM
+  format、modifier、每 plane fd/offset/pitch、modifier plane count、source GPU/render node
+  与目标 Vulkan physical device 是否匹配。只看到 `memory:DMABuf` caps 不能证明 zero-copy。
+- 同日 H.264 planner 已把 short-term reference 的内部 key 从单独 `frame_num` 扩展为
+  `frame_num + field_kind`，并把 `field_pic_flag/bottom_field_flag` 贯穿到 reference snapshots、
+  active DPB 和 `StdVideoDecodeH264ReferenceInfoFlags`。新增单测覆盖同一个 `frame_num` 的
+  top/bottom field key 可并存，以及 Vulkan reference flags 正确设置 top/bottom 位。当前
+  progressive 行为不变，field picture gate 仍保持关闭；下一步要在真实 interlaced/field
+  H.264 源和 driver smoke 通过后才允许任意 field picture 连续解码。
 - H.264 GPU-memory/native-wgpu 对照是另一条口径：真实 Wayland 证据
   `/tmp/gilder-native-wgpu.SWqa42` 使用 `gst-dmabuf`、`pipeline_kind=cuda-direct`、
   `video_last_memory_types=gst.cuda.memory`、`video_last_export_source=cuda-direct-vulkan-staging`，
