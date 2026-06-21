@@ -361,7 +361,7 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   显示 H.265 Main10 成功创建 P010-like resource image、上传 encoded AU、创建
   `VkVideoSessionParametersKHR`，`session_parameters_codec=h265-main-10`、
   `video_image_format=G10X6_B10X6R10X6_2PLANE_420_UNORM_3PACK16`；AV1 Main10 证据
-  `/tmp/gilder-vulkan-av1-bitstream.S4rPZG` 显示 `av1_sequence_bit_depth=10`、
+  `/tmp/gilder-vulkan-av1-bitstream.86Mw24` 显示 `av1_sequence_bit_depth=10`、
   `session_parameters_codec=av1-main-10`、`av1_decode_candidate=true`。当前边界仍是
   10-bit 可见路径：P010 sampling shader、plane view/readback size 和 direct present path
   需要单独实现，不能复用现有 NV12/8-bit visible smoke。
