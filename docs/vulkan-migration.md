@@ -469,6 +469,21 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   `cargo test --features native-vulkan-gst-video` 通过 298 个库测试、7 个 `gilderctl`
   测试和 16 个 `gilderd` 测试；真实 smoke 后 `niri msg layers` 只剩 quickshell/dms
   正常 layer，未发现残留 `gilder-native-vulkan`/`gilderd` 进程。
+- 2026-06-22 H.265 parser/STD mapper 已补 predicted short-term RPS：slice-local RPS
+  现在会解析 `delta_idx_minus1`、`delta_rps_sign`、`abs_delta_rps_minus1`、
+  `used_by_curr_pic_flag` 和 `use_delta_flag`，按 HEVC 推导出实际 negative/positive delta
+  POC 列表，并把 prediction flag、delta/use/used bitmask 映射到
+  `StdVideoH265ShortTermRefPicSet`。新增单测
+  `parses_predicted_h265_short_term_ref_pic_set` 覆盖 predicted RPS 解析和 Vulkan STD
+  字段。真实 Wayland 回归 `/tmp/gilder-vulkan-h265-pred-rps-regression-v2` 继续覆盖 720p/60
+  H.265 B/ref arbitrary-entry streaming queue，结果为 `decoded/presented=160/160`、
+  `playback_loop_count=3`、`loop_boundary_reset_count=2`、`p_frames=53`、`b_frames=102`、
+  `max_reference_count=4`、`queue_retained=0`、`average_present_fps=239.905`。同轮
+  `cargo test --features native-vulkan-gst-video` 通过 299 个库测试、7 个 `gilderctl`
+  测试和 16 个 `gilderd` 测试。限制：手工 x265 探针
+  `/tmp/gilder-h265-rps-probe-640x368.mp4` 没有产生
+  `inter_ref_pic_set_prediction_flag=true` 的真实码流，因此 predicted RPS 目前是
+  parser/STD 单测覆盖和普通 H.265 回归覆盖，仍缺真实 predicted-RPS 可见 smoke 源。
 - H.264 GPU-memory/native-wgpu 对照是另一条口径：真实 Wayland 证据
   `/tmp/gilder-native-wgpu.SWqa42` 使用 `gst-dmabuf`、`pipeline_kind=cuda-direct`、
   `video_last_memory_types=gst.cuda.memory`、`video_last_export_source=cuda-direct-vulkan-staging`，
