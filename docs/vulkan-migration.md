@@ -519,6 +519,22 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   `average_present_fps=243.750`。该回归证明 H.264 visible direct streaming queue 没被
   total-reference 修正打退；它仍不是 H.264 4K/240 满帧证明，也不是真实 long-term coded
   stream smoke。
+- 同日继续补 H.265 long-term 任意连续的 session 参数缺口：visible streaming bootstrap 的
+  `stream_max_active_reference_pictures` 不再只统计 short-term RPS，而是把
+  `long_term_references` 中 `used_by_current=true` 的 long-term refs 一起计入，避免真实
+  H.265 long-term + short-term 混合引用帧创建过小的
+  `VkVideoSessionCreateInfoKHR::maxActiveReferencePictures`。新增单测
+  `counts_h265_mixed_short_and_long_term_active_references` 覆盖同一 AU 同时引用
+  short-term POC 和 long-term POC 的 planner/session 口径；同轮
+  `cargo test --features native-vulkan-gst-video h265 -- --nocapture` 通过 12 个 H.265
+  相关测试，完整 `cargo test --features native-vulkan-gst-video` 通过 303 个库测试、
+  7 个 `gilderctl` 测试和 16 个 `gilderd` 测试。release 构建通过；真实 Wayland
+  `HDMI-A-1` 回归 `/tmp/gilder-vulkan-h265-active-ref-count-regression` 使用 720p/60、
+  `refs=2`、`bframes=2`、非关键帧入口 `0.35s`，结果为
+  `decoded/presented=160/160`、`playback_loop_count=3`、`loop_boundary_reset_count=2`、
+  `max_reference_count=4`、`session_max_active_reference_pictures=4`、`queue_retained=0`、
+  `average_present_fps=243.778`。该回归仍是普通 B/ref source，不是真实 long-term coded
+  source；它证明 session active-reference 统计修正没有打退现有 H.265 visible direct path。
 - H.264 GPU-memory/native-wgpu 对照是另一条口径：真实 Wayland 证据
   `/tmp/gilder-native-wgpu.SWqa42` 使用 `gst-dmabuf`、`pipeline_kind=cuda-direct`、
   `video_last_memory_types=gst.cuda.memory`、`video_last_export_source=cuda-direct-vulkan-staging`，
