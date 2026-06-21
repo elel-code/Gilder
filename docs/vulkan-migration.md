@@ -666,6 +666,28 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   (`average_present_fps=195.617`)，因此后续若把“完成”定义为稳定 240fps + audio/clock，
   仍需要继续做 pacing/long-duration/perf 采样；但 H.264/H.265 任意入口连续 decode/present
   功能 gate 已经跑通。
+- 同日把 arbitrary-entry smoke 的性能采样直接接进 H.264/H.265 脚本：
+  `--performance-snapshot` 会在 native Vulkan 进程运行时调用
+  `scripts/performance-snapshot.sh --pid ... --keep`，并把 RSS/PSS/USS/Private_Dirty、
+  CPU、NVIDIA 进程显存和 smaps 分类路径写入同一个 summary。真实 Wayland `HDMI-A-1`、
+  3840x2160@240、非关键帧入口 `0.35s`、2400-frame replay 复测结果：H.264
+  `/tmp/gilder-vulkan-h264-arbitrary-performance-keep` 为 `decoded/presented=2400/2400`、
+  `playback_loop_count=9`、`loop_boundary_reset_count=8`、`bootstrap_discarded=155`、
+  `loop_skip=155`、`queue_retained=0`、`bitstream_ring_wrap_count=214`、
+  `average_present_fps=197.51976491979758`，smaps
+  `/tmp/gilder-vulkan-h264-arbitrary-performance-keep/performance` 为
+  `RSS/PSS/USS/Private_Dirty max=105144/70095/58636/26924 KiB`、平均 CPU `13.30%`、
+  NVIDIA 进程显存 `130 MiB`。H.265 `/tmp/gilder-vulkan-h265-arbitrary-performance-keep`
+  为 `decoded/presented=2400/2400`、`playback_loop_count=9`、
+  `loop_boundary_reset_count=8`、`bootstrap_discarded=153`、`loop_skip=153`、
+  `queue_retained=0`、`bitstream_ring_wrap_count=57`、
+  `average_present_fps=240.1502442126708`，smaps
+  `/tmp/gilder-vulkan-h265-arbitrary-performance-keep/performance` 为
+  `RSS/PSS/USS/Private_Dirty max=103088/68051/56592/24660 KiB`、平均 CPU `10.90%`、
+  NVIDIA 进程显存 `152 MiB`。跑完后 `ps` 未发现残留 `gilder-native-vulkan`/`gilderd`，
+  `niri msg layers` 只剩 quickshell/dms layer。结论：任意入口连续、EOS replay、
+  streaming queue、bitstream ring 和资源采样证据已成立；后续进入 AV1/场景壁纸前不能把
+  H.264 4K/240 满帧性能债误写成完成。
 - H.265 visible/sequence submit 侧不再把 active DPB 简化成 `POC` 数组：新增
   `NativeVulkanH265ActiveDpbReference { poc, used_for_long_term_reference }`，并在
   `vkCmdBeginVideoCodingKHR` 的 begin reference slots 中用当前 entry 的 reference usage

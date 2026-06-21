@@ -116,6 +116,33 @@ and `average_present_fps=240.976`. These are decode/present functional gates;
 H.264 still needs separate long-duration pacing and memory/CPU sampling before
 calling stable 240fps complete.
 
+Latest retained performance snapshots for the same arbitrary-entry functional
+sources are:
+H.264 `/tmp/gilder-vulkan-h264-arbitrary-performance-keep` passed
+`decoded_frame_count=2400`, `presented_frame_count=2400`,
+`playback_loop_count=9`, `loop_boundary_reset_count=8`,
+`h264_packet_queue_bootstrap_discarded_access_units=155`,
+`h264_packet_queue_loop_skip_access_units=155`,
+`h264_packet_queue_retained_payload_bytes=0`, `bitstream_ring_wrap_count=214`,
+and `average_present_fps=197.51976491979758`; retained smaps evidence in
+`/tmp/gilder-vulkan-h264-arbitrary-performance-keep/performance` reported
+`RSS/PSS/USS/Private_Dirty max=105144/70095/58636/26924 KiB`, average CPU
+`13.30%`, and NVIDIA process GPU memory `130 MiB`. H.265
+`/tmp/gilder-vulkan-h265-arbitrary-performance-keep` passed
+`decoded_frame_count=2400`, `presented_frame_count=2400`,
+`playback_loop_count=9`, `loop_boundary_reset_count=8`,
+`h265_packet_queue_bootstrap_discarded_access_units=153`,
+`h265_packet_queue_loop_skip_access_units=153`,
+`h265_packet_queue_retained_payload_bytes=0`, `bitstream_ring_wrap_count=57`,
+and `average_present_fps=240.1502442126708`; retained smaps evidence in
+`/tmp/gilder-vulkan-h265-arbitrary-performance-keep/performance` reported
+`RSS/PSS/USS/Private_Dirty max=103088/68051/56592/24660 KiB`, average CPU
+`10.90%`, and NVIDIA process GPU memory `152 MiB`. The current gate for moving
+on to AV1/scene wallpaper work is full H.264/H.265 arbitrary continuous
+decode/present with streaming queue, zero retained AU payload, ring reuse,
+EOS replay, cleanup, and recorded RSS/PSS/USS/private dirty evidence; H.264
+4K/240 stable pacing remains the known performance gap.
+
 The visible codec smokes are native Wayland + native Vulkan presentation gates:
 GStreamer owns demux/decode/appsink and may output GPU memory, but it does not
 own a display sink or Wayland surface. They validate importer, shader sampling,
@@ -279,6 +306,22 @@ The same run shows H.264 is still present-limited, not packet-retention limited:
 `vkQueuePresentKHR` averages about `4373us` for H.264 versus about `3831us` for
 H.265, while both paths report zero retained packet payload and the same
 1,036,800-byte bitstream ring.
+
+Current arbitrary-entry H.264/H.265 smokes can capture the same process evidence
+inline with the visible Wayland run:
+
+```sh
+env WAYLAND_DISPLAY=wayland-1 scripts/native-vulkan-h264-ready-prefix-video-smoke.sh \
+  --no-build --output HDMI-A-1 --source /tmp/loop-h264.mp4 \
+  --target-fps 240 --decode-prefix 240 --playback-frames 2400 \
+  --arbitrary-entry-offset 0.35 --require-loop-skip-replay \
+  --performance-snapshot --performance-duration 8 --performance-interval 1
+env WAYLAND_DISPLAY=wayland-1 scripts/native-vulkan-h265-ready-prefix-video-smoke.sh \
+  --no-build --output HDMI-A-1 --source /tmp/loop-h265.mp4 \
+  --target-fps 240 --decode-prefix 240 --playback-frames 2400 \
+  --arbitrary-entry-offset 0.35 --require-loop-skip-replay \
+  --performance-snapshot --performance-duration 8 --performance-interval 1
+```
 
 ## Performance Sampling
 
