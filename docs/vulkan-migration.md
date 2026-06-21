@@ -415,6 +415,22 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   `/tmp/gilder-vulkan-h265-bootstrap-scan-4k240-regression` 为
   `decoded/presented=240/240`、`queue_retained=0`、`average_present_fps=240.927`。同轮
   `cargo test --features native-vulkan-gst-video` 297 个测试通过。
+- H.265 visible direct streaming queue 也补上同等 arbitrary-entry smoke gate：
+  `scripts/native-vulkan-h265-ready-prefix-video-smoke.sh --arbitrary-entry-offset` 会生成
+  `-copyinkf` 非关键帧入口源，并要求 `h265_packet_queue_bootstrap_discarded_access_units > 0`、
+  loop skip 和首帧 IDR。脚本的 bitstream gate 同步修正为检查固定 ring slot 数小于 decode
+  window，而不是要求低码率 H.265 的窗口 payload 必须大于 ring capacity。2026-06-21 真实
+  Wayland `HDMI-A-1` 证据：720p/60 `/tmp/gilder-vulkan-h265-arbitrary-entry-script-gate-v2`
+  从 `0.35s` 非关键帧入口启动，`decoded/presented=60/60`、`bootstrap_discarded=39`、
+  `loop_skip=39`、`first_frame_idr=true`、`frame_access_units_head` 从 39 开始、
+  `queue_retained=0`；H.265 4K/240 回归
+  `/tmp/gilder-vulkan-h265-arbitrary-entry-4k240-regression` 为
+  `decoded/presented=240/240`、`average_present_fps=239.919`、`queue_retained=0`、
+  `video_resource_memory_bytes=37552128`、`session_memory_bytes=33775616`、
+  `bitstream_buffer_bytes=1036800`。同一当前工作树下 H.264 arbitrary-entry 回归
+  `/tmp/gilder-vulkan-h264-arbitrary-entry-current-regression` 为 `decoded/presented=60/60`、
+  `bootstrap_discarded=39`、`loop_skip=39`、`first_frame_idr=true`、`max_reference_count=2`、
+  `queue_retained=0`。
 - H.264 GPU-memory/native-wgpu 对照是另一条口径：真实 Wayland 证据
   `/tmp/gilder-native-wgpu.SWqa42` 使用 `gst-dmabuf`、`pipeline_kind=cuda-direct`、
   `video_last_memory_types=gst.cuda.memory`、`video_last_export_source=cuda-direct-vulkan-staging`，
