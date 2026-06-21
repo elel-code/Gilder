@@ -155,7 +155,8 @@ Native Vulkan + GStreamer/DMA 方向：
 - DMA importer 必须按 Sunshine 类似的边界处理完整外部内存描述：DRM fourcc、modifier、
   每 plane fd/offset/pitch、modifier plane count，以及 producer GPU/render node 与 native
   Vulkan physical device 的匹配关系。`memory:DMABuf` caps 只是候选线索，不是 zero-copy
-  或可导入证明。
+  或可导入证明。运行时必须把已观察到的 DMABUF contract 写入 `last_dmabuf_import`，
+  导入前至少校验目标 Vulkan driver 对该 fourcc/modifier 的 plane count 期待。
 - `renderer_runtime.video_pipelines` 中的 `gtk_frame_*` 字段暂时作为兼容 telemetry 名称保留；
   native Vulkan 路径下它们通常为空或 0，真实 presentation 证据应来自 Vulkan present
   telemetry、Wayland frame callback 或 `wp_presentation`。

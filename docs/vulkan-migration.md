@@ -557,6 +557,23 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   present loop；GStreamer/DMA 侧的 importer 也必须拿到完整 DMA-BUF contract，包括 DRM
   format、modifier、每 plane fd/offset/pitch、modifier plane count、source GPU/render node
   与目标 Vulkan physical device 是否匹配。只看到 `memory:DMABuf` caps 不能证明 zero-copy。
+- 同日把 Sunshine 的 modifier-plane 经验先落到 `native-vulkan-gst-video` telemetry：DMABUF/VA
+  import 进入 Vulkan 前会通过 `vkGetPhysicalDeviceFormatProperties2` 查询当前 DRM
+  fourcc/modifier 在目标 Vulkan physical device 上的 driver-expected plane count，并把
+  `format/fourcc/modifier/available_plane_count/drm_object_count/y_uv_same_fd/offset/stride`
+  写入 runtime JSON 的 `last_dmabuf_import`。当前 importer 仍只放行单 DRM object、Y/UV
+  两个 plane layout；如果 driver 对该 modifier 期待的 plane count 不是 2，会明确失败而不是把
+  `memory:DMABuf` 误报为可 zero-copy。下一步才是补完整多 object/aux-plane 导入和
+  render-node/physical-device 匹配。
+- 同轮本机验证：`cargo test --features native-vulkan-gst-video` 通过 307 个库测试、7 个
+  `gilderctl` 测试和 16 个 `gilderd` 测试，默认 `cargo test` 也通过；`cargo check
+  --features native-vulkan-gst-va --bin gilder-native-vulkan` 通过。真实 Wayland `HDMI-A-1`
+  visible smoke `/tmp/gilder-vulkan-gst-dma-contract-smoke-cuda` 使用 `nvh264dec`、
+  `memory:CUDAMemory` 和 `CUDAMemory->CUDA->Vulkan external image planes` 路径，
+  `frames_rendered=120`、`frames_imported=118`、`average_render_fps=59.998`、
+  `last_dmabuf_import=null`。这说明本机 NVIDIA 路径没有触发 DMABUF；`gst-inspect-1.0 va`
+  当前显示 VA plugin 有 0 个 feature，`vah264dec` 不存在，因此真实 VA/DMABUF contract
+  smoke 还需要先让系统 GStreamer VA decoder 暴露可用 feature。
 - 同日 H.264 planner 已把 short-term reference 的内部 key 从单独 `frame_num` 扩展为
   `frame_num + field_kind`，并把 `field_pic_flag/bottom_field_flag` 贯穿到 reference snapshots、
   active DPB 和 `StdVideoDecodeH264ReferenceInfoFlags`。新增单测覆盖同一个 `frame_num` 的
@@ -868,7 +885,9 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   指定 Intel render node `/dev/dri/renderD129` 时显式
   `qtdemux ! h264parse ! vah264dec ! VAMemory ! fakesink` 可谈通，但项目内
   `decodebin -> appsink` 仍会 not-negotiated。VA/DMABuf 路线后续要改成显式 codec pipeline
-  或补 allocator/render-node 协商；这不是 NVIDIA direct 的主线 blocker。
+  或补 allocator/render-node 协商；这不是 NVIDIA direct 的主线 blocker。Sunshine 对这里的
+  直接启发是：不能只看 `memory:DMABuf`/`VAMemory`，还必须把 DRM PRIME descriptor/object、
+  modifier plane count 和目标 Vulkan device 的 modifier 支持一起作为 importer gate。
 - 4K/240 测试使用明确的 `3840x2160@240` H.264 源，不再用低清源判断画质。当前真实
   Wayland 证据来自 HDMI-A-1：该输出在 niri 中是 `2560x1600@239.999`、scale 1.5，
   所以这是 4K source 到 2560x1600@240 surface 的 downscale 验证，不是 4K 输出验证。
