@@ -59,6 +59,7 @@ scripts/native-vulkan-h265-ready-prefix-video-smoke.sh --no-build --output-name 
 scripts/native-vulkan-h264-bitstream-smoke.sh --no-build
 env WAYLAND_DISPLAY=wayland-1 scripts/native-vulkan-h264-bitstream-smoke.sh --no-build --width 3840 --height 2160 --rate 240 --level 5.2 --samples 8
 env WAYLAND_DISPLAY=wayland-1 scripts/native-vulkan-h264-first-frame-smoke.sh --no-build --width 3840 --height 2160 --rate 240 --level 5.2 --samples 8
+env WAYLAND_DISPLAY=wayland-1 scripts/native-vulkan-h264-idr-prefix-smoke.sh --no-build --width 3840 --height 2160 --rate 240 --level 5.2 --decode-prefix 8 --samples 8
 scripts/native-vulkan-av1-bitstream-smoke.sh --no-build
 scripts/native-vulkan-av1-bitstream-smoke.sh --no-build --bit-depth 10
 scripts/native-vulkan-h265-main10-bitstream-smoke.sh --no-build
@@ -139,9 +140,19 @@ selected AU is uploaded into a `VIDEO_DECODE_SRC_KHR` buffer, Vulkan accepts
   `/tmp/gilder-vulkan-h264-first-frame.GJildG`,
   `result=first-frame-decode-output-sampled-and-readback-completed`,
   `sample_copied=true`.
+- H.264 720p/60 direct all-IDR multi-frame decode/readback:
+  `/tmp/gilder-vulkan-h264-idr-prefix.kKR6lh`, `decoded_frame_count=8`,
+  `frame_offsets=[0,35072,57088,79104,101376,123648,145920,168192]`,
+  `reset_control_count=8`.
+- H.264 4K/240 direct all-IDR multi-frame decode/readback:
+  `/tmp/gilder-vulkan-h264-idr-prefix.7H4DV3`, `decoded_frame_count=8`,
+  `frame_offsets=[0,217600,329216,441600,553984,666624,779264,892160]`,
+  `y_plane_nonzero_bytes=8294400`, `uv_plane_nonzero_bytes=4147183`.
 
-The remaining H.264 direct gates are continuous frame decode, DPB/reference
-tracking beyond the first IDR, visible surface presentation, and frame pacing.
+The H.264 IDR-prefix smoke proves multiple direct decode submits and aligned
+bitstream windows, but it deliberately uses all-IDR input. The remaining H.264
+direct gates are P/B reference tracking without per-frame reset, visible surface
+presentation, and frame pacing.
 AV1 verifies the next codec front-end stage: demux/parser/appsink produces AV1
 temporal units, the native parser extracts sequence-header fields, and Vulkan
 accepts the resulting `StdVideoAV1SequenceHeader` via

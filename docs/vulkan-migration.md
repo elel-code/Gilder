@@ -370,8 +370,19 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   (`slice_count=20`, `src_buffer_range=217600`, Y/UV 非零
   `8294400/4147200`)。额外采样 gate
   `/tmp/gilder-vulkan-h264-first-frame.GJildG` 证明 H.264 decoded NV12 layer 也能进入
-  native Vulkan shader sampling (`sample_copied=true`)。当前 H.264 direct 边界改为
-  连续 AU decode、DPB/reference tracking、visible surface presentation 和 frame pacing。
+  native Vulkan shader sampling (`sample_copied=true`)。
+- H.264 direct 已继续推进到 all-IDR multi-frame gate：
+  `scripts/native-vulkan-h264-idr-prefix-smoke.sh` 生成 `keyint=1` 的 High 8-bit all-IDR
+  源，并通过 `--decode-h264-idr-prefix N` 把多个 AU 按 driver bitstream offset/size
+  alignment 拼入同一个 `VIDEO_DECODE_SRC_KHR` buffer，顺序录制多次
+  `vkCmdDecodeVideoKHR`，最终 readback 最后一帧 NV12。2026-06-21 真实
+  `WAYLAND_DISPLAY=wayland-1` 证据：720p/60
+  `/tmp/gilder-vulkan-h264-idr-prefix.kKR6lh`，4K/240 level 5.2
+  `/tmp/gilder-vulkan-h264-idr-prefix.7H4DV3`；后者 `decoded_frame_count=8`、
+  frame offsets 为 `[0,217600,329216,441600,553984,666624,779264,892160]`，
+  `reset_control_count=8`，Y/UV 非零 `8294400/4147183`。这一步证明 H.264 direct
+  不是只会解首帧，但仍是 all-IDR gate；当前 H.264 direct 边界改为 P/B reference
+  tracking、无 per-frame reset 的 DPB 维护、visible surface presentation 和 frame pacing。
 - `--probe-video-session --extract-bitstream` 已继续把 H.265 VPS/SPS/PPS 转成 Vulkan STD
   session parameters：2026-06-21 在 `WAYLAND_DISPLAY=wayland-1`、NVIDIA 4060、3840x2160@240
   H.265 Main 源上，native parser 真实读取 profile flags、VPS/SPS DPB ordering、SPS VUI
