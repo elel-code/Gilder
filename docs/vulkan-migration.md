@@ -357,8 +357,21 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   `/tmp/gilder-vulkan-h264-bitstream.fs7CCw`；后者报告 `profile_idc=100`、
   `level_idc=52`、`framerate=240`、`mapped_write_bytes=217455`、
   `session_memory_bytes=16945152`、`video_resource_memory_bytes=100139008`。
-  当前 H.264 边界是首个 IDR slice/picture-info 与 `vkCmdDecodeVideoKHR`
-  尚未接通；4K/240 H.264 direct decode 仍要以后续 submit/readback/visible gate 证明。
+- H.264 direct first-frame 已接到真实 Vulkan Video command buffer：
+  `scripts/native-vulkan-h264-first-frame-smoke.sh` 解析首个 IDR picture 的所有 slice
+  offset，填充 `StdVideoDecodeH264PictureInfo`、`VkVideoDecodeH264PictureInfoKHR`、
+  `StdVideoDecodeH264ReferenceInfo` 和 setup DPB slot，录制
+  `vkCmdBeginVideoCodingKHR`、`vkCmdControlVideoCodingKHR(RESET)`、
+  `vkCmdDecodeVideoKHR`、`vkCmdEndVideoCodingKHR`，再把 NV12 decode output plane 0/1
+  copy 到 host-visible readback buffer。2026-06-21 `WAYLAND_DISPLAY=wayland-1` 证据：
+  720p/60 `/tmp/gilder-vulkan-h264-first-frame.AYMakX`
+  (`first_frame_decode.completed=true`, `slice_count=11`, Y/UV 非零
+  `921600/460800`)，4K/240 level 5.2 `/tmp/gilder-vulkan-h264-first-frame.lQiwMa`
+  (`slice_count=20`, `src_buffer_range=217600`, Y/UV 非零
+  `8294400/4147200`)。额外采样 gate
+  `/tmp/gilder-vulkan-h264-first-frame.GJildG` 证明 H.264 decoded NV12 layer 也能进入
+  native Vulkan shader sampling (`sample_copied=true`)。当前 H.264 direct 边界改为
+  连续 AU decode、DPB/reference tracking、visible surface presentation 和 frame pacing。
 - `--probe-video-session --extract-bitstream` 已继续把 H.265 VPS/SPS/PPS 转成 Vulkan STD
   session parameters：2026-06-21 在 `WAYLAND_DISPLAY=wayland-1`、NVIDIA 4060、3840x2160@240
   H.265 Main 源上，native parser 真实读取 profile flags、VPS/SPS DPB ordering、SPS VUI

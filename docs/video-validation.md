@@ -58,6 +58,7 @@ scripts/native-vulkan-h265-ready-prefix-video-smoke.sh --no-build --source /tmp/
 scripts/native-vulkan-h265-ready-prefix-video-smoke.sh --no-build --output-name HDMI-A-1 --decode-prefix 240 --playback-frames 4800
 scripts/native-vulkan-h264-bitstream-smoke.sh --no-build
 env WAYLAND_DISPLAY=wayland-1 scripts/native-vulkan-h264-bitstream-smoke.sh --no-build --width 3840 --height 2160 --rate 240 --level 5.2 --samples 8
+env WAYLAND_DISPLAY=wayland-1 scripts/native-vulkan-h264-first-frame-smoke.sh --no-build --width 3840 --height 2160 --rate 240 --level 5.2 --samples 8
 scripts/native-vulkan-av1-bitstream-smoke.sh --no-build
 scripts/native-vulkan-av1-bitstream-smoke.sh --no-build --bit-depth 10
 scripts/native-vulkan-h265-main10-bitstream-smoke.sh --no-build
@@ -109,13 +110,14 @@ Current visible codec evidence from 2026-06-21:
   `frames_rendered=60`, `average_render_fps=59.99589508085857`,
   `last_sample_size=[3840,2160]`, `last_sample_format=P010_10LE`.
 
-The H.264 and AV1 bitstream smokes are not visible playback tests. H.264 now
-verifies the direct Vulkan Video session/resource/input/session-parameters gate:
-`qtdemux ! h264parse ! appsink` produces Annex-B access units, the native parser
-extracts SPS/PPS, the selected AU is uploaded into a `VIDEO_DECODE_SRC_KHR`
-buffer, and Vulkan accepts `StdVideoH264SequenceParameterSet` plus
-`StdVideoH264PictureParameterSet` via `VkVideoSessionParametersKHR`. Current
-evidence from 2026-06-21:
+The H.264 first-frame smoke is not a visible playback test, but it is now a real
+direct Vulkan Video decode gate. `qtdemux ! h264parse ! appsink` produces Annex-B
+access units, the native parser extracts SPS/PPS and IDR slice headers, the
+selected AU is uploaded into a `VIDEO_DECODE_SRC_KHR` buffer, Vulkan accepts
+`StdVideoH264SequenceParameterSet`/`StdVideoH264PictureParameterSet` via
+`VkVideoSessionParametersKHR`, and the first IDR is submitted through
+`vkCmdDecodeVideoKHR` with NV12 output readback. Current evidence from
+2026-06-21:
 
 - H.264 720p/60 direct bitstream/session-parameters:
   `/tmp/gilder-vulkan-h264-bitstream.iVMCh1`,
@@ -124,14 +126,28 @@ evidence from 2026-06-21:
   `/tmp/gilder-vulkan-h264-bitstream.fs7CCw`,
   `session_parameters_created=true`, `profile_idc=100`, `level_idc=52`,
   `framerate=240`, `codec_max_level=5.2`.
+- H.264 720p/60 direct first-frame decode/readback:
+  `/tmp/gilder-vulkan-h264-first-frame.AYMakX`,
+  `first_frame_decode.completed=true`, `slice_count=11`,
+  `y_plane_nonzero_bytes=921600`, `uv_plane_nonzero_bytes=460800`.
+- H.264 4K/240 direct first-frame decode/readback:
+  `/tmp/gilder-vulkan-h264-first-frame.lQiwMa`,
+  `first_frame_decode.completed=true`, `slice_count=20`,
+  `src_buffer_range=217600`, `y_plane_nonzero_bytes=8294400`,
+  `uv_plane_nonzero_bytes=4147200`.
+- H.264 720p/60 direct first-frame decode plus NV12 shader sampling:
+  `/tmp/gilder-vulkan-h264-first-frame.GJildG`,
+  `result=first-frame-decode-output-sampled-and-readback-completed`,
+  `sample_copied=true`.
 
-This still does not submit H.264 `vkCmdDecodeVideoKHR`; the next direct H.264
-gate is slice/picture-info construction for the first IDR. AV1 verifies the next
-codec front-end stage: demux/parser/appsink produces AV1 temporal units, the
-native parser extracts sequence-header fields, and Vulkan accepts the resulting
-`StdVideoAV1SequenceHeader` via `VkVideoSessionParametersKHR`. It also requires
-the selected temporal unit to be a decode candidate: sequence header plus a frame
-OBU, or sequence header plus frame-header/tile-group OBUs.
+The remaining H.264 direct gates are continuous frame decode, DPB/reference
+tracking beyond the first IDR, visible surface presentation, and frame pacing.
+AV1 verifies the next codec front-end stage: demux/parser/appsink produces AV1
+temporal units, the native parser extracts sequence-header fields, and Vulkan
+accepts the resulting `StdVideoAV1SequenceHeader` via
+`VkVideoSessionParametersKHR`. It also requires the selected temporal unit to be
+a decode candidate: sequence header plus a frame OBU, or sequence header plus
+frame-header/tile-group OBUs.
 
 ## Current Architecture Gates
 
