@@ -56,6 +56,7 @@ Useful variants:
 ```sh
 scripts/native-vulkan-h265-ready-prefix-video-smoke.sh --no-build --source /tmp/loop-h265.mp4 --output-name HDMI-A-1
 scripts/native-vulkan-h265-ready-prefix-video-smoke.sh --no-build --output-name HDMI-A-1 --decode-prefix 240 --playback-frames 4800
+scripts/native-vulkan-av1-bitstream-smoke.sh --no-build
 scripts/native-vulkan-h265-first-frame-video-smoke.sh --output-name HDMI-A-1
 scripts/native-vulkan-surface-video-queue-smoke.sh --output-name HDMI-A-1
 ```
@@ -68,6 +69,18 @@ continuous 4K/240 source. Passing an explicit shorter `--decode-prefix` keeps
 the old loop-window diagnostic mode; loop boundaries can visibly jump unless the
 source is authored to be seamless. For full playback validation, the next gate is
 continuous demux/parser handoff into the same native Vulkan importer/present path.
+The current visible H.265 path uses a fixed-capacity persistent-mapped bitstream
+ring, so valid evidence should report
+`bitstream_buffer_strategy=fixed-capacity-persistent-mapped-ring`,
+non-zero `bitstream_ring_capacity_bytes`, and increasing/wrapping
+`frames[].src_buffer_offset` / `frames[].bitstream_ring_wrap_count`.
+
+The AV1 smoke is not a visible playback test yet. It verifies the next codec
+front-end stage: demux/parser/appsink produces AV1 temporal units, the native
+parser extracts sequence-header fields, and Vulkan accepts the resulting
+`StdVideoAV1SequenceHeader` via `VkVideoSessionParametersKHR`. It also requires
+the selected temporal unit to be a decode candidate: sequence header plus a frame
+OBU, or sequence header plus frame-header/tile-group OBUs.
 
 ## Current Architecture Gates
 

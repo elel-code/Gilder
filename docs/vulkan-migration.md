@@ -243,6 +243,18 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   `RSS/PSS/USS/Private_Dirty max=117732/85864/68248/37664 KiB`；旧 in-memory payload
   证据 `/tmp/gilder-vulkan-h265-memory.GIYC3r` 为
   `1089060/1069592/1061636/1008992 KiB`。
+- H.265 spool upload 已继续减少 CPU 路径并接入固定容量 Bitstream Ring Buffer：可见播放循环现在从
+  spool file 直接写入持久映射的 `VIDEO_DECODE_SRC_KHR` buffer，不再经由临时 AU `Vec<u8>`；
+  顺序读取时跟踪 file position，首帧强制 seek，当前 AU aligned range 内的 padding 每次清理，避免
+  stale bitstream tail 进入 decoder。默认 ring 为 2-slot，按 driver 的 offset/size alignment 追加写入，
+  runtime JSON 记录每帧 `src_buffer_offset`、payload/range、allocation index 和 wrap count。2026-06-21
+  真实 Wayland `HDMI-A-1` 证据 `/tmp/gilder-vulkan-h265-ready-prefix-video.Ldh5wL` 在
+  3840x2160@240、4800 frames 下达到 `average_present_fps=240.041`，
+  `bitstream_buffer_strategy=fixed-capacity-persistent-mapped-ring`、`bitstream_buffer_bytes=498688`、
+  `bitstream_ring_wrap_count=1200`；同配置 smaps 证据 `/tmp/gilder-vulkan-h265-ring-memory.9RFFoa`
+  为 `RSS/PSS/USS/Private_Dirty max=117836/86018/68380/37932 KiB`，确认 ring 没把 RSS/USS
+  拉回旧的 retained AU payload 级别。下一步是把 ready-prefix 文件 spool 替换成连续 demux/parser
+  producer，并用 decode fence/timeline 回收 range。
 - H.264 GPU-memory/native-wgpu 对照是另一条口径：真实 Wayland 证据
   `/tmp/gilder-native-wgpu.SWqa42` 使用 `gst-dmabuf`、`pipeline_kind=cuda-direct`、
   `video_last_memory_types=gst.cuda.memory`、`video_last_export_source=cuda-direct-vulkan-staging`，
@@ -325,13 +337,23 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   生成的 3840x2160@240 H.265 MP4 验证 `qtdemux ! h265parse` 只负责容器 demux 和 parser，
   输出 `stream-format=byte-stream, alignment=au` 的 encoded access unit；probe 识别出
   VPS/SPS/PPS/IDR NAL，并把选中的 173754-byte AU 写入 `VIDEO_DECODE_SRC_KHR` buffer
-  (`mapped_write_source=extracted-h265-access-unit`，hash=5201191167619689341)。
+  (`mapped_write_source=extracted-encoded-video-unit`，hash=5201191167619689341)。
 - `--probe-video-session --extract-bitstream` 已继续把 H.265 VPS/SPS/PPS 转成 Vulkan STD
   session parameters：2026-06-21 在 `WAYLAND_DISPLAY=wayland-1`、NVIDIA 4060、3840x2160@240
   H.265 Main 源上，native parser 真实读取 profile flags、VPS/SPS DPB ordering、SPS VUI
   和 PPS 基础字段，构造 `StdVideoH265VideoParameterSet`、`StdVideoH265SequenceParameterSet`
   和 `StdVideoH265PictureParameterSet`，并成功创建 `VkVideoSessionParametersKHR`
   (`session_parameters_created=true`, VPS/SPS/PPS count 均为 1)。
+- `--probe-video-session --extract-bitstream --video-codec av1` 已进入 AV1 Vulkan STD
+  session parameters 阶段：`matroskademux/qtdemux ! av1parse ! appsink` 输出
+  `stream-format=obu-stream, alignment=tu` 的 temporal unit；native parser 扫描 OBU，
+  解析 sequence header 的 profile/operating point/extent/tool flags/color config，确认
+  AV1 Main 8-bit 4:2:0 且无 film grain 后构造 `StdVideoAV1SequenceHeader`，并真实创建
+  `VkVideoSessionParametersKHR`。2026-06-21 最新证据
+  `/tmp/gilder-vulkan-av1-bitstream.ivMR9n`：`session_parameters_created=true`、
+  `source=native-rust-av1-sequence-header-to-vulkan-std`、sequence extent 为 640x368；
+  selected temporal unit 现在还会报告 frame/tile readiness，当前为 sequence-header + frame OBU，
+  `av1_decode_candidate=true`、`av1_frame_payload_bytes=2697`、`av1_first_frame_header_obu_offset=13`。
 - `--probe-video-session --decode-first-frame --source <h265.mp4>` 已进入真实 H.265
   Vulkan Video command buffer：2026-06-21 在 `WAYLAND_DISPLAY=wayland-1`、NVIDIA 4060、
   3840x2160@240 H.265 Main 源上，probe 解析 IDR slice offset 2444，使用 8-layer
