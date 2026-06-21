@@ -352,9 +352,31 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   `/tmp/gilder-vulkan-h265-picnum-wrap-4k240-regression` 为
   `decoded/presented=240/240`、`h265_input_mode=streaming-queue`、`queue_retained=0`、
   `average_present_fps=240.522`。该 snapshot 证明 streaming queue 和常见连续 H.264/H.265
-  可见路径继续成立；它不证明原目标“任意连续”完全完成。剩余边界仍是 H.264 真实
+  可见路径继续成立；它不证明原目标“任意连续”完全完成。当时剩余边界仍是 H.264 真实
   long-term coded stream、gaps-in-frame-num/non-existing refs、field/interlaced picture、
   任意入口点 DPB 重建，以及 H.264 4K/240 稳定帧率。
+- H.264 direct planner 已继续推进 `gaps_in_frame_num` / non-existing short-term reference
+  边界：当 SPS `gaps_in_frame_num_value_allowed_flag=false` 时，frame_num gap 会成为明确
+  unready reason；当 flag 为 true 时，planner 会按 `max_frame_num` wrap 推断 non-existing
+  short-term refs，维护 DPB slot/sliding window，并把 `non_existing=true` 贯穿到 visible
+  submit 的 `StdVideoDecodeH264ReferenceInfoFlags.is_non_existing`。runtime JSON 现在能在
+  H.264 reference telemetry 中记录 `non_existing`，并记录 inferred non-existing refs 与
+  inference 阶段挤掉的 DPB slot。新增单测覆盖 gap disallowed、gap allowed、
+  `max_frame_num=65536` wrap、sliding window、PicNum wrap default/ref-list modification
+  与 B-slice 连续 frame_num 场景。2026-06-21 真实 Wayland `HDMI-A-1` 回归：H.264
+  720p/60 `/tmp/gilder-vulkan-h264-nonexisting-regression` 为 `decoded/presented=60/60`、
+  `queue_retained=0`、`average_present_fps=247.596`；H.264 4K/240 B-frame
+  `/tmp/gilder-vulkan-h264-nonexisting-4k240-regression` 为 `decoded/presented=240/240`、
+  `b_frames=119`、`queue_retained=0`、`average_present_fps=202.138`；H.265 4K/240 对照
+  `/tmp/gilder-vulkan-h265-nonexisting-4k240-regression` 为 `decoded/presented=240/240`、
+  `queue_retained=0`、`average_present_fps=240.622`。H.264 4K/240 direct 长跑采样
+  `/tmp/gilder-vulkan-h264-nonexisting-4k240-memory/combined-keep/performance` 为
+  `decoded/presented=7200/7200`、`average_present_fps=202.047`、`queue_retained=0`，
+  8 个 smaps samples 中 `RSS/PSS/USS/Private_Dirty max=105048/73925/56404/26756 KiB`、
+  平均 CPU `12.10%`、NVIDIA 进程 GPU memory `104 MiB`。这说明当前 H.264 direct 内存
+  已主要落在 driver/Vulkan Video/session/heap floor，packet queue 没有 retained payload；
+  但 H.264 4K/240 仍未稳定满 240fps。剩余 direct H.264 边界收敛为真实 long-term coded
+  stream、field/interlaced picture、任意入口点 DPB 重建和 frame pacing/同步优化。
 - H.264 GPU-memory/native-wgpu 对照是另一条口径：真实 Wayland 证据
   `/tmp/gilder-native-wgpu.SWqa42` 使用 `gst-dmabuf`、`pipeline_kind=cuda-direct`、
   `video_last_memory_types=gst.cuda.memory`、`video_last_export_source=cuda-direct-vulkan-staging`，
