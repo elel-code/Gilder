@@ -565,7 +565,12 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   两个 plane layout；如果 driver 对该 modifier 期待的 plane count 不是 2，会明确失败而不是把
   `memory:DMABuf` 误报为可 zero-copy。下一步才是补完整多 object/aux-plane 导入和
   render-node/physical-device 匹配。
-- 同轮本机验证：`cargo test --features native-vulkan-gst-video` 通过 307 个库测试、7 个
+- 同日继续把 Sunshine 的 route-gate 思路落到 runtime：`video_runtime.memory_route` 现在会把
+  `direct-dmabuf-import` / `direct-va-drm-prime-import`、`dmabuf-caps-pending-import`、
+  `cuda-vulkan-copy`、`gl-memory-intermediate` 和 system/unsupported path 分开报告，并给出
+  `direct_candidate`、`direct_import_confirmed`、`copy_risk`。这让 GStreamer/DMA 路线后续
+  可以用真实 smoke 直接区分“caps 看起来像 DMA”和“已经完成 Vulkan 外部内存直通导入”。
+- 同轮本机验证：`cargo test --features native-vulkan-gst-video` 通过 309 个库测试、7 个
   `gilderctl` 测试和 16 个 `gilderd` 测试，默认 `cargo test` 也通过；`cargo check
   --features native-vulkan-gst-va --bin gilder-native-vulkan` 通过。真实 Wayland `HDMI-A-1`
   visible smoke `/tmp/gilder-vulkan-gst-dma-contract-smoke-cuda` 使用 `nvh264dec`、
@@ -574,6 +579,14 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   `last_dmabuf_import=null`。这说明本机 NVIDIA 路径没有触发 DMABUF；`gst-inspect-1.0 va`
   当前显示 VA plugin 有 0 个 feature，`vah264dec` 不存在，因此真实 VA/DMABUF contract
   smoke 还需要先让系统 GStreamer VA decoder 暴露可用 feature。
+- route-gate 增量同轮补充验证：`cargo fmt -- --check`、默认 `cargo test`、
+  `cargo test --features native-vulkan-gst-video` 和
+  `cargo build --release --features native-vulkan-gst-cuda --bin gilder-native-vulkan`
+  通过。真实 Wayland `HDMI-A-1` smoke `/tmp/gilder-vulkan-sunshine-route-gate-h264`
+  使用 `nvh264dec`，`frames_rendered=240`、`frames_imported=238`、
+  `average_render_fps=59.999`，runtime 明确输出
+  `memory_route.route=cuda-vulkan-copy`、`direct_import_confirmed=false`、
+  `copy_risk=gpu-copy-or-sync-risk`、`last_dmabuf_import=null`。
 - 同日 H.264 planner 已把 short-term reference 的内部 key 从单独 `frame_num` 扩展为
   `frame_num + field_kind`，并把 `field_pic_flag/bottom_field_flag` 贯穿到 reference snapshots、
   active DPB 和 `StdVideoDecodeH264ReferenceInfoFlags`。新增单测覆盖同一个 `frame_num` 的
