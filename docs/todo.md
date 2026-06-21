@@ -170,6 +170,7 @@
 - [x] 将 H.265 ready-prefix sampled output 从“末帧验证”扩展到“逐帧验证”：新增 `--sample-h265-ready-prefix-sequence` 和脚本 `--sample-prefix-sequence`，每个 AU decode 后立即 readback + shader sample，再把被采样 layer 显式转回 `VIDEO_DECODE_DPB_KHR` 供后续 reference/slot 复用，避免等 8 帧结束后只能看到最后两个 DPB slot。2026-06-21 在 `WAYLAND_DISPLAY=wayland-1`、NVIDIA 4060、3840x2160@240 H.265 Main short-GOP 源上验证 8-frame sequence decode + sampling 通过：result=`h265-ready-prefix-decode-output-sequence-sampled-and-readback-completed`、decoded=8、reset_count=4、sampled_sequence_count=8、sampled layers=`[0,1,0,1,0,1,0,1]`、distinct RGBA hashes=4、每帧 RGBA unique=256。
 - [x] 为 H.265 ready-prefix sequence smoke 补逐帧 timing/pacing telemetry：`output_sampling_sequence[]` 记录每帧 PTS delta、decode submit/wait、NV12 readback、RGBA sampling/readback 和 total frame elapsed，`output_sampling_sequence_timing` 记录 max/avg 与 PTS delta min/max；脚本 `--sample-prefix-sequence` 将 timing 变成 gate。2026-06-21 真实 4K/240 H.265 Main short-GOP 验证：sequence_count=8、PTS delta min/max=4/5ms、max decode submit/wait=5951us、max readback=38720us、max sampling=65580us、avg debug frame=92997us。这里的 avg 包含 host readback 验证成本，不作为可见 swapchain 240fps 性能结论。
 - [x] 为 H.265 ready-prefix sequence 补 render-only telemetry：在每帧 readback 验证后，复用同一个 offscreen color target 和 `NativeVulkanVideoRenderer` 再做一次 NV12 shader render，但不做 CPU copy/readback，记录 `output_render_sequence[]` 和 `output_render_sequence_timing`，用来逼近后续 swapchain/present 的渲染成本。2026-06-21 真实 4K/240 H.265 Main short-GOP 验证：render_sequence_count=8、layers=`[0,1,0,1,0,1,0,1]`、PTS delta min/max=4/5ms、average render-only=934us、max render-only=1559us，证明当前 90ms 级 debug frame 成本主要来自验证 readback，不是 NV12 shader render。
+- [x] 为可见 H.265 ready-prefix path 补 DPB 最小化和 H.264 GPU-memory 对照结论：DPB 选择不再简单用 `max_active_refs + 1`，而是从 1 到 SPS 上限寻找最小可完整解码的 slot 数，并把“当前输出将覆盖的 slot”视为不可继续作为参考帧，避免过小 DPB 造成重复帧/跳变。2-ref 4K/240 H.265 evidence `/tmp/gilder-vulkan-h265-ready-prefix-video.XoHK5C` 仍需 3 层 NV12，`video_resource_memory_bytes=37552128`、`session_memory_bytes=33775616`；1-ref short-GOP evidence `/tmp/gilder-vulkan-h265-ready-prefix-video.q8NPT5` 降到 2 层，`video_resource_memory_bytes=25034752`，resource/session/bitstream 合计约 59.1MB。native-wgpu H.264 GPU-memory continuous 对照 `/tmp/gilder-native-wgpu.SWqa42` 为 `gst-dmabuf`/`cuda-direct`，`Private_Dirty max=68928 KiB`、CPU avg `26.80%`、`average_render_fps=240.09`，并且不会出现 ready-prefix window 的 `AU239 -> AU0` 强制 reset 跳变。
 - [ ] 将 H.265 direct decode + sampled texture 从离屏 smoke 接到连续 display/swapchain，并补 frame pacing/queue 同步/释放 telemetry 和首个安全可见 smoke。
 - [ ] 实现 NVIDIA native Vulkan Video decode path：优先 H.265 main-8 或 AV1 main-8，demux/parser 供码流、codec parameters 和音频/时钟，Vulkan Video 负责 session parameters 和 `vkCmdDecodeVideoKHR`，替代当前 `CUDAMemory -> CUDA copy -> Vulkan` fallback；H.264 首版只承诺驱动 level 5.2 覆盖范围内的源。
 - [ ] 为 H.265/AV1 main-10 direct path 补 10-bit 2-plane 420 sampled shader/import path，当前 probe 已确认 `G10X6_B10X6R10X6_2PLANE_420_UNORM_3PACK16` 可用。
@@ -227,18 +228,22 @@
 
 ## M8: 性能、内存与 zero-copy 优化
 
+> 归档说明：本节早期 GTK/native-wgpu/native `playbin/waylandsink` 条目只作为历史
+> baseline 记录。当前可执行路线已经收敛为 native Wayland host + native Vulkan
+> backend + GStreamer appsink/DMA 前端；新的可见视频工作在 M10 继续推进。
+
 - [x] T0: 建立并达到 4K/240fps 硬解视频壁纸的实用顶级 CPU 基线：一输出 active
-  NVIDIA/H.264 当前默认 direct `gtk4paintablesink` 路径实际选择 `nvh264dec`，20s
+  NVIDIA/H.264 历史 direct GTK sink 路径实际选择 `nvh264dec`，20s
   样本平均约 75% 进程 CPU；按 20 逻辑 CPU 折算约 3.8% 整机 CPU，已经低于
   <= 120%/<= 6% 目标并接近 <= 80%/<= 4% stretch goal。所有后续回归门槛仍需附带逻辑
   CPU 数、采样时长、sink path 和同一场景的 QoS/drop 证据。
-- [x] T0: 建立并达到 4K/240fps active GTK video surface 的实用顶级内存/显存基线：
+- [x] T0: 建立并达到 4K/240fps active GTK video surface 的历史内存/显存基线：
   默认 direct sink 20s 峰值约 `ps` RSS 455MiB、PSS 390MiB、private/USS 356MiB、
   `Private_Dirty` 约 109MiB、NVIDIA 进程显存约 496MiB；用户侧监控器观察到的应用内存约
   100MiB 时应优先对齐 `Private_Dirty` 口径，而不是 PSS/USS。GL wrapper 对照样本为
   PSS/USS/GPU memory 约 661/627MiB/689MiB，证明 high memory 主因是
   `glsinkbin` 路径额外 driver buffer/texture/pool 保留。
-- [x] T0: 把 4K/240fps active direct `gtk4paintablesink` 突破固化为可执行 guardrail：
+- [x] T0: 把 4K/240fps active direct GTK sink 突破固化为历史 guardrail：
   `performance-snapshot.sh` 和 Wayland video smoke 均可断言 max `Private_Dirty` 与
   NVIDIA 进程显存，baseline matrix 可把 private-clean/dirty 和
   `max_nvidia_process_gpu_memory_mib` 写入 `baseline.csv` 并由预算 CSV 校验。
@@ -262,7 +267,7 @@
 - [x] T0: Wayland video smoke 和 baseline matrix 支持 `--video-size`、`--video-rate`、
   `--video-duration`，便于用同一套 guardrail 直接生成并采样 4K/240fps 压力源。
 - [x] T0: 用 2026-06-20 niri 4K/240fps generated loop 复测 direct
-  `gtk4paintablesink`：runtime CSV 已达到 `zero_copy_evidence=sink-gpu-memory-caps`，
+  历史 direct GTK sink：runtime CSV 已达到 `zero_copy_evidence=sink-gpu-memory-caps`，
   `formats=NV12`、`sink_formats=NV12`、`memory_path=sink-gpu-memory`；6s sample 峰值
   `Private_Dirty` 115156 KiB、PSS/USS 418115/403768 KiB、NVIDIA 进程显存 472MiB，仍在
   M8 guardrail 内。该项只证明 GStreamer/GTK runtime sink-side GPU memory caps，不证明
@@ -272,11 +277,12 @@
   sink-side `NV12`、caps sources、allocation pool、sink tuning 和 GDK/GTK timing 线索。
   该项仍不等同 compositor presentation full zero-copy；后续 GTK 4.14+/可用 dmabuf 构建上目标为
   `sink-dmabuf-caps`，并补 compositor presentation/frame callback 证据。
-- [ ] T0: 对 direct `gtk4paintablesink`、forced `gtk4` 和 forced `glsinkbin` 做同场景
-  zero-copy 证据对照，确认 caps/sink caps、allocation pool、memory path、PSS/USS、
-  `Private_Dirty` 和 NVIDIA 显存差异。
-- [ ] T0: 验证 4K/240fps video path 是否能保持 YUV/NV12 到 presentation 阶段，避免
-  过早维护 RGBA/RGBx 大纹理；若 GTK path 不能做到，记录为明确 blocker。
+- [x] T0: 结束 direct GTK sink、forced GTK 和 forced GL wrapper 的同场景对照路线；
+  GTK/native-wgpu/native waylandsink 路线已退休，后续 zero-copy 对照转入 native
+  Vulkan importer/present 证据。
+- [ ] T0: 验证 native Vulkan 4K/240fps video path 是否能保持 YUV/NV12 到
+  shader/present 阶段，避免过早维护 RGBA/RGBx 大纹理；若 GStreamer appsink/importer
+  只能提供 CPU raw frame，记录为明确 copy-path blocker。
 - [x] T0: 添加 queue 调优诊断开关并做 8/4/2 buffers、50/25/12ms 梯度实验，对比
   queue current level、QoS/drop、CPU、PSS/USS、`Private_Dirty` 和 NVIDIA 显存；4/25ms
   作为新默认，2/12ms 因 CPU 与 QoS/drop 回退不采用。短样本中 NVIDIA 显存固定 472MiB，
@@ -305,8 +311,8 @@
   pipeline/source footprint 为 0，还要观察 NVIDIA 显存、smaps `nvidia-device`/anonymous/heap
   分类和 resume latency。
 - [ ] T0: 保持 8K 静态图路径为接近顶级基线：当前交互观察为 CPU 基本 0、应用内存约
-  93MiB；下一阶段把该场景纳入 `wayland-baseline-matrix`，要求 CPU 接近 0、PSS/private
-  与用户可见内存口径对齐，并确认 `gtk::Picture`/GDK/GSK decoded texture 生命周期不会在
+  93MiB；下一阶段把该场景纳入 native Vulkan/performance snapshot 验证，要求 CPU 接近 0、
+  PSS/private 与用户可见内存口径对齐，并确认 native Vulkan texture/cache 生命周期不会在
   切换、隐藏或暂停后保留超大纹理。
 - [ ] 为真实 Wayland active、paused、fullscreen、hidden、battery、unfocused 场景建立 CPU/GPU/RSS/PSS/USS/private/shared 基线表。
 - [ ] 为常见场景定义可执行的内存预算和回归阈值，优先使用 PSS、USS、private 占用和分类 `Private_Dirty` release 作为判断依据。
@@ -345,15 +351,15 @@
 - [x] GTK/video renderer 在无 FPS 上限时不创建 `videorate`/`capsfilter` frame limiter，减少默认 active 视频 pipeline 的常驻 GStreamer element。
 - [x] GTK/headless video renderer 使用最小 `playbin` flags，muted 路径只开 video，audible 路径只开 video+audio，避免 active 视频常驻 deinterlace、soft color balance 或 soft volume 分支。
 - [x] 将 GTK/headless 视频限帧改为 sink `throttle-time`，不再把 `videorate ! capsfilter` 插入 decoder 到 sink 的协商路径，并关闭 sink `last-sample` 保留。
-- [x] GTK video surface 默认使用 direct `gtk4paintablesink`，并关闭 async preroll、preroll frame 和 render delay；`glsinkbin+gtk4paintablesink` 保留为显式诊断路径，避免 NVIDIA/GL wrapper 在常规播放中额外保留 driver buffer 和 texture/pool。
+- [x] 历史 GTK video surface 默认使用 direct sink，并关闭 async preroll、preroll frame 和 render delay；该路线已退休，结论只作为 native Vulkan importer 的对照基线。
 - [x] GTK renderer tick 按负载动态调度：video runtime 单独存在时使用 250ms 常规 polling，frame stats 按 500ms 写回最近的 runtime snapshot；slideshow 过渡仍可使用更短 tick；纯静态无动态工作不安装 renderer runtime timeout，render sync 由 GLib idle wakeup 立即消费，减少 8K static idle wakeup。
 - [x] GTK video polling 先检查 video runtime 是否存在，并让 frame stats 到期判断直接读取 runtime 计数，避免无视频空 poll 或完整 resource footprint/source size 重算。
 - [x] GTK 共享 video runtime 的 renderer snapshot 复用同一份 decoder/caps/allocation、position 和 duration 查询，再展开为逐输出 telemetry，减少同源多屏视频的 GStreamer 查询成本。
 - [x] GTK 组合 renderer snapshot 序列化 video pipeline telemetry 时复用已有 video source footprint，避免重复读取源文件 metadata。
 - [x] GTK renderer resource footprint 按路径缓存 source size，重复静态图、幻灯片帧或同源视频不再反复 `metadata()`。
-- [x] GTK video frame-clock 诊断默认改为轻量 after-paint tick/counter/time/interval 统计；完整 phase、FPS/refresh_info 和 GDK `FrameTimings` 采样需显式设置 `GILDER_GTK_VIDEO_FRAME_STATS=full`，减少 4K/高刷视频每帧主线程诊断开销。
+- [x] 历史 GTK video frame-clock 诊断默认改为轻量 after-paint tick/counter/time/interval 统计；当前 native Vulkan 路线改用 Vulkan present、Wayland frame callback 或 `wp_presentation` 证据。
 - [x] GTK/headless GStreamer video pipeline 默认压低内部 queue/queue2/multiqueue 深度到 4 buffers/25ms，并在 runtime CSV/summary 中报告 queue max/current level，减少 4K/高刷视频中间队列保留窗口并为 PSS/USS/GPU memory 深挖提供证据。
-- [x] 增加 `GILDER_GTK_VIDEO_SINK_CHAIN=auto|gtk4|glsinkbin` 底层验证入口，用同一 4K/240 场景对比 direct `gtk4paintablesink` 与 `glsinkbin+gtk4paintablesink` 的 sink caps、queue、PSS/USS 和 GPU memory。
+- [x] 增加历史 GTK sink-chain 底层验证入口，用同一 4K/240 场景对比 direct GTK sink 与 GL wrapper 的 sink caps、queue、PSS/USS 和 GPU memory；该入口已随 GTK 路线退休。
 - [x] 用真实 4K/240 NVIDIA/niri 样本确认 high memory 主要来自 `glsinkbin` 路径：direct sink 20s 峰值 PSS/USS/GPU memory 约 390/356 MiB/496 MiB，GL wrapper 约 661/627 MiB/689 MiB；默认 `auto` 因此切到 direct sink。
 - [x] 静态图运行时缓存按 fit 估算降采样收益，覆盖 `contain` 极端比例大图和 `stretch` 大面积源图，减少直接让 GTK/GDK 解码原图的场景。
 - [x] battery 性能策略支持用户可选 `pause-dynamic`，电池供电时释放 video/slideshow/web/scene-lite/shader 资源但保留静态壁纸，并在 headless desktop policy smoke 中覆盖。
@@ -369,20 +375,20 @@
 - [x] performance snapshot 和 Wayland video smoke 支持 `--expect-zero-copy-profile`，将硬解、sink GPU/DMABuf caps、播放推进和 GTK frame-clock 证据组合成可执行 runtime/GTK profile。
 - [ ] 继续采集 compositor presentation/frame callback 统计，补足 GTK/GDK timing 之外的 compositor 侧证据。
 - [ ] 将硬解、DMABuf/GLMemory、sink-side caps 和 compositor presentation 组合成更严格的 zero-copy validation profile。
-- [ ] 深入 GTK/GDK/GSK texture lifecycle、`gtk4paintablesink`、GStreamer buffer pool 和 allocator 机制，确认哪些路径会保留 CPU-side frame、poster texture 或 last-sample 引用。
-- [ ] 研究并验证 GTK/GStreamer 可行的低内存 zero-copy surface 路径：DMABuf/GLMemory 保持、共享 GL context、避免隐式 readback，同时保持 frame clock 和 presentation 性能不下降。
-- [x] 重构 GTK 视频 runtime：按兼容 source/loop/audio/decoder/start-offset/FPS key 共享 GStreamer pipeline 和 `GdkPaintable`，每个输出只保留独立 `gtk::Picture`、fit 和 frame-clock 统计，并在 status/CSV telemetry 中报告 `video_shared_runtimes`。
+- [ ] 深入 native Vulkan texture/importer lifecycle、GStreamer appsink buffer pool 和 allocator 机制，确认哪些路径会保留 CPU-side frame、poster texture 或 last-sample 引用。
+- [ ] 研究并验证 GStreamer appsink/DMA 到 native Vulkan 的低内存 zero-copy/import 路径：DMABuf/CUDAMemory/VA surface 保持、避免隐式 readback，同时保持 present pacing 性能不下降。
+- [x] 历史 GTK 视频 runtime 曾按兼容 source/loop/audio/decoder/start-offset/FPS key 共享 GStreamer pipeline，并在 status/CSV telemetry 中报告 `video_shared_runtimes`；字段保留为 native Vulkan 共享 runtime 对照。
 - [x] 为视频 runtime 增加 allocator/buffer-pool/caps 路径诊断，区分硬解后仍落到 CPU raw frame、decoder 侧 GPU memory、sink-side GPU memory 和 DMABuf/GLMemory runtime surface 线索。
 - [x] 将视频 runtime 的 decoder/caps/allocation/memory path 诊断改为每 runtime 低频缓存刷新，避免 GTK video polling 或状态轮询持续遍历 GStreamer pipeline 和发 allocation query。
 - [x] headless/GTK video sink 默认启用低内存 BaseSink 调优：关闭 last-sample、开启 QoS、按目标 FPS 收紧 max-lateness，并在 runtime snapshot 中报告 sink tuning。
 - [x] runtime CSV、performance summary 和 video hardware report 报告 sink element、async、last-sample、render-delay、processing-deadline 和 preroll-frame 状态，便于验证 GTK 是否进入 GL sink 低内存路径。
 - [x] GTK renderer 在 pause/remove sync 时实际释放 output window、video surface 和 GStreamer pipeline，并用 Wayland smoke 实测 active/paused RSS/PSS/USS/private 下降与 paused renderer lifecycle 归零。
-- [x] GTK 静态图普通 fit 从 CSS background-image 改为显式 `gtk::Picture` surface，切到视频、移除输出或换帧时释放 Picture 引用；`tile` 保留 CSS fallback。
+- [x] 历史 GTK 静态图普通 fit 曾从 CSS background-image 改为显式 Picture surface；当前 native Vulkan 静态图路径继续沿用“切换/移除时释放 texture/resource”的生命周期目标。
 - [x] GTK renderer telemetry 拆分 static Picture/CSS/color surface，并按 Picture paintable intrinsic size 报告估算 decoded footprint，作为 retained texture 风险线索。
 - [x] desktop policy smoke、Wayland baseline matrix 和 Wayland video smoke 报告 static Picture/CSS/color surface 与估算 decoded footprint，并支持 headless 场景预算转发。
 - [x] 基于 `memory_path`、`allocation_reports` 和 sink tuning 输出 `retention_report`/CSV/summary/baseline 线索，定向识别 CPU-side frame、buffer pool 和 last-sample/preroll frame 保留风险。
 - [x] performance snapshot 和 Wayland video smoke 支持断言 video memory retention level、system-memory pool 数、pool byte 上限和 sink frame retention 状态，把 retained-frame/buffer-pool 风险纳入回归门槛。
-- [ ] 继续审计 GTK 静态图 surface：确认 `gtk::Picture`/GDK/GSK decoded texture 生命周期，并把估算 decoded footprint 与真实 PSS/USS/private delta 对齐。
+- [ ] 继续审计 native Vulkan 静态图 surface：确认 decoded texture/cache 生命周期，并把估算 decoded footprint 与真实 PSS/USS/private delta 对齐。
 - [x] 扩展 adaptive monitor，让用户可选按 CPU/GPU/内存压力、电池、温度、session/output 状态自动降 FPS、暂停动态壁纸或释放资源。
 - [x] 为 adaptive 行为加入保守默认值、冷却时间、恢复条件和 status/watch 可解释报告，避免自动化策略不可预期。
 
@@ -391,8 +397,8 @@
 - [x] 梳理 Wallpaper Engine 类型矩阵：image、video、web、scene、application、audio visualizer、shader/particle、playlist，并标注 Gilder 支持等级。
 - [x] 记录后续纯 Vulkan renderer 迁移准备路线：当前不继续压 active video copy/private dirty，
   优先扩展 web/scene-lite/shader/playlist，同时要求新增 runtime 保持后端无关。
-- [x] 将路线调整为壁纸类型扩展与 hand-rolled Vulkan spike 并行推进：类型 runtime 可以先落在
-  GTK/wgpu/helper 后端，但必须同步定义 Vulkan-facing contract。
+- [x] 将路线调整为壁纸类型扩展与 hand-rolled Vulkan renderer 并行推进：类型 runtime 可以先落在
+  helper/headless fallback，但必须同步定义 Vulkan-facing contract。
 - [x] 让 `web` entry 在 runtime 未完成前使用 fallback render plan，缺少 fallback 时给出明确 unsupported 错误。
 - [x] 为 `scene-lite` 定义 2D image/color/group layer、transform、opacity、keyframe timeline、动画曲线和属性 binding schema，并提供 headless snapshot evaluator 与资源校验。
 - [x] 为 `scene-lite` 生成一等 render sync plan，GTK 先显示 fallback、首个 image layer 或首个 color layer，并把 fallback/layer 图片资源计入计划层与 package cache footprint。
@@ -411,8 +417,8 @@
 - [x] 添加一等 `shader` manifest entry，记录 GLSL/WGSL 风格的时间、分辨率、鼠标和用户属性 uniform schema；runtime 完成前使用 fallback render plan，并按动态壁纸参与 `pause-dynamic` 释放策略。
 - [x] Wallpaper Engine 转换器支持明确 Shader 项目和 playlist shader 子项，生成 `shader` fallback manifest、标准 time/resolution/mouse uniform 和用户属性 uniform。
 - [ ] 实现原生 shader runtime：编译/执行 GLSL/WGSL、注入 uniform、接入 GPU memory telemetry 和 Wayland surface smoke。
-- [ ] 为 native scene/shader/web runtime 建立后端无关 renderer 接口，当前 GTK/wgpu 后端和未来
-  Vulkan 后端必须消费同一 render plan、property 输入和 lifecycle telemetry。
+- [ ] 为 native scene/shader/web runtime 建立后端无关 renderer 接口，helper/headless fallback 和
+  native Vulkan 后端必须消费同一 render plan、property 输入和 lifecycle telemetry。
 - [ ] 添加粒子/特效壁纸类型，优先覆盖 Wallpaper Engine 常见粒子发射器、纹理、速度场和 blend 模式。
 - [ ] 添加音频响应壁纸能力，定义可选 PipeWire 音频采样输入和隐私/权限开关。
 - [ ] 添加时钟、系统监控、媒体信息等 Linux 桌面常见信息型壁纸组件，但默认不采集敏感信息。
@@ -439,7 +445,7 @@
 - [x] 添加 Vulkan-facing 壁纸类型矩阵和 render item 映射：当前 `StaticRenderSyncPlan`
   中的 static/video/slideshow/scene-lite 可转换为 Vulkan item，web/shader/playlist 记录 helper/
   fallback/selection contract。
-- [ ] 定义 renderer backend contract：GTK/wgpu/helper 和 native Vulkan 后端消费同一
+- [ ] 定义 renderer backend contract：helper/headless fallback 和 native Vulkan 后端消费同一
   render plan、property 输入、dynamic lifecycle 和 resource telemetry。
 - [ ] 建立最小 native Vulkan layer-shell host：Wayland surface、Vulkan instance/device/swapchain、
   resize、output selection、frame pacing 和 release。
@@ -494,9 +500,9 @@
   结果，不新增 scene 专用 manifest 分支。
 - [ ] 设计 Web helper frame/texture handoff：WebKitGTK/浏览器 helper 只作为隔离实现，native Vulkan
   后端通过稳定 helper 协议接收 frame stream 或可导入 texture。
-- [ ] 继续 video interop spike：删除 `gpu-video` 依赖路线后，以 GStreamer 作为 video/audio
+- [ ] 继续 video interop：删除 `gpu-video` 与 native-wgpu 依赖路线后，以 GStreamer 作为 video/audio
   前端验证 GL/EGLImage/DMABuf/CUDAMemory handoff、Vulkan Video、libavcodec + external
   memory 等方案；GStreamer 不接管显示 sink，native Vulkan 后端负责最终 present，只有同场景
-  优于当前 native-wgpu CUDA copy path 才进入默认候选。
+  优于 retired native-wgpu CUDA copy evidence 才进入默认候选。
 - [ ] 将 native Vulkan 后端接入 baseline matrix，覆盖 static/video/web/scene-lite/shader/playlist
   的 active、paused、hidden、fullscreen、session release 和恢复延迟。

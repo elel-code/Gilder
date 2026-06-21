@@ -119,27 +119,6 @@ and
 .BR all .
 When unset, Gilder reads PSI, thermal, power_supply, and DRM sysfs samples from
 the host.
-.TP
-.B GILDER_GTK_VIDEO_FRAME_STATS
-GTK video frame-clock diagnostics mode. The default lightweight mode records
-after-paint ticks, frame counter/time, and frame interval only. Set to
-.B full
-to also collect frame-clock phase counters, FPS/refresh info, and GDK frame
-timings; set to
-.B off
-to disable this GTK frame-clock diagnostic observer.
-.TP
-.B GILDER_GTK_VIDEO_SINK_CHAIN
-GTK video sink chain selection. The default
-.B auto
-mode uses direct
-.B gtk4paintablesink .
-Set to
-.B gtk4
-to pin direct GTK sink presentation, or
-.B glsinkbin
-to force the GL wrapper when comparing video memory, GLMemory/DMABuf, and
-zero-copy behavior.
 .SH SEE ALSO
 .BR gilderctl (1),
 .BR gilder-convert (1)

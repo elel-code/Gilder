@@ -2,20 +2,23 @@
 
 本文档记录 2026-06-20 之后的 renderer 方向。当前结论是：4K/240fps video
 已经达到可接受的真实 Wayland 稳定基线，短期不继续围绕 active video copy/private
-dirty 做底层压榨；下一阶段同时推进壁纸类型扩展和手写 Vulkan renderer spike。新增
-能力必须写成可以被当前 GTK/wgpu 路径和未来纯 Vulkan 后端共同消费的形状。
+dirty 做底层压榨；下一阶段同时推进壁纸类型扩展和手写 Vulkan renderer。新增
+能力必须写成可以被 native Wayland/Vulkan 后端和 helper runtime 共同消费的形状。
 
 ## 当前决策
 
-当前 native-wgpu/GStreamer CUDA 路线已经完成：
+native-wgpu/GStreamer CUDA 路线已经完成了验证使命，但不再作为独立后端继续维护：
 
 - `HDMI-A-1` 真实 Wayland 20s smoke 可稳定贴近 239.999Hz，`frames_skipped=0`。
 - video 路径为 `gst-dmabuf` + `cuda-direct-vulkan-images-timeline`。
 - CPU 和 `Private_Dirty` 仍有 driver/GStreamer/CUDA runtime floor，但 active video 已可作为
-  当前高刷视频基线。
+  历史高刷视频对照基线。
 - `gpu-video` crate 路线因 codec/container 限制和维护面过窄已退休；后续 video/audio 前端保留
   GStreamer，native Vulkan 后端只消费 GStreamer 产出的 frame/texture handoff，不让
   GStreamer sink 接管显示。
+- GTK renderer、native-wgpu renderer、native-wayland `playbin/waylandsink` video helper 和
+  vendored `wgpu-hal` 已从可构建技术栈中移除。native Wayland 只保留 surface/output host 和
+  linux-dmabuf feedback；显示、import、decode 和 present 由 native Vulkan 承担。
 
 暂时不继续深挖的点：
 
@@ -32,10 +35,10 @@ dirty 做底层压榨；下一阶段同时推进壁纸类型扩展和手写 Vulk
 
 保留的底层方向：
 
-- 当前 `wgpu` 仍作为可用的 Vulkan surface/render bridge。
-- video 仍允许用 raw Vulkan/CUDA escape hatch 补足 `wgpu` 暂不暴露的能力。
-- 如果后续证明 `wgpu` 的 device/surface 抽象持续阻挡 video、shader、scene 或 Web texture
-  interop，就切换到 Gilder 自己拥有 Vulkan instance/device/swapchain 的 renderer 后端。
+- Gilder 自己拥有 Vulkan instance/device/swapchain、render pass、import/decode/present。
+- GStreamer 只作为 demux/parser/appsink/audio/clock 前端；DMA/VAAPI、CUDA、Vulkan Video
+  等 GPU handoff 必须在 native Vulkan importer 内落地。
+- native Wayland host 不再直接 attach video dmabuf 或代理 GStreamer overlay sink。
 
 ## 并行推进原则
 
@@ -44,10 +47,10 @@ dirty 做底层压榨；下一阶段同时推进壁纸类型扩展和手写 Vulk
 - 类型线：继续补齐 `web`、`scene-lite`、`shader`、playlist、particle、audio-responsive
   等壁纸类型，让用户可见能力继续增长。
 - Vulkan 线：同步建立 hand-rolled Vulkan host、device、swapchain、render graph 和
-  texture/video interop spike，逐步替代当前对 `wgpu` escape hatch 的依赖。
+  texture/video interop，逐步把 video、shader、scene、web frame 都收敛到同一个 GPU 后端。
 
 两条线共享同一份 manifest、render plan、属性系统、动态生命周期和 telemetry。类型线不能把
-新能力焊死到 GTK/WebKitGTK/wgpu；Vulkan 线也不能只服务 video，而要从一开始按完整类型矩阵设计。
+新能力焊死到 WebKitGTK/helper 或某个临时前端；Vulkan 线也不能只服务 video，而要从一开始按完整类型矩阵设计。
 
 ## 近期优先级
 
@@ -62,12 +65,12 @@ dirty 做底层压榨；下一阶段同时推进壁纸类型扩展和手写 Vulk
 Vulkan 线的近期优先级：
 
 1. 最小 native Vulkan layer-shell host：clear、static image、resize、output selection。
-2. 统一 renderer backend contract：让 GTK/wgpu 和 Vulkan 后端消费同一 render plan。
+2. 统一 renderer backend contract：让 native Vulkan、Web helper 和 headless evaluator 消费同一 render plan。
 3. Shader-first path：fullscreen triangle、time/resolution/property uniform、surface smoke。
 4. Scene-lite render target：把 deterministic scene runtime 输出接入 Vulkan pass。
-5. Video interop 继续作为 spike：优先证明同场景优于当前 native-wgpu CUDA copy path，再考虑默认切换。
+5. Video interop 继续作为主攻点：把 GStreamer appsink/DMA handoff 接到 native Vulkan importer。
 
-这些工作互不阻塞。类型 runtime 可以先用 GTK/wgpu/helper 实现，但合并前要同时写清 Vulkan-facing
+这些工作互不阻塞。类型 runtime 可以先用 helper/headless fallback 实现，但合并前要同时写清 Vulkan-facing
 contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 manifest 或 daemon 语义。
 
 ## 后端边界
@@ -77,8 +80,8 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
 - `core`、manifest、conversion report、render plan 不引用 GTK、GDK、wgpu、ash 或 GStreamer
   具体类型。
 - daemon 只生成“要显示什么”的计划：entry、source、fit、time、property values、policy、target FPS。
-- renderer 后端负责“怎么显示”：GTK widget、wgpu texture、Vulkan image、Web helper surface、
-  shader pipeline 都留在后端内。
+- renderer 后端负责“怎么显示”：Vulkan image、Web helper surface、shader pipeline 和
+  GPU importer 都留在后端内。
 - status/watch telemetry 使用稳定字段描述能力和资源，不暴露某个后端独有对象生命周期作为上层契约。
 - 新增类型必须先定义 headless 行为测试，再补真实 Wayland smoke；不能只靠某个 GUI 后端能显示。
 
@@ -88,7 +91,8 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
 - `RenderBackend`：消费 render plan，创建/更新/释放每个输出的 runtime。
 - `TextureSource`：静态图、video frame、Web helper frame、scene render target、shader output。
 - `DynamicRuntime`：统一 pause/resume/throttle/release/resource snapshot。
-- `GpuInterop`：后端内部能力，不向 manifest 或 daemon 泄漏；当前可由 wgpu-hal/ash/CUDA 实现，未来可由纯 Vulkan 实现。
+- `GpuInterop`：后端内部能力，不向 manifest 或 daemon 泄漏；当前由 ash/native Vulkan、
+  Vulkan Video、GStreamer DMA/CUDA/VAAPI handoff 实现。
 
 这些名字不是立即要落地的 API，而是后续重构时的边界检查标准。
 
@@ -119,8 +123,8 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
 
 ### Phase 0: 固化当前基线
 
-- 保留 native-wgpu 4K/240 smoke 作为回归基线。
-- 保留 GTK/GStreamer video surface guardrail，避免主 daemon 路径回退。
+- 保留 native-wgpu 和 GTK/GStreamer 的 4K/240 数值证据作为历史对照，不再保留可构建后端。
+- 保留 native Vulkan H.265 ready-prefix/first-frame/surface queue smoke 作为当前真实 Wayland evidence。
 - 将当前 CUDA direct import blocker 记录在文档中，避免重复走同一条失败路径。
 
 ### Phase 1: 后端无关 runtime 接口
@@ -128,7 +132,7 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
 - 清理 render plan 与 renderer runtime 的边界。
 - 为 web、scene-lite、shader、playlist 子项定义共同的 dynamic lifecycle。
 - status/watch 和 baseline matrix 只依赖稳定 telemetry 字段。
-- 每个新增类型在 GTK/wgpu/helper 实现之外，同步定义 Vulkan 后端需要消费的资源、uniform、
+- 每个新增类型在 helper/headless fallback 实现之外，同步定义 Vulkan 后端需要消费的资源、uniform、
   timeline、权限和 release 语义。
 
 ### Phase 2: 类型补全
@@ -209,14 +213,31 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   `requested_playback_frame_count=4800`、`decoded_frame_count=4800`、
   `presented_frame_count=4800`、`playback_loop_count=20`、`average_present_fps=239.99556876981734`，
   FIFO present 下 `frame_sleep_count=0`、`missed_frame_pacing_count=0`。
-- 同一 evidence 下的约 70MB private dirty 主要是必要 Vulkan Video 资源，而不是残留 CPU copy：
-  `video_resource_memory_bytes=37552128`，对应 3840x2160 NV12 约 12.44MB/层乘以
-  `stream_dpb_slots=session_max_dpb_slots=3`；`session_memory_bytes=33775616` 是 NVIDIA
-  driver 报告的 `VkVideoSessionKHR` bind memory；`bitstream_buffer_bytes=249344`，因为当前已是
-  single persistent mapped reusable slot。三者合计约 71.6MB，基本解释当前 private dirty
-  观察值。后续还能压的是 stream/codec 允许时减少 DPB slots、复用 session/resource image、
-  避免额外 staging/readback；但对 4K H.265 P-frame direct decode，3 层 NV12 DPB + driver
-  session memory 已是当前主要下限。
+- 同一 evidence 下的约 70MB private dirty 主要来自显式 Vulkan Video 资源，而不是残留 CPU
+  copy：2-ref H.265 source 需要 `stream_dpb_slots=session_max_dpb_slots=3`，
+  `video_resource_memory_bytes=37552128`，加上 NVIDIA driver 报告的
+  `session_memory_bytes=33775616` 和 `bitstream_buffer_bytes=249344`，三者合计约 71.6MB。
+  DPB 选择现在按 ready-prefix AU 的可解码性寻找最小 slot 数，并会把“当前输出将覆盖的 slot”
+  视为不可继续作为参考帧，避免把过小 DPB 误判为 ready。
+- 1-ref H.265 short-GOP 对照已经证明这条路径不是固定 70MB floor：真实 Wayland 证据
+  `/tmp/gilder-vulkan-h265-ready-prefix-video.q8NPT5` 在 `HDMI-A-1` 上使用 3840x2160@240
+  source，`stream_sps_dpb_slots=3`、`stream_dpb_slots=2`、
+  `stream_max_active_reference_pictures=1`，`video_resource_memory_bytes=25034752`、
+  `session_memory_bytes=33775616`、`bitstream_buffer_bytes=248320`，显式
+  resource/session/bitstream 合计约 59.1MB。NVIDIA H.265 session memory 没随
+  `maxActiveReferencePictures` 从 2-ref 降到 1-ref 明显下降，当前更像驱动对 H.265
+  session/extent/profile 的固定成本。
+- H.264 GPU-memory/native-wgpu 对照是另一条口径：真实 Wayland 证据
+  `/tmp/gilder-native-wgpu.SWqa42` 使用 `gst-dmabuf`、`pipeline_kind=cuda-direct`、
+  `video_last_memory_types=gst.cuda.memory`、`video_last_export_source=cuda-direct-vulkan-staging`，
+  8s 采样 `Private_Dirty max=68928 KiB`、平均 CPU `26.80%`、平均 render
+  `240.09fps`。它是连续 GStreamer 解码流，不会像 ready-prefix smoke 一样每个窗口强制
+  `AU239 -> AU0` reset，因此不能用 ready-prefix 的可见 loop boundary 直接对比平滑度。
+- GTK H.264 direct sink 仍作为守卫基线，但不是内存最优对照：`/tmp/gilder-wayland-video.D6hbCj`
+  的 active phase 为 `nvh264dec`、`NV12`、`memory:CUDAMemory`、`sink-gpu-memory-caps`，
+  `Private_Dirty max=114412 KiB`、平均 CPU `35.99%`、NVIDIA 进程显存 `448 MiB`。
+  因此后续判断 native Vulkan 是否值得默认切换，应优先和 native-wgpu H.264 GPU-memory
+  continuous path 同场景对比，而不是和 GTK sink 或 ready-prefix loop 视觉结果混在一起。
 - `--run-clear` 已接入 logical device、swapchain、command buffer、semaphore/fence 和 clear present
   loop；同场景 `--duration 3 --target-fps 240` 跑到 720 frames，平均 239.996fps，swapchain 为
   `B8G8R8A8_UNORM`、1707x1067、3 images、FIFO present。
@@ -427,8 +448,8 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
 - 接入同一 render plan，不新增 manifest 分支。
 - 验证单输出、多输出、resize、output selection、pause/release。
 - 与类型线并行接入 shader、scene-lite 和 Web helper frame handoff。
-- Video interop 可以保持独立实验，但只有证明同场景优于当前 native-wgpu/GStreamer CUDA copy
-  路线后，才进入默认候选。
+- Video interop 不再作为 wgpu 分支实验；GStreamer appsink/DMA handoff 的目标实现是 native
+  Vulkan importer，并用历史 native-wgpu/GStreamer CUDA copy 数值做同场景对照。
 
 ### Phase 4: Vulkan video/Web interop
 
@@ -446,7 +467,7 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   H.264 level 6.1 不能作为首个 direct 成功标准。AV1 direct 仍需补 AV1 sequence
   header/session parameters。10-bit H.265/AV1 已有 sampled 2-plane 420 format evidence，
   后续需要单独补 P010/10-bit shader path。CUDA copy path 只保留为 fallback 和对照基线。
-- 成功标准是同场景优于当前 native-wgpu/GStreamer CUDA copy 路线，而不是理论零拷贝。
+- 成功标准是同场景优于历史 native-wgpu/GStreamer CUDA copy 路线，而不是理论零拷贝。
 - Web helper 输出要以 texture/frame stream 形式进入后端，避免把 WebKitGTK 当作最终 renderer 架构。
 
 ### Phase 5: 后端切换
@@ -460,7 +481,7 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
 新增或重构其他壁纸类型时，遵守：
 
 - 不新增 GTK-only manifest 字段。
-- 不在 core/converter 中写入 wgpu/Vulkan 专用假设。
+- 不在 core/converter 中写入 Vulkan 专用假设。
 - 不把 WebKitGTK 直接放进 daemon 核心运行时；优先 helper 化。
 - scene-lite evaluator 保持 headless deterministic，renderer 只消费 evaluator/runtime 输出。
 - shader source 和 uniform schema 保持后端可编译，不绑定 WGSL-only 或 GLSL-only。

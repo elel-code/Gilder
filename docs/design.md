@@ -42,18 +42,21 @@ Rust 模块组织采用 2018+ 常见布局：`src/foo.rs` 作为模块入口，`
 
 1. 启动后绑定 `$XDG_RUNTIME_DIR/gilder/gilder.sock`。
 2. 读取 `$XDG_CONFIG_HOME/gilder/config.toml` 和上次状态。
-3. 为每个需要壁纸的输出创建一个 layer-shell 窗口。
+3. 为每个需要壁纸的输出创建一个 layer-shell surface。
 4. 加载指定 `.gwpdir` 或 `.gwp`，选择适合输出的 variant。
-5. 在 GTK 主循环中管理窗口生命周期，在后台线程或 GStreamer pipeline 中处理重型 IO/解码。
+5. 在 native Wayland host 中管理 surface 生命周期，在后台线程、GStreamer 前端或
+   native Vulkan backend 中处理重型 IO/解码/渲染。
 6. 通过 IPC 接收切换、暂停、恢复、状态查询和配置写入。
 
 ## Wayland 集成
 
-早期实现以 GTK 4 为主：
+当前实现以 native Wayland host 为主：
 
-- 使用 GTK-rs 构建每个输出上的无装饰窗口。
-- 使用 layer-shell 协议把窗口放入 background/bottom 层，锚定四边，覆盖整个输出。
-- 输出枚举优先使用 GDK monitor 信息；Hyprland/niri 适配器用于增强输出名称、工作区/fullscreen 状态、热插拔语义。
+- 使用 smithay-client-toolkit/wayland-client 创建每个输出上的 layer-shell surface。
+- 使用 layer-shell 协议把 surface 放入 background/bottom 层，锚定四边，覆盖整个输出。
+- native Wayland host 负责输出匹配、configure、fractional scale、viewporter 和
+  linux-dmabuf feedback。
+- Hyprland/niri 适配器用于增强输出名称、工作区/fullscreen 状态、热插拔语义。
 - 每个输出独立持有壁纸状态，允许同一包使用不同 variant 或不同裁剪参数。
 
 合成器适配分层：
@@ -65,9 +68,7 @@ Rust 模块组织采用 2018+ 常见布局：`src/foo.rs` 作为模块入口，`
 合成器适配器不能成为核心渲染路径的硬依赖；没有适配器时仍应能显示壁纸。
 当前 daemon 已经支持从 `hyprctl -j monitors/clients` 和
 `niri msg --json outputs/workspaces/windows` 构建 `DesktopSnapshot`。如果对应
-session 环境变量或命令不可用，会回退到 `generic-wayland` 占位快照；真实 GDK
-monitor 后端由 GTK 主线程读取，后台 IPC 线程不会用空的 GDK 结果覆盖已经采集到
-的输出快照。电源状态独立于合成器读取，会从 Linux
+session 环境变量或命令不可用，会回退到 `generic-wayland` 占位快照。电源状态独立于合成器读取，会从 Linux
 `/sys/class/power_supply` 推断 AC/Battery/Unknown，并注入同一份
 `DesktopSnapshot.power`。会话活跃/锁屏状态会在 systemd-logind 可用时通过
 `XDG_SESSION_ID` 和 `loginctl show-session ... Active/LockedHint` 读取；不可用时
@@ -91,145 +92,72 @@ PSI、thermal、power_supply 和 DRM 采样。
 
 ## 渲染路径
 
-当前默认 daemon 仍以 GTK/GStreamer 路径覆盖完整壁纸类型和生命周期；native-wgpu 路径用于
-验证更底层的 Wayland/Vulkan/CUDA 能力。后续新增 web、scene-lite、shader、particle 等
-runtime 时，manifest、render plan、属性系统和 telemetry 必须保持 renderer 后端无关。类型
-runtime 扩展和 hand-rolled Vulkan renderer spike 并行推进，路线和停止/成功条件记录在
-`docs/vulkan-migration.md`；在 Vulkan 成为默认后端前，现有 GTK/wgpu 路径继续作为功能覆盖和
-真实 Wayland 回归基线。
+当前 renderer 方向是 native Wayland host + native Vulkan backend。native Wayland 负责
+layer-shell surface、输出选择、缩放和 linux-dmabuf feedback；native Vulkan 负责
+swapchain、render pass、GPU importer、video decode/import 和最终 present。后续新增
+web、scene-lite、shader、particle 等 runtime 时，manifest、render plan、属性系统和
+telemetry 必须保持 renderer 后端无关。类型 runtime 扩展和 hand-rolled Vulkan renderer
+并行推进，路线和停止/成功条件记录在 `docs/vulkan-migration.md`；已删除的 GTK、
+native-wgpu 和 native-wayland `playbin/waylandsink` 路径只保留历史证据。
 
 静态图片：
 
 - 加载 PNG、JPEG、WebP、AVIF，后续按系统库能力扩展。
 - 在包加载时读取尺寸和色彩信息，按输出选择最接近的 variant。
 - 渲染层只处理 fit/crop/tile/solid background，不在热路径做重复解码。
-- `gtk-renderer` feature 使用 GTK 4 与 gtk4-layer-shell 创建 background layer
-  窗口。普通静态图使用 `gtk::Picture` 映射 `cover`、`contain`、`stretch` 和
-  `center`，只在 `tile` 这种 Picture 不直接支持的模式退回 CSS background。启用该
-  feature 时，daemon 在主线程运行 GTK application，IPC accept loop 在后台线程运行，
-  状态变更会通过同步队列投递到 GTK 主线程。
+- `native-vulkan-renderer` feature 使用 native Wayland layer-shell host 创建 surface，
+  并由 Vulkan swapchain/render pass 显示内容。当前静态图最小路径已经可通过 Vulkan
+  staging copy 显示；后续会替换为 sampled texture + shader pass。
 - daemon 会为当前 desktop snapshot 和持久化状态生成 `render_sync`，列出每个
   输出的静态渲染计划、需要移除的输出和加载错误。`.gwp` 会在计划阶段解包到
-  `$XDG_CACHE_HOME/gilder/render-cache/`，GTK 主循环会消费这些计划，为匹配到的
-  GDK monitor 创建或更新 background layer 窗口，并关闭 removals、加载错误和
-  当前快照中已经消失的输出窗口。
-- GTK 静态渲染器会记住每个输出上次应用的静态 plan；当 source、fit、background
-  和输出名都未变化时，后续同步不会重复移除/创建 Picture 或 CSS fallback surface。
+  `$XDG_CACHE_HOME/gilder/render-cache/`，renderer 会消费这些计划，为匹配到的输出创建或
+  更新 layer-shell surface，并关闭 removals、加载错误和当前快照中已经消失的输出。
+- renderer 会记住每个输出上次应用的静态 plan；当 source、fit、background 和输出名都未变化时，
+  后续同步不会重复创建资源。
 
 视频壁纸：
 
-- 首选 GStreamer pipeline，利用系统硬件解码能力。
+- 当前主线是 `native-vulkan-gst-video`：GStreamer 做 demux/parser/appsink/audio/clock
+  前端，native Vulkan 负责 GPU import/decode/render/present，GStreamer sink 不接管
+  Wayland surface。
 - daemon 会为 video entry 生成 `render_sync.video_plans`，包含 source、poster、
   loop、muted、fit、start offset 和性能策略合成后的目标 FPS。
-- 如果 video entry 提供 poster，或 manifest 的 `preview.poster` 可用，daemon 会同时
-  生成一条静态 poster plan；`gtk-renderer` 可以先把它显示在 background layer，
-  作为视频 sink 接入前以及加载失败时的占位画面。视频 pipeline 成功接管输出后，
-  GTK renderer 会释放实际 static surface，但保留 poster plan 作为错误 fallback。
-- 同时启用 `gtk-renderer` 和 `video-renderer` 时，GTK 主线程会尝试为每个
-  video plan 构建 `playbin + gtk4paintablesink`，把 GStreamer 提供的
-  `GdkPaintable` 放入对应输出的 layer-shell background window；poster 仍作为加载
-  前、插件缺失和 pipeline 后续错误时的 fallback，不应在 active video 期间长期保留
-  为额外 static surface。
-- 只启用 `video-renderer` 时，daemon 会启动独立 GStreamer worker，消费同一份
-  `render_sync`，并用 headless sink 固化 playbin 生命周期、loop、muted、
-  pause/resume/stop 和 bus polling 控制面。
+- 如果 video entry 提供 poster，或 manifest 的 `preview.poster` 可用，daemon 会保留
+  poster fallback plan，作为 Vulkan video importer 尚未接管输出或加载失败时的占位画面。
+- 只启用 `video-renderer` 而未启用 native Vulkan 时，GStreamer worker 只作为
+  headless 控制面和 CI/codec 验证入口；它不提供可见 surface。
 - 默认音频被丢弃。只有 manifest `runtime.allow_audio = true` 且 video entry
-  `muted = false` 时，GStreamer 才允许音频输出；否则 playbin 使用 `fakesink`
-  丢弃音频。
-- 性能策略合成出的 `target_max_fps` 会通过 video sink 的 `throttle-time`
-  应用，避免在 decoder 和 sink 之间插入 `videorate ! capsfilter` 干扰
-  DMABuf/GLMemory caps 协商。
-- 渲染器在应用 video plan 时会跳过未变化的 state、mute、fit、target FPS 和
-  start offset，避免周期性 render sync 造成重复 GStreamer property 更新或把视频反复
-  seek 回起始偏移。
-- 支持 MP4/H.264、WebM/VP9/AV1，实际支持由系统插件决定。
+  `muted = false` 时，GStreamer 前端才允许音频输出或音频时钟接入。
+- 可见视频的 FPS/pacing 由 native Vulkan present loop 控制。GStreamer 前端不得通过
+  `waylandsink`、`gtk4paintablesink`、`glsinkbin` 或其他显示 sink 接管输出。
+- 支持 MP4/H.264、WebM/VP9/AV1，实际 demux/parser/decoder 支持由系统 GStreamer 插件、
+  Vulkan Video capability 和 GPU driver 共同决定。
 - 循环、静音、音频丢弃、最大 FPS、poster、空闲暂停必须是 manifest 中的显式策略。
-- 解码和播放控制不阻塞 GTK 主线程。
+- 解码和播放控制不阻塞 IPC/desktop refresh 线程。
 
-GTK/GStreamer 低内存渲染方向：
+Native Vulkan + GStreamer/DMA 方向：
 
 - 不把硬解等同于 zero-copy。运行时必须同时报告实际 decoder、decoder class、decoder
-  policy status、decoder/sink caps memory features、memory path、allocation query、
-  QoS 和 GTK frame clock；只有出现
-  sink-side DMABuf/GLMemory 等 GPU memory caps，并且后续补齐 compositor
-  presentation 证据后，才把路径视为强 zero-copy 证据。
-- 避免在 decoder 到 sink 之间插入会破坏 GPU memory caps 协商的通用 CPU 元件。当前
-  active 视频默认不再插入 `videorate ! capsfilter`，而是使用 sink
-  `throttle-time`；muted 路径只启用 video playbin flag，并关闭 sink
-  `enable-last-sample`，减少无意义的 audio/deinterlace/last-sample 常驻引用。
-- GTK 视频路径默认直接使用 `gtk4paintablesink`，避免 `glsinkbin` 在 NVIDIA/GL wrapper
-  场景中引入额外 driver buffer、texture/pool 和 anonymous memory 保留。需要验证
-  GLMemory/DMABuf 时仍可用环境变量强制 `glsinkbin+gtk4paintablesink`。sink 低内存调优还会
-  在支持时关闭 async preroll、preroll frame 和 render delay，减少 paused/preroll/last-frame
-  路径的额外帧保留。
-- GTK renderer 已把视频运行时从单个输出对象里拆出来：对兼容的
-  `(source, loop, muted/audio policy, decoder policy, start offset, target FPS)` 使用一个
-  共享 GStreamer pipeline 和一个共享 `GdkPaintable`，每个输出只持有自己的
-  `gtk::Picture`、fit 和 frame-clock 统计。输出暂停或移除时只 detach 对应 picture；
-  最后一个输出释放时才把 pipeline 置为 `Null`。`renderer_runtime` 和 telemetry 会报告
-  `video_shared_runtimes`，用于区分 video surface 数和实际共享 GStreamer runtime 数。
-  这能同时降低多输出同源视频的解码、buffer pool、sink texture 和进程私有内存占用。
-- 启用 video renderer 的构建中，视频计划不再同时生成 poster 静态 surface 计划；GTK
-  会先尝试建立视频 surface，只有 pipeline 构建失败或运行中报错时才从
-  `video_plans[].poster` 懒加载 poster fallback。这样 active/resumed 视频路径不会先解码
-  一张通常很大的 poster 再立刻释放，启动峰值 decoded texture 和私有内存会更低。未启用
-  video renderer 的构建仍保留 poster 静态 fallback，避免没有视频能力时空白。
-- 运行时已经报告 `memory_path`、`allocation_reports` 和 `retention_report`，能区分 CPU raw
-  frame、decoder 侧 GPU/DMABuf、sink 侧 GPU/DMABuf、已响应的 allocator/buffer pool，以及
-  system-memory pool、last-sample/preroll frame 保留等风险。后续继续用真实 PSS/USS/private
-  delta 和 compositor presentation 证据校准 `gtk4paintablesink`、GDK/GSK texture、GStreamer
-  allocator 和 buffer pool 生命周期；优先通过运行时证据和小步重构减少保留，而不是只调高内存预算。
-- decoder/caps/allocation/memory path 诊断按 video runtime 缓存并低频刷新；共享 video
-  runtime 的 telemetry snapshot 会在一次 renderer snapshot 内复用同一份诊断、position 和
-  duration 查询；常规 video polling 只处理 bus/EOS/error/QoS，不会在每个 tick 反复遍历
-  pipeline 或发 allocation query。
-- GTK renderer tick 会按当前负载动态调度：video runtime 单独存在时使用 250ms 常规
-  polling，frame stats 按 500ms 写回最近的 runtime snapshot；如果同一进程还有 slideshow
-  过渡需要更短 tick，则按 slideshow 的短间隔运行；纯静态无动态工作时不安装 renderer
-  runtime timeout，render sync 由 bridge 线程投递 GLib idle wakeup 后在 GTK 主线程立即消费，
-  减少 8K static idle wakeup。完整 renderer runtime snapshot 只在收到新 render sync、
-  slideshow 实际换帧、decoder 观察结果变化或 pipeline 报错时写入；frame stats 到期判断只读取
-  video runtime 计数，不会重新计算 surface/source footprint；GTK 组合 snapshot 复用
-  `resource_snapshot()` 中已经计算出的 video source footprint，不会为了序列化 video pipeline
-  telemetry 再重复读取源文件 metadata。resource footprint 内部按路径缓存 source size，
-  重复静态图、幻灯片帧或同源视频仍保持 reference byte 语义，但每个唯一路径只读取一次 metadata。
-- GTK video frame-clock 诊断默认走轻量模式：每个输出只连接 after-paint handler，并且每帧只
-  记录 tick、frame counter/time 和 interval，避免 4K/高刷 active 视频在 GTK 主线程持续执行
-  phase signal、FPS/refresh_info 和 GDK `FrameTimings` 查询。需要完整 presentation 证据时，
-  启动 daemon 前设置 `GILDER_GTK_VIDEO_FRAME_STATS=full`；需要最大化性能排查时可设置为
-  `off` 完全关闭这组 GTK frame-clock 诊断。
-- GStreamer video pipeline 会在 `playbin` 子元素创建时把 queue/queue2/multiqueue 这类内部队列压到
-  4 buffers、25ms、byte 上限关闭，用小时间/帧数窗口约束 4K/高刷视频的中间缓冲，而不是让
-  默认 1-2s 队列在 raw/GL 帧路径上放大 PSS/USS/GPU memory。该调优不默认开启 leaky/drop；
-  下游跟不上时先让上游背压，避免为了省内存破坏关键帧解码稳定性。runtime diagnostics 会报告
-  `queue_reports`，用于把 queue current level 和 PSS/显存采样对齐。
-- GTK sink chain 默认仍为 `auto`，但默认路径使用 direct `gtk4paintablesink`，把 NVIDIA/GL
-  wrapper 场景中额外的 PSS/USS 和显存保留排除出常规播放路径。需要验证 GLMemory/DMABuf 或
-  零拷贝行为时，可用 `GILDER_GTK_VIDEO_SINK_CHAIN=glsinkbin` 强制
-  `glsinkbin+gtk4paintablesink`；`gtk4` 可显式固定 direct sink，便于对比同一视频下的
-  sink caps、queue reports、PSS/USS 和 GPU memory。
-- 静态图普通 fit 已从 CSS background 改为显式 `gtk::Picture` surface，切到视频、
-  移除输出或换帧时会从 GTK 容器移除 Picture 引用；`tile` 仍保留 CSS background
-  fallback。大图已有输出尺寸级缓存，后续还要继续确认 GDK/GSK decoded texture
-  生命周期。telemetry 已拆分 static Picture/CSS/color surface 数，并按 Picture
-  paintable intrinsic size 估算 RGBA decoded footprint，作为 retained texture 风险线索。
-
-当前技术栈冲击顶级性能的判断：
-
-- GTK + GStreamer + direct `gtk4paintablesink` 仍是下一阶段的主线。它已经能把
-  视频解码、GTK layer-shell surface、生命周期释放、decoder/caps/allocation 诊断和性能
-  策略放在同一套 runtime 中，工程复杂度和可维护性明显低于自写 Wayland/GL sink。
-- 这条栈可以做到“壁纸软件顶级”：静态 8K 路径应保持 CPU 接近 0、低私有内存；4K/240fps
-  视频路径在 NVIDIA/niri 20 逻辑 CPU 本机样本中已降到约 75% 进程 CPU、约 3.8% 整机 CPU，
-  `Private_Dirty` 约 109MiB、PSS/USS/显存约 390/356MiB/496MiB。后续增强应把
-  sink-side GLMemory/DMABuf、allocation pool、compositor presentation 证据纳入回归门槛，
-  而不是再把优化前的 `glsinkbin` high-memory 路径当作默认目标。
-- 这条栈不保证天然达到“播放器/渲染引擎极限”。如果 GTK/GDK/GSK 或
-  `gtk4paintablesink` 在目标驱动/合成器上无法稳定暴露 sink-side GLMemory/DMABuf，或者
-  presentation/frame pacing 仍高于预算，就需要评估更低层方案：自定义 GStreamer sink、
-  libmpv/render API、或直接 Wayland linux-dmabuf/GL/Vulkan surface。替换栈的触发条件必须
-  来自同场景实测：硬解已满足但 sink caps 只能到 SystemMemory、PSS/private/GPU 显存无法压到
-  T0 预算、或 compositor presentation 证明长期掉帧。
+  policy status、caps memory features、memory path、allocation query、QoS、Vulkan import
+  path、present pacing 和 compositor/frame callback 证据。
+- 第二条路线不再保留独立 native-wgpu backend；它收敛为 GStreamer appsink/DMA 前端接
+  native Vulkan importer。历史 native-wgpu H.264 GPU-memory 数值只作为对照证据。
+- 第三条 native-wayland `playbin/waylandsink` video helper 已删除；native Wayland 只保留
+  layer-shell surface/output host、scale/viewport 和 linux-dmabuf feedback。
+- NVIDIA 首版可以走 CUDAMemory/CUDA interop 或 Vulkan Video direct decode，但 CUDA 只能是
+  NVIDIA importer，不是跨 GPU 抽象。AMD/Intel 首选 VA/DMABuf -> Vulkan external
+  memory/image importer。
+- H.265 Vulkan Video ready-prefix path 已证明 4K/240 direct decode/render/present 可行；
+  下一步是从受控 AU window 推进到完整播放循环、音频/时钟和跨 GPU importer。
+- GStreamer appsink 前端负责把 sample/caps/allocator/DMABuf 或 GPU-memory 证据暴露给
+  native Vulkan；如果样本只能落到 CPU raw frame，应明确记录为 copy path，不把它当成
+  direct path。
+- `renderer_runtime.video_pipelines` 中的 `gtk_frame_*` 字段暂时作为兼容 telemetry 名称保留；
+  native Vulkan 路径下它们通常为空或 0，真实 presentation 证据应来自 Vulkan present
+  telemetry、Wayland frame callback 或 `wp_presentation`。
+- 性能成功标准继续使用同场景真实证据：4K/240fps video 的 CPU、PSS/USS、
+  `Private_Dirty`、NVIDIA/DRM 显存、QoS/drop、present FPS、frame pacing、active ->
+  paused/fullscreen/hidden 的资源释放，以及 static/web/scene/shader 的空闲 wakeup 和恢复延迟。
 
 Native Wayland host 方向：
 
@@ -239,22 +167,21 @@ Native Wayland host 方向：
 - 该 host 可以借鉴 linux-wallpaperengine 的 wlr-layer-shell/smithay-client-toolkit
   做法：为每个输出创建 `Layer::Background` surface，锚定四边，处理 fractional scale
   与 viewporter，并把 raw Wayland display/surface 交给内容 runtime。Gilder 主 crate
-  已把 `unsafe_code` 从 forbid 放宽为 warn；raw handle、GStreamer overlay 或 GPU surface
+  已把 `unsafe_code` 从 forbid 放宽为 warn；raw handle、Vulkan surface/importer
   创建这类不可避免的 `unsafe` 必须留在明确的 native Wayland/GPU 边界内，并通过实测和代码审计
   逐步证明为 safe wrapper。
-- 第一阶段 `native-wayland-renderer` 只建立 host/surface 生命周期、configure/scale 状态和
-  capability 暴露；raw Wayland handle 导出会在接入 wgpu/GStreamer overlay 前以单独 safe
-  wrapper 落地，避免依赖 Wayland crate 私有指针布局。
-- static image、slideshow 和 scene-lite 可以优先走同一套 wgpu/CPU upload renderer，
-  在静态或暂停状态只按 configure/属性变化重绘；video 走 GStreamer sink/overlay 或后续
-  DMABuf-aware sink；shader 走 wgpu shader runtime；这些路径共享 host 生命周期和性能策略。
+- `native-wayland-renderer` 只建立 host/surface 生命周期、configure/scale 状态、dmabuf
+  feedback 和 capability 暴露；raw Wayland handle 导出以单独 safe wrapper 落地，避免依赖
+  Wayland crate 私有指针布局。
+- static image、slideshow、scene-lite、shader 和 video 都应收敛到 native Vulkan backend。
+  GStreamer 只提供 demux/parser/appsink/audio/clock 前端，不再通过 sink/overlay 接管显示。
 - web 壁纸是单独的浏览器 runtime，不是 video sink 的延伸。最现实的第一阶段是
   `gilder-web-renderer` helper：内部可使用 WebKitGTK/GTK layer-shell 或等价 C/GObject
   绑定，主 daemon 只通过 IPC 下发 root/index、属性、mute、pause、FPS/可见性和权限策略。
   这样 GTK/WebKit 的固定内存与崩溃面被限制在 web helper 内，主 renderer 不再依赖
   gtk-rs；后续如果 WPE WebKit、CEF/Ozone Wayland 或 offscreen texture 路径能用实测证明
   更低内存，再替换 helper 内部实现。
-- 是否替换 GTK 默认路径必须用同一批证据 gate：4K/240fps video 的 CPU、PSS/USS、
+- native Vulkan 是否成为默认路径必须用同一批证据 gate：4K/240fps video 的 CPU、PSS/USS、
   `Private_Dirty`、NVIDIA/DRM 显存、QoS/drop、presentation/frame callback、active ->
   paused/fullscreen/hidden 的资源释放，以及 static/web/scene/shader 的空闲 wakeup 和恢复延迟。
 
@@ -263,8 +190,8 @@ Native Wayland host 方向：
 - v1 不引入复杂脚本运行时。
 - 优先支持视频、帧序列、简单 slideshow、参数化颜色/速度/缩放。
 - daemon 会为 slideshow entry 生成 `render_sync.slideshow_plans`，包含 source
-  列表、切换间隔、transition、fit 和性能策略合成后的目标 FPS。GTK renderer
-  当前使用主线程低开销定时器执行即时切换，后续再扩展 crossfade 等过渡。
+  列表、切换间隔、transition、fit 和性能策略合成后的目标 FPS。当前计划层先保证
+  slideshow/fallback 语义，native Vulkan runtime 后续负责可见过渡和 pacing。
 - Web wallpaper 作为受限运行时处理，默认关闭本地文件越界访问和网络权限；在
   WebKit runtime 完成前，renderer 使用 manifest `fallback` 生成静态计划，并按
   动态壁纸参与 `pause-dynamic` 资源释放策略。
@@ -310,7 +237,7 @@ Native Wayland host 方向：
 
 ## 桌面状态性能策略
 
-性能策略独立于 GTK 渲染器和具体合成器适配器：
+性能策略独立于具体 renderer backend 和合成器适配器：
 
 - 合成器适配器提供 `DesktopSnapshot`，包含输出可见性、focused、fullscreen、工作区和电源状态。
 - 电源状态由 Linux `power_supply` sysfs 提供；系统电池放电时触发 battery
@@ -341,8 +268,8 @@ Native Wayland host 方向：
   该策略支持阈值、冷却时间、每输出开关、每输出动作覆盖和全局 kill switch，并在
   `status`/telemetry 中报告当前采样、触发原因和 adaptive 动作，方便用户审计。视频
   renderer runtime 会报告播放 position、duration、实际 frame limiter 状态、GStreamer
-  QoS processed/dropped 统计、GTK frame clock tick/interval 统计，以及从实际 decoder
-  和 caps memory features 推导的 zero-copy 证据分级、memory path 分级和
+  QoS processed/dropped 统计、兼容 frame timing 字段，以及从实际 decoder
+  和 caps/import memory features 推导的 zero-copy 证据分级、memory path 分级和
   allocator/buffer-pool 协商线索；compositor presentation feedback 或原生 Wayland frame
   callback 统计仍是后续工作。
   `GILDER_ADAPTIVE_STATE` 仅作为验证入口，用于构造高于当前阈值的 CPU/内存压力、温度、
@@ -355,20 +282,20 @@ Native Wayland host 方向：
 地调用 compositor 适配器；状态修改命令和周期刷新仍会强制采集新的桌面快照。
 `status.telemetry` 会暴露桌面刷新、read 请求快照复用、桌面变化和 `render_sync`
 缓存 hit/miss 计数、单次 render sync 的 package/archive cache 统计、archive cache
-淘汰计数、静态大图运行时降采样缓存的生成/复用/淘汰计数、计划层静态图/poster/slideshow 图片资源数量和源文件字节 footprint、计划层视频 source 引用/去重/重复候选、GTK renderer
+淘汰计数、静态大图运行时降采样缓存的生成/复用/淘汰计数、计划层静态图/poster/slideshow 图片资源数量和源文件字节 footprint、计划层视频 source 引用/去重/重复候选、renderer
 当前 static surface/slideshow surface/video pipeline 指向的源资源引用数、去重资源数和字节 footprint、static surface 类型计数、估算 decoded footprint，以及渲染器同步更新
 queued/skipped 计数。计划层和 renderer 源文件字节不是解码后的纹理内存或 USS，但能在性能采样中暴露
-大图、大 poster、slideshow 图片或视频源是否仍被计划引用或被 GTK surface/pipeline 持有，便于用性能采样证明确实没有因为轮询
-反复调用 compositor 适配器、重复生成渲染计划、无限保留旧 `.gwp` 解包缓存、GTK surface 残留或重复投递未变化的同步。
+大图、大 poster、slideshow 图片或视频源是否仍被计划引用或被 renderer surface/pipeline 持有，便于用性能采样证明确实没有因为轮询
+反复调用 compositor 适配器、重复生成渲染计划、无限保留旧 `.gwp` 解包缓存、surface 残留或重复投递未变化的同步。
 视频 source 重复候选用于定位同一视频在多个输出上被计划为独立 pipeline 的场景，为后续解码/texture 共享优化提供基线。
 周期刷新只在桌面快照变化时发送 `desktop.changed` watch 事件，并且只在
 `render_sync` 实际变化时投递给渲染器，避免固定频率重建 pipeline。IPC 状态变更
 仍会广播 `state.changed` 供客户端更新 UI，但如果生成的 `render_sync` 和上一份一致，
-daemon 不会把它再次送入渲染器队列。GTK renderer bridge 线程收到新同步后会投递一个
-GLib idle wakeup；GTK 主线程消费队列时会 drain 当前积压并只应用最新 render sync，因为每份
-render sync 都描述完整目标状态；这样快速切换或状态风暴不会让 GTK/GStreamer 反复创建中间态
-surface/pipeline 或重复生成 runtime snapshot。GTK 静态渲染器会在 paused 时关闭对应
-background 窗口；GStreamer 渲染器根据 `mode` 和 `max_fps` 执行暂停或限帧。
+daemon 不会把它再次送入渲染器队列。renderer 消费队列时应 drain 当前积压并只应用最新
+render sync，因为每份 render sync 都描述完整目标状态；这样快速切换或状态风暴不会让
+native Wayland/Vulkan/GStreamer 前端反复创建中间态 surface、pipeline 或 runtime snapshot。
+renderer 在 paused/remove 时关闭对应 background surface；video 前端根据 `mode` 和
+`max_fps` 执行暂停、限帧或释放。
 刷新周期由 `performance.desktop_refresh_interval_ms` 配置，默认 2000ms，实际运行会
 钳制到不低于 250ms。
 daemon 会缓存最近一次 `render_sync`，当渲染相关 config（壁纸绑定、fit、性能策略和
@@ -377,7 +304,7 @@ snapshot、cache 目录和已引用壁纸包的 JSON/TOML manifest/`.gwp` 元数
 `status`、watch snapshot 和状态事件会复用缓存，避免性能采样期间反复读取
 manifest、校验资源或解包。当前不参与渲染的 properties、adapter 开关和桌面状态刷新
 周期不会单独让缓存失效。
-单次 render sync 生成期间会用临时 package cache 复用已解析的 manifest/package，默认最多保留 16 个条目，并且这些条目引用的去重源资源 footprint 默认最多 512MiB；超过条目数或 `package_cache_max_retained_unique_resource_bytes` 后按最早插入优先淘汰。`[cache].package_cache_max_entries = 0` 或 `[cache].package_cache_max_retained_unique_resource_bytes = 0` 会禁用该临时保留，适合希望压低 plan 构建峰值内存的用户。这里的 byte 上限基于 manifest 引用的源文件/目录大小，用作大包保留线索，不是解码纹理、GTK 内部缓存或 USS；telemetry 还会把 retained preview thumbnail/poster 的引用数、去重数和源文件 byte footprint 单独拆出，便于发现超大 preview 资产。
+单次 render sync 生成期间会用临时 package cache 复用已解析的 manifest/package，默认最多保留 16 个条目，并且这些条目引用的去重源资源 footprint 默认最多 512MiB；超过条目数或 `package_cache_max_retained_unique_resource_bytes` 后按最早插入优先淘汰。`[cache].package_cache_max_entries = 0` 或 `[cache].package_cache_max_retained_unique_resource_bytes = 0` 会禁用该临时保留，适合希望压低 plan 构建峰值内存的用户。这里的 byte 上限基于 manifest 引用的源文件/目录大小，用作大包保留线索，不是解码纹理、renderer 内部缓存或 USS；telemetry 还会把 retained preview thumbnail/poster 的引用数、去重数和源文件 byte footprint 单独拆出，便于发现超大 preview 资产。
 `.gwp` 解包目录会写入 `$XDG_CACHE_HOME/gilder/render-cache/`，默认最多保留 32 个旧
 archive cache 条目；生成计划时当前正在使用的 archive cache 条目会被保护，其余条目按最旧优先淘汰。
 `[cache].render_cache_max_entries = 0` 表示尽量只保留当前受保护条目，适合希望 aggressive

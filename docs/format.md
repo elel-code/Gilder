@@ -238,7 +238,7 @@ daemon 会把 video entry 转成 `render_sync.video_plans`，其中 `manifest_ma
 软处理分支。
 `entry.poster` 会优先作为视频占位图；如果没有设置，会回退到 manifest 的
 `preview.poster`。有可用 poster 时，daemon 会额外生成一条静态渲染计划供
-`gtk-renderer` 显示。
+renderer 在视频 importer 尚未接管输出或加载失败时显示。
 
 ### Slideshow
 
