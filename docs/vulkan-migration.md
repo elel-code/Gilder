@@ -613,8 +613,7 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   `/tmp/gilder-vulkan-h264-layout-probe.json` 显示 NVIDIA RTX 4060 Laptop GPU 的 H.264
   Main/High progressive 与两种 interlaced layout 均可查询通过，Baseline 仍只有 progressive。
   `run_h264_ready_prefix_video` 现在根据 SPS `frame_mbs_only_flag` 和 bootstrap window 是否出现
-  field picture 选择 layout，并把 `h264_picture_layout` 写入 runtime/smoke summary。注意：
-  当前 field picture submit 仍有 gate，layout 支持不等于 field/interlaced 解码已完成。
+  field picture 选择 layout，并把 `h264_picture_layout` 写入 runtime/smoke summary。
 - 本轮验证：`cargo fmt -- --check`、`bash -n scripts/native-vulkan-visible-codec-smoke.sh`、
   `bash -n scripts/native-vulkan-h264-ready-prefix-video-smoke.sh`、默认 `cargo test`、
   `cargo test --features native-vulkan-gst-video`、`native-vulkan-gst-video` release build
@@ -629,9 +628,18 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
 - 同日 H.264 planner 已把 short-term reference 的内部 key 从单独 `frame_num` 扩展为
   `frame_num + field_kind`，并把 `field_pic_flag/bottom_field_flag` 贯穿到 reference snapshots、
   active DPB 和 `StdVideoDecodeH264ReferenceInfoFlags`。新增单测覆盖同一个 `frame_num` 的
-  top/bottom field key 可并存，以及 Vulkan reference flags 正确设置 top/bottom 位。当前
-  progressive 行为不变，field picture gate 仍保持关闭；下一步要在真实 interlaced/field
-  H.264 源和 driver smoke 通过后才允许任意 field picture 连续解码。
+  top/bottom field key 可并存，以及 Vulkan reference flags 正确设置 top/bottom 位。随后继续
+  放开 H.264 interlaced/MBAFF 路线：High 8-bit parameter-set readiness 不再要求
+  `frame_mbs_only_flag=true`，`frame_mbs_only=false` 时优先选择 interlaced layout；planner
+  对 `field_pic_flag=true` 不再硬拒绝，并按 top/bottom field 选择 `PicOrderCntVal`，同一个
+  `frame_num` 的互补场不会再触发 gaps-in-frame-num 推断。2026-06-22 真实 Wayland
+  `HDMI-A-1` evidence `/tmp/gilder-vulkan-h264-interlaced-mbaff-visible` 使用 x264
+  interlaced/MBAFF H.264 源，通过 `decoded/presented=60/60`、
+  `h264_picture_layout=interlaced-interleaved-lines`、`h264_input_mode=streaming-queue`、
+  `b_frames=38`、`max_reference_count=3`、`video_resource_memory_bytes=7536640`、
+  `session_memory_bytes=2215936`、`bitstream_buffer_bytes=524288`。这证明 interlaced frame
+  picture 可见路径已走通；真实 `field_pic_flag=true` field-coded 码流 smoke 仍未拿到，
+  目前只有 planner/submit 侧单测覆盖。
 - H.265 visible/sequence submit 侧不再把 active DPB 简化成 `POC` 数组：新增
   `NativeVulkanH265ActiveDpbReference { poc, used_for_long_term_reference }`，并在
   `vkCmdBeginVideoCodingKHR` 的 begin reference slots 中用当前 entry 的 reference usage
