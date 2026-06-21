@@ -587,6 +587,33 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   `average_render_fps=59.999`，runtime 明确输出
   `memory_route.route=cuda-vulkan-copy`、`direct_import_confirmed=false`、
   `copy_risk=gpu-copy-or-sync-risk`、`last_dmabuf_import=null`。
+- 同日继续吸收 Sunshine 对 `gst-dma` 的直接启发：DMABUF import contract 现在不只记录
+  format/modifier/plane，还会在 Vulkan image 创建后记录 `image_memory_type_bits`、
+  `fd_memory_type_bits`、二者交集 `compatible_memory_type_bits`、最终
+  `selected_memory_type_index` 和 `memory_allocation_size`。如果交集为 0，错误信息会直接带出
+  image/fd 两侧 bitmask；这对应 Sunshine `vkGetMemoryFdPropertiesKHR` gate，能把
+  “GStreamer caps 看起来是 DMA” 与 “目标 Vulkan device 真的能 import 这个 fd” 分开。
+  `scripts/native-vulkan-visible-codec-smoke.sh` 也把这些字段写进 summary，后续 VA/DMABUF
+  真机 smoke 不再需要手翻 runtime JSON。
+- H.264 direct 路线的 picture-layout probe 已从单一 `PROGRESSIVE` 扩展为
+  `PROGRESSIVE`、`INTERLACED_INTERLEAVED_LINES`、`INTERLACED_SEPARATE_PLANES` 三种
+  layout；`--probe-video` 的 H.264 profile matrix 会分别报告 layout。真实本机 probe
+  `/tmp/gilder-vulkan-h264-layout-probe.json` 显示 NVIDIA RTX 4060 Laptop GPU 的 H.264
+  Main/High progressive 与两种 interlaced layout 均可查询通过，Baseline 仍只有 progressive。
+  `run_h264_ready_prefix_video` 现在根据 SPS `frame_mbs_only_flag` 和 bootstrap window 是否出现
+  field picture 选择 layout，并把 `h264_picture_layout` 写入 runtime/smoke summary。注意：
+  当前 field picture submit 仍有 gate，layout 支持不等于 field/interlaced 解码已完成。
+- 本轮验证：`cargo fmt -- --check`、`bash -n scripts/native-vulkan-visible-codec-smoke.sh`、
+  `bash -n scripts/native-vulkan-h264-ready-prefix-video-smoke.sh`、默认 `cargo test`、
+  `cargo test --features native-vulkan-gst-video`、`native-vulkan-gst-video` release build
+  和 `native-vulkan-gst-cuda` release build 均通过。真实 Wayland `HDMI-A-1` H.264
+  direct regression `/tmp/gilder-vulkan-h264-picture-layout-progressive-regression`
+  为 `decoded/presented=120/120`、`h264_picture_layout=progressive`、
+  `h264_input_mode=streaming-queue`、`queue_retained=0`、`average_present_fps=243.404`。
+  第二条 GStreamer visible route-gate
+  `/tmp/gilder-vulkan-visible-h264-sunshine-dmabuf-contract` 为 `frames_rendered=120`、
+  `frames_imported=118`、`memory_route=cuda-vulkan-copy`、`direct_import_confirmed=false`、
+  `dmabuf_*_memory_type_bits=none`，符合本机 NVIDIA `nvh264dec` 仍走 CUDAMemory fallback 的事实。
 - 同日 H.264 planner 已把 short-term reference 的内部 key 从单独 `frame_num` 扩展为
   `frame_num + field_kind`，并把 `field_pic_flag/bottom_field_flag` 贯穿到 reference snapshots、
   active DPB 和 `StdVideoDecodeH264ReferenceInfoFlags`。新增单测覆盖同一个 `frame_num` 的
