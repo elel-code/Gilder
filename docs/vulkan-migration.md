@@ -375,8 +375,9 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   8 个 smaps samples 中 `RSS/PSS/USS/Private_Dirty max=105048/73925/56404/26756 KiB`、
   平均 CPU `12.10%`、NVIDIA 进程 GPU memory `104 MiB`。这说明当前 H.264 direct 内存
   已主要落在 driver/Vulkan Video/session/heap floor，packet queue 没有 retained payload；
-  但 H.264 4K/240 仍未稳定满 240fps。剩余 direct H.264 边界收敛为真实 long-term coded
-  stream、field/interlaced picture、任意入口点 DPB 重建和 frame pacing/同步优化。
+  但 H.264 4K/240 仍未稳定满 240fps。剩余 direct H.264 边界收敛为更多真实 long-term coded
+  stream、field/interlaced picture 和 frame pacing/同步优化；任意非 IDR 入口重对齐已在后续
+  streaming queue 证据中补上。
 - H.264/H.265 visible direct input 已冒险合并为一套共用 streaming packet queue：
   `NativeVulkanStreamingAccessUnit` 提供 codec hook，泛型队列统一持有 GStreamer
   pipeline/appsink/bus、bootstrap 参数集选择、EOS seek loop、payload retained accounting 和
@@ -395,6 +396,25 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   `queue_retained=0`，8 个 samples 中 `RSS/PSS/USS/Private_Dirty max=105404/63269/45272/26844 KiB`、
   平均 CPU `12.49%`、NVIDIA 进程 GPU memory `104 MiB`。这证明本次大重构没有把 H.265
   4K/240 路线打退，也再次确认 H.264 4K/240 的剩余缺口不是 packet retention。
+- H.264 visible direct streaming queue 已补上任意非 IDR 入口的 bootstrap 重对齐：启动时
+  队列不再要求最初 capacity 个 AU 自身就是 ready-prefix，而是 bounded scan 到 SPS/PPS/IDR，
+  只保留固定容量窗口，丢弃不可解 P/B 前缀，并把 EOS loop 的 skip 位置同步到同一个可解入口；
+  默认 `GILDER_VULKAN_STREAMING_BOOTSTRAP_SCAN_LIMIT` 从 256/`capacity*16` 提高到
+  4096/`capacity*128`，仍然不保留被扫描掉的 payload。`scripts/native-vulkan-h264-ready-prefix-video-smoke.sh`
+  新增 `--arbitrary-entry-offset`，会用 `ffmpeg -copyinkf` 生成从非关键帧开始的源，并 gate
+  `h264_packet_queue_bootstrap_discarded_access_units > 0`、loop skip 和首帧 IDR。2026-06-21
+  真实 Wayland `HDMI-A-1` 证据：720p/60 B/P 源
+  `/tmp/gilder-vulkan-h264-arbitrary-entry-script-gate` 从 `0.35s` 入口启动，
+  `decoded/presented=60/60`、`bootstrap_discarded=39`、`loop_skip=39`、
+  `first_frame_idr=true`、`p_frames=30`、`b_frames=29`、`max_reference_count=2`、
+  `queue_retained=0`；手工 copyinkf 回归 `/tmp/gilder-vulkan-entry-realign-h264-copyinkf-v3`
+  丢弃 99 个坏前缀 AU 后可见播放 60 帧。4K/240 回归单独运行：
+  H.264 `/tmp/gilder-vulkan-h264-arbitrary-entry-4k240-regression-seq` 为
+  `decoded/presented=240/240`、`b_frames=119`、`queue_retained=0`、
+  `average_present_fps=198.012`；H.265 对照
+  `/tmp/gilder-vulkan-h265-bootstrap-scan-4k240-regression` 为
+  `decoded/presented=240/240`、`queue_retained=0`、`average_present_fps=240.927`。同轮
+  `cargo test --features native-vulkan-gst-video` 297 个测试通过。
 - H.264 GPU-memory/native-wgpu 对照是另一条口径：真实 Wayland 证据
   `/tmp/gilder-native-wgpu.SWqa42` 使用 `gst-dmabuf`、`pipeline_kind=cuda-direct`、
   `video_last_memory_types=gst.cuda.memory`、`video_last_export_source=cuda-direct-vulkan-staging`，
