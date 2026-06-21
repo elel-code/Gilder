@@ -535,6 +535,19 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   `max_reference_count=4`、`session_max_active_reference_pictures=4`、`queue_retained=0`、
   `average_present_fps=243.778`。该回归仍是普通 B/ref source，不是真实 long-term coded
   source；它证明 session active-reference 统计修正没有打退现有 H.265 visible direct path。
+- 同日继续补 H.264 reference POC 正确性：planner、active DPB、visible submit 和 runtime
+  telemetry 不再只保存 `pic_order_cnt[0]` 再把它复制成 `[val,val]`，而是保留并传递完整
+  `PicOrderCnt[2]`。这修掉 progressive frame 中 top/bottom POC 不同但 reference STD 信息
+  被压成单值的隐患，也为后续 field/top/bottom DPB key 重构打基础；field picture 仍未放开。
+  新增单测 `plans_h264_references_with_full_pic_order_count_pair` 覆盖 reference snapshot
+  保留 `[top,bottom]` POC；同轮 `cargo test --features native-vulkan-gst-video h264 -- --nocapture`
+  通过 29 个 H.264 相关测试，完整 `cargo test --features native-vulkan-gst-video`
+  通过 304 个库测试、7 个 `gilderctl` 测试和 16 个 `gilderd` 测试。release 构建通过；
+  真实 Wayland `HDMI-A-1` 回归 `/tmp/gilder-vulkan-h264-full-poc-regression` 使用
+  720p/60、`refs=3`、`bframes=2`、`weightp=2`、`weightb=1`、非关键帧入口 `0.35s`，
+  结果为 `decoded/presented=160/160`、`playback_loop_count=3`、
+  `loop_boundary_reset_count=2`、`max_reference_count=4`、`queue_retained=0`、
+  `average_present_fps=243.810`；runtime JSON 中 frame/reference 均输出 `pic_order_cnt`。
 - H.264 GPU-memory/native-wgpu 对照是另一条口径：真实 Wayland 证据
   `/tmp/gilder-native-wgpu.SWqa42` 使用 `gst-dmabuf`、`pipeline_kind=cuda-direct`、
   `video_last_memory_types=gst.cuda.memory`、`video_last_export_source=cuda-direct-vulkan-staging`，
