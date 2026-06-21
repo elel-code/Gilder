@@ -200,6 +200,23 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   avg decode submit `20us`、max present `4952us`、avg present `2812us`、
   `missed_frame_pacing_count=4`、max pacing late `846us`。这仍是受控 AU window 循环，不等价于完整
   continuous demux/parser/audio/seek runtime；下一步要把窗口替换为持续 AU supply 和 timeline/clock。
+- 2026-06-21 复测确认可见抖动不能再用 8 帧 window 判断：8-frame ready-prefix 在 240Hz 下每
+  33ms 回到 AU0，20 秒会循环 600 次，肉眼必然像抖动。`scripts/native-vulkan-h265-ready-prefix-video-smoke.sh`
+  默认已改成 `decode_prefix=target_fps`、生成源 `gop_size=target_fps`；如果 looped visible
+  playback 的 ready-prefix 短于 1 秒，脚本会失败，除非显式传 `--allow-short-loop` 做诊断。
+  最新真实 Wayland 20s evidence：`/tmp/gilder-vulkan-h265-ready-prefix-video.YS2xQf`，
+  源为 242 帧 `hevc/Main`、3840x2160@240，`ready_prefix_frame_count=240`、
+  `requested_playback_frame_count=4800`、`decoded_frame_count=4800`、
+  `presented_frame_count=4800`、`playback_loop_count=20`、`average_present_fps=239.99556876981734`，
+  FIFO present 下 `frame_sleep_count=0`、`missed_frame_pacing_count=0`。
+- 同一 evidence 下的约 70MB private dirty 主要是必要 Vulkan Video 资源，而不是残留 CPU copy：
+  `video_resource_memory_bytes=37552128`，对应 3840x2160 NV12 约 12.44MB/层乘以
+  `stream_dpb_slots=session_max_dpb_slots=3`；`session_memory_bytes=33775616` 是 NVIDIA
+  driver 报告的 `VkVideoSessionKHR` bind memory；`bitstream_buffer_bytes=249344`，因为当前已是
+  single persistent mapped reusable slot。三者合计约 71.6MB，基本解释当前 private dirty
+  观察值。后续还能压的是 stream/codec 允许时减少 DPB slots、复用 session/resource image、
+  避免额外 staging/readback；但对 4K H.265 P-frame direct decode，3 层 NV12 DPB + driver
+  session memory 已是当前主要下限。
 - `--run-clear` 已接入 logical device、swapchain、command buffer、semaphore/fence 和 clear present
   loop；同场景 `--duration 3 --target-fps 240` 跑到 720 frames，平均 239.996fps，swapchain 为
   `B8G8R8A8_UNORM`、1707x1067、3 images、FIFO present。
@@ -350,6 +367,16 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   ready-prefix=8、decoded=8、reset_count=4、AU7 readback layer1，Y/UV unique=205/256，
   hash=11542476098458954487/10292639723071029932。脚本 `--decode-prefix` 要求 readback
   非单值，避免把“命令完成但画面无效”的路径误判为通过。
+- H.265 P 帧重复/闪烁根因已确认并固化：`VkVideoDecodeH265PictureInfoKHR::pSliceSegmentOffsets`
+  对 Annex-B 输入应指向 slice segment 所在的 3-byte start code `00 00 01`，不是 NAL
+  payload/header offset，也不能简单取 4-byte start code 的第一个 0。对 `00 00 00 01`
+  前缀，正确值是 `payload_offset - 3`。错误偏移会让 `vkCmdDecodeVideoKHR` 和 decode query
+  仍报告完成，但 AU1/P 帧的 sampled/readback hash 会重复 AU0 或上一帧，表现为 P 帧不变化、
+  闪烁或抖动。实现已集中到 `native_vulkan_h265_annex_b_slice_segment_offset()` 和
+  `NativeVulkanH265NalPayload::slice_segment_offset`；单测
+  `uses_three_byte_h265_start_code_for_slice_segment_offset` 固化 3-byte/4-byte 两种前缀行为。
+  早期通过 `GILDER_VULKAN_H265_SLICE_OFFSET_ADJUST=-3` 证明该方向，当前默认逻辑已不需要该
+  手工调整。
 - `--sample-h265-ready-prefix` 已把多帧 direct decode 的末帧 NV12 output 接到现有 Vulkan
   shader sampling/offscreen render path。decoded texture 的 plane image view 和 shader
   read barrier 现在按实际 `base_array_layer` 创建，避免多帧 DPB/output 复用时仍假设 layer0。
