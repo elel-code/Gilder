@@ -288,6 +288,15 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   playbin/waylandsink 或继续压 packet queue。
   `GILDER_VULKAN_H264_PRESENT_DELAY_US=400` 诊断只把 `vkQueuePresentKHR` avg 降到
   `3934us`，但总 FPS 降到 `212.855`，说明简单 CPU sleep 不是有效方向，已移除该临时开关。
+- H.264 streaming planner 已继续推进一类常见连续码流：非参考 picture 不再被视为 unsupported。
+  planner 会优先选择空闲 output layer 作为 scratch，`setup_slot_index=None`，decode submit 不传
+  setup DPB slot，且运行时不会把该输出写入 active DPB；如果 scratch 覆盖旧 reference，会先从
+  reference map/order 中移除，避免后续错误引用。新增单测
+  `plans_h264_non_reference_pictures_as_scratch_outputs` 覆盖 `IDR -> ref P -> non-ref P -> ref P`
+  仍只引用上一张 reference picture。现有 4K/240 H.264 streaming queue 回归 smoke
+  `/tmp/gilder-vulkan-h264-nonref-regression` 通过 `decoded/presented=2400/2400`、
+  `average_present_fps=214.29252909427166`、`queue_retained=0`；该源本身仍是全 reference P 帧，
+  所以这是可见路径回归证据，不是非参考实流证据。
 - H.265 visible direct input 也已接到 bounded streaming packet queue：新增
   `--h265-input streaming-queue` 和脚本 `--streaming-queue`，按需拉 AU、上传到 bitstream ring
   后释放 payload，runtime JSON 报告 `h265_packet_queue_*`。2026-06-21 真实 Wayland
