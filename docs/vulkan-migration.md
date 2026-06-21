@@ -339,6 +339,22 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   `/tmp/gilder-vulkan-h265-longterm-planner-4k240-regression` 为
   `decoded/presented=240/240`、`h265_input_mode=streaming-queue`、`queue_retained=0`、
   `average_present_fps=240.4747`。
+- 2026-06-21 handoff snapshot：`bff077b Support H264 PicNum reference ordering` 已推送。
+  H.264 direct Vulkan Video 现在默认走 bounded `streaming-queue`，不维护 spool，不使用
+  playbin/waylandsink；P/B 帧、多参考、短期 L0/L1 modification、MMCO、long-term planner
+  和 `frame_num` wrap 后的 PicNum reference ordering 都有单测或真实 Wayland evidence。
+  最新 H.264 真实 Wayland `HDMI-A-1` 回归：720p/60
+  `/tmp/gilder-vulkan-h264-picnum-wrap-regression` 为 `decoded/presented=60/60`、
+  `h264_input_mode=streaming-queue`、`queue_retained=0`、`average_present_fps=252.939`；
+  4K/240 B-frame `/tmp/gilder-vulkan-h264-picnum-wrap-4k240-regression` 为
+  `decoded/presented=240/240`、`b_frames=119`、`max_reference_count=2`、
+  `queue_retained=0`、`average_present_fps=198.431`。H.265 对照
+  `/tmp/gilder-vulkan-h265-picnum-wrap-4k240-regression` 为
+  `decoded/presented=240/240`、`h265_input_mode=streaming-queue`、`queue_retained=0`、
+  `average_present_fps=240.522`。该 snapshot 证明 streaming queue 和常见连续 H.264/H.265
+  可见路径继续成立；它不证明原目标“任意连续”完全完成。剩余边界仍是 H.264 真实
+  long-term coded stream、gaps-in-frame-num/non-existing refs、field/interlaced picture、
+  任意入口点 DPB 重建，以及 H.264 4K/240 稳定帧率。
 - H.264 GPU-memory/native-wgpu 对照是另一条口径：真实 Wayland 证据
   `/tmp/gilder-native-wgpu.SWqa42` 使用 `gst-dmabuf`、`pipeline_kind=cuda-direct`、
   `video_last_memory_types=gst.cuda.memory`、`video_last_export_source=cuda-direct-vulkan-staging`，
