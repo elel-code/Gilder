@@ -275,7 +275,11 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   90 个 smaps_rollup 样本 `RSS/PSS/USS/Private_Dirty max=112908/68437/49192/31272 KiB`、
   平均 CPU `15.13%`、`average_present_fps=212.375`。当前内存问题已不在 packet retention；
   H.264 4K/240 剩余瓶颈在 H.264 level/capability 边界、present pacing/同步或驱动 codec 路径。
-  剩余码流边界是 long-term reference、weighted prediction、field picture 和任意入口点 DPB 重建。
+  P-slice weighted prediction 已补 `pred_weight_table` 解析并通过真实 Wayland 4K/240
+  `/tmp/gilder-vulkan-h264-weightp-4k240-smoke`，结果为 `decoded/presented=240/240`、
+  `p_frames=239`、`max_reference_count=2`、`queue_retained=0`、`average_present_fps=214.9888566483139`。
+  剩余码流边界是 long-term reference、B-slice 显式 L1 reference list modification、field
+  picture 和任意入口点 DPB 重建。
 - 2026-06-21 CI 修复复测同一路线时增加了 per-frame present telemetry 和 3-image swapchain
   preference。真实 Wayland `HDMI-A-1`、3840x2160@240、2400-frame streaming queue evidence
   `/tmp/gilder-vulkan-h264-ci-fix-smoke` 为 `decoded/presented=2400/2400`、
