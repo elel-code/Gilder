@@ -101,47 +101,39 @@ longer a maintained input mode. Valid evidence should report
 `h264_input_mode=streaming-queue`, non-zero
 `h264_packet_queue_pulled_count`, and
 `h264_packet_queue_retained_payload_bytes=0` at shutdown.
-Latest 2026-06-22 real Wayland arbitrary-entry direct gates on
+Latest 2026-06-22 retained real Wayland arbitrary-entry direct gates on
 `WAYLAND_DISPLAY=wayland-1`, `HDMI-A-1`, 3840x2160@240:
-H.264 `/tmp/gilder-vulkan-h264-arbitrary-continuous-mmco-wrap` passed with
-`decoded_frame_count=480`, `presented_frame_count=480`, `b_frames=317`,
-`max_reference_count=4`, `h264_packet_queue_bootstrap_discarded_access_units=155`,
-`h264_packet_queue_loop_skip_access_units=155`,
-`bitstream_ring_wrap_count=43`, and `average_present_fps=195.617`; H.265
-`/tmp/gilder-vulkan-h265-arbitrary-continuous-regression` passed with
-`decoded_frame_count=480`, `presented_frame_count=480`, `b_frames=317`,
-`max_reference_count=4`, `h265_packet_queue_bootstrap_discarded_access_units=153`,
-`h265_packet_queue_loop_skip_access_units=153`, `bitstream_ring_wrap_count=11`,
-and `average_present_fps=240.976`. These are decode/present functional gates;
-H.264 still needs separate long-duration pacing and memory/CPU sampling before
-calling stable 240fps complete.
-
-Latest retained performance snapshots for the same arbitrary-entry functional
-sources are:
-H.264 `/tmp/gilder-vulkan-h264-arbitrary-performance-keep` passed
+H.264 `/tmp/gilder-vulkan-h264-barrier-tightened-final` passed
 `decoded_frame_count=2400`, `presented_frame_count=2400`,
 `playback_loop_count=9`, `loop_boundary_reset_count=8`,
 `h264_packet_queue_bootstrap_discarded_access_units=155`,
 `h264_packet_queue_loop_skip_access_units=155`,
-`h264_packet_queue_retained_payload_bytes=0`, `bitstream_ring_wrap_count=214`,
-and `average_present_fps=197.51976491979758`; retained smaps evidence in
-`/tmp/gilder-vulkan-h264-arbitrary-performance-keep/performance` reported
-`RSS/PSS/USS/Private_Dirty max=105144/70095/58636/26924 KiB`, average CPU
-`13.30%`, and NVIDIA process GPU memory `130 MiB`. H.265
-`/tmp/gilder-vulkan-h265-arbitrary-performance-keep` passed
+`h264_packet_queue_retained_payload_bytes=0`,
+`h264_display_handoff_strategy=gpu-copy-to-dual-slot-nv12-display-ring`,
+`h264_display_copy_count=2400`, `h264_decode_ahead_submit_count=2399`,
+`bitstream_ring_wrap_count=214`, and `average_present_fps=207.34187751641383`;
+retained smaps evidence in
+`/tmp/gilder-vulkan-h264-barrier-tightened-final/performance` reported
+`RSS/PSS/USS/Private_Dirty max=102956/88739/84188/27236 KiB`, average CPU
+`14.36%`, and NVIDIA process GPU memory `154 MiB`. H.265
+`/tmp/gilder-vulkan-h265-after-h264-barrier-tightened` passed
 `decoded_frame_count=2400`, `presented_frame_count=2400`,
 `playback_loop_count=9`, `loop_boundary_reset_count=8`,
 `h265_packet_queue_bootstrap_discarded_access_units=153`,
 `h265_packet_queue_loop_skip_access_units=153`,
 `h265_packet_queue_retained_payload_bytes=0`, `bitstream_ring_wrap_count=57`,
-and `average_present_fps=240.1502442126708`; retained smaps evidence in
-`/tmp/gilder-vulkan-h265-arbitrary-performance-keep/performance` reported
-`RSS/PSS/USS/Private_Dirty max=103088/68051/56592/24660 KiB`, average CPU
-`10.90%`, and NVIDIA process GPU memory `152 MiB`. The current gate for moving
-on to AV1/scene wallpaper work is full H.264/H.265 arbitrary continuous
-decode/present with streaming queue, zero retained AU payload, ring reuse,
-EOS replay, cleanup, and recorded RSS/PSS/USS/private dirty evidence; H.264
-4K/240 stable pacing remains the known performance gap.
+and `average_present_fps=239.82864245894595`; retained smaps evidence in
+`/tmp/gilder-vulkan-h265-after-h264-barrier-tightened/performance` reported
+`RSS/PSS/USS/Private_Dirty max=102456/88200/83636/24684 KiB`, average CPU
+`11.35%`, and NVIDIA process GPU memory `152 MiB`.
+
+The H.264 dual-slot display ring removes the previous DPB/read hazard: the same
+complex stream now submits every decode-ahead candidate (`2399/2399`) instead of
+skipping reference hazards. It does not yet make complex H.264 4K/240 stable:
+FIFO `vkQueuePresentKHR` still averages about `4509us` for H.264 versus
+`4045us` for H.265, and the extra display ring costs about `25.6MB` of Vulkan
+image memory. Treat it as a correctness/perf experiment, not as the final
+zero-copy memory target.
 
 The visible codec smokes are native Wayland + native Vulkan presentation gates:
 GStreamer owns demux/decode/appsink and may output GPU memory, but it does not

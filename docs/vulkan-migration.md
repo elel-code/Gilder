@@ -1059,6 +1059,13 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   P010 resource sampling、DPB 和 visible decode/present。CUDA copy path 只保留为 fallback
   和对照基线。
 - 成功标准是同场景优于历史 native-wgpu/GStreamer CUDA copy 路线，而不是理论零拷贝。
+- 2026-06-22 的 H.264 display-copy handoff 证明了一个重要边界：双槽 NV12 display
+  ring 可以把 H.264 decode-ahead submit 从 hazard-skip 状态推进到 `2399/2399`，并在
+  `HDMI-A-1` 真实 Wayland 上保持任意入口连续可见；但复杂 4K/240 H.264 仍只有
+  `207.34fps`，同时额外占用约 `25.6MB` Vulkan image memory。H.265 同源形态仍稳定在
+  `239.83fps`。因此后续 H.264 性能主线应转向固定帧槽、descriptor/present ring、
+  timeline/fence 管理和更深 decode/present decoupling；全量 DPB->display copy 只能作为
+  hazard 规避实验，不是最终零拷贝/低内存目标。
 - Web helper 输出要以 texture/frame stream 形式进入后端，避免把 WebKitGTK 当作最终 renderer 架构。
 
 ### Phase 5: 后端切换
