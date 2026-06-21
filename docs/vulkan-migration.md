@@ -640,6 +640,32 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   `session_memory_bytes=2215936`、`bitstream_buffer_bytes=524288`。这证明 interlaced frame
   picture 可见路径已走通；真实 `field_pic_flag=true` field-coded 码流 smoke 仍未拿到，
   目前只有 planner/submit 侧单测覆盖。
+- 同日继续把 H.264 任意连续的 DPB 语义补齐到 B/ref-list/MMCO/long-term 边界：
+  long-term reference 的内部 key 从裸 `long_term_frame_idx` 扩展为
+  `long_term_frame_idx + field_kind`，ref-list modification idc 2 和 MMCO 2 都按当前
+  field/frame 语境把 `LongTermPicNum` 解析成具体 top/bottom/frame key；提交到 Vulkan STD
+  时 `StdVideoDecodeH264ReferenceInfo.FrameNum` 对 long-term reference 改为写
+  `long_term_frame_idx`，符合 Vulkan/H.264 STD 要求。MMCO 1/3 的短参考 `PicNumX`
+  也修正为 `CurrPicNum - (difference_of_pic_nums_minus1 + 1)`，不再在 frame_num wrap
+  后错误 modulo 成正 PicNum；这修复了 4K/240 x264 B/ref 流在 `15 -> 0` wrap 后
+  `MMCO 1 requested unavailable short-term PicNum 11` 的真实失败。新增单测覆盖
+  long-term field PicNum、field MMCO 1 精确删除、MMCO 1 wrap 删除 `frame_num=11`，
+  同轮 `cargo test --features native-vulkan-gst-video` 通过 318 项，release build 通过。
+  真实 Wayland `HDMI-A-1` 4K/240 任意入口 evidence：
+  `/tmp/gilder-vulkan-h264-arbitrary-continuous-mmco-wrap`，生成源为
+  `testsrc2-continuous-closed-gop-h264-high-b2-weightp2-weightb1`、`refs=3`、
+  `bframes=2`、`arbitrary_entry_offset=0.35`、`require_loop_skip_replay=yes`，
+  结果为 `decoded/presented=480/480`、`bootstrap_discarded=155`、`loop_skip=155`、
+  `first_frame_idr=true`、`loop_first_non_idr_count=0`、`stream_dpb_slots=5`、
+  `max_reference_count=4`、`bitstream_ring_wrap_count=43`、
+  `video_resource_memory_bytes=62586880`。同轮 H.265 任意入口回归
+  `/tmp/gilder-vulkan-h265-arbitrary-continuous-regression` 也通过 4K/240、`refs=2`、
+  `bframes=2`、`decoded/presented=480/480`、`bootstrap_discarded=153`、
+  `loop_skip=153`、`stream_dpb_slots=5`、`max_reference_count=4`、
+  `average_present_fps=240.976`。H.264 这次仍是 present-limited
+  (`average_present_fps=195.617`)，因此后续若把“完成”定义为稳定 240fps + audio/clock，
+  仍需要继续做 pacing/long-duration/perf 采样；但 H.264/H.265 任意入口连续 decode/present
+  功能 gate 已经跑通。
 - H.265 visible/sequence submit 侧不再把 active DPB 简化成 `POC` 数组：新增
   `NativeVulkanH265ActiveDpbReference { poc, used_for_long_term_reference }`，并在
   `vkCmdBeginVideoCodingKHR` 的 begin reference slots 中用当前 entry 的 reference usage
@@ -1001,9 +1027,11 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   `VkVideoSessionParametersKHR` 和 visible ready-prefix decode/display 扩展成完整持续播放：
   GStreamer 或等价前端只负责 demux/parser/audio/clock，Vulkan Video 模块负责 picture info、
   reference slots 和 queue 同步，再复用 native Vulkan NV12 shader 合成到 visible swapchain。
-  H.264 High 8-bit 已有受控 IPPP ready-prefix visible gate，但任意连续 GOP、B/ref-list/MMCO、
-  音频/时钟和稳定 240fps pacing 仍未完成。AV1 direct 已完成 sequence header
-  到 Vulkan STD session parameters 的 gate，仍需把 picture info/tile payload 和
+  H.264/H.265 High/Main 8-bit 已有 4K/240 任意入口 visible direct gate，覆盖 B 帧、
+  多参考、ref-list/MMCO、loop skip replay 和 fixed-capacity bitstream ring；继续推进
+  AV1/scene wallpaper 前，video 侧还应补长时段稳定 240fps、audio/clock 和更多真实码流
+  采样。AV1 direct 已完成 sequence header 到 Vulkan STD session parameters 的 gate，仍需把
+  picture info/tile payload 和
   `vkCmdDecodeVideoKHR` 接到连续 present。10-bit H.265/AV1 已有 sampled 2-plane 420
   format evidence，P010 visible importer 已跑通；direct Vulkan Video Main10 还需要单独补
   P010 resource sampling、DPB 和 visible decode/present。CUDA copy path 只保留为 fallback

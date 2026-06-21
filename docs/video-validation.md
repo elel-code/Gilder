@@ -101,6 +101,20 @@ longer a maintained input mode. Valid evidence should report
 `h264_input_mode=streaming-queue`, non-zero
 `h264_packet_queue_pulled_count`, and
 `h264_packet_queue_retained_payload_bytes=0` at shutdown.
+Latest 2026-06-22 real Wayland arbitrary-entry direct gates on
+`WAYLAND_DISPLAY=wayland-1`, `HDMI-A-1`, 3840x2160@240:
+H.264 `/tmp/gilder-vulkan-h264-arbitrary-continuous-mmco-wrap` passed with
+`decoded_frame_count=480`, `presented_frame_count=480`, `b_frames=317`,
+`max_reference_count=4`, `h264_packet_queue_bootstrap_discarded_access_units=155`,
+`h264_packet_queue_loop_skip_access_units=155`,
+`bitstream_ring_wrap_count=43`, and `average_present_fps=195.617`; H.265
+`/tmp/gilder-vulkan-h265-arbitrary-continuous-regression` passed with
+`decoded_frame_count=480`, `presented_frame_count=480`, `b_frames=317`,
+`max_reference_count=4`, `h265_packet_queue_bootstrap_discarded_access_units=153`,
+`h265_packet_queue_loop_skip_access_units=153`, `bitstream_ring_wrap_count=11`,
+and `average_present_fps=240.976`. These are decode/present functional gates;
+H.264 still needs separate long-duration pacing and memory/CPU sampling before
+calling stable 240fps complete.
 
 The visible codec smokes are native Wayland + native Vulkan presentation gates:
 GStreamer owns demux/decode/appsink and may output GPU memory, but it does not
