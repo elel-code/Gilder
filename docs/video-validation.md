@@ -61,6 +61,7 @@ env WAYLAND_DISPLAY=wayland-1 scripts/native-vulkan-h264-bitstream-smoke.sh --no
 env WAYLAND_DISPLAY=wayland-1 scripts/native-vulkan-h264-first-frame-smoke.sh --no-build --width 3840 --height 2160 --rate 240 --level 5.2 --samples 8
 env WAYLAND_DISPLAY=wayland-1 scripts/native-vulkan-h264-idr-prefix-smoke.sh --no-build --width 3840 --height 2160 --rate 240 --level 5.2 --decode-prefix 8 --samples 8
 env WAYLAND_DISPLAY=wayland-1 scripts/native-vulkan-h264-ready-prefix-smoke.sh --no-build --width 3840 --height 2160 --rate 240 --level 5.2 --decode-prefix 8 --samples 8
+env WAYLAND_DISPLAY=wayland-1 scripts/native-vulkan-h264-ready-prefix-video-smoke.sh --no-build --output-name HDMI-A-1 --decode-prefix 240 --playback-frames 480 --refs 2
 scripts/native-vulkan-av1-bitstream-smoke.sh --no-build
 scripts/native-vulkan-av1-bitstream-smoke.sh --no-build --bit-depth 10
 scripts/native-vulkan-h265-main10-bitstream-smoke.sh --no-build
@@ -84,6 +85,12 @@ ring, so valid evidence should report
 `bitstream_buffer_strategy=fixed-capacity-persistent-mapped-ring`,
 non-zero `bitstream_ring_capacity_bytes`, and increasing/wrapping
 `frames[].src_buffer_offset` / `frames[].bitstream_ring_wrap_count`.
+The direct H.264 ready-prefix visible path follows the same native Vulkan
+presentation contract: GStreamer only supplies parsed H.264 AU buffers, while
+Vulkan Video owns `vkCmdDecodeVideoKHR` and native Vulkan owns the Wayland
+swapchain. Valid H.264 evidence should include non-zero `presented_frame_count`,
+`max_reference_count`/`requested_reference_count` for P frames, DPB slot reuse,
+and the fixed-capacity bitstream ring telemetry.
 
 The visible codec smokes are native Wayland + native Vulkan presentation gates:
 GStreamer owns demux/decode/appsink and may output GPU memory, but it does not
@@ -149,11 +156,28 @@ selected AU is uploaded into a `VIDEO_DECODE_SRC_KHR` buffer, Vulkan accepts
   `/tmp/gilder-vulkan-h264-idr-prefix.7H4DV3`, `decoded_frame_count=8`,
   `frame_offsets=[0,217600,329216,441600,553984,666624,779264,892160]`,
   `y_plane_nonzero_bytes=8294400`, `uv_plane_nonzero_bytes=4147183`.
+- H.264 720p/60 direct ready-prefix visible:
+  `/tmp/gilder-vulkan-h264-ready-prefix-video.faL4eZ`,
+  `decoded_frame_count=8`, `presented_frame_count=8`,
+  `max_reference_count=2`, `stream_dpb_slots=3`.
+- H.264 4K/240 direct ready-prefix visible:
+  `/tmp/gilder-vulkan-h264-ready-prefix-video.Jy9iXF`,
+  `decoded_frame_count=240`, `presented_frame_count=240`,
+  `source_extent=[3840,2160]`, `bitstream_buffer_bytes=435200`,
+  `video_resource_memory_bytes=37552128`.
+- H.264 4K/240 direct ready-prefix visible loop:
+  `/tmp/gilder-vulkan-h264-ready-prefix-video.S305L5`,
+  `decoded_frame_count=480`, `presented_frame_count=480`,
+  `playback_loop_count=2`, `loop_boundary_reset_count=1`,
+  `max_reference_count=2`. Average present is still about 212fps, so this is a
+  direct visible functionality gate, not yet the final 240fps pacing gate.
 
 The H.264 IDR-prefix smoke proves multiple direct decode submits and aligned
-bitstream windows, but it deliberately uses all-IDR input. The remaining H.264
-direct gates are P/B reference tracking without per-frame reset, visible surface
-presentation, and frame pacing.
+bitstream windows, but it deliberately uses all-IDR input. The H.264
+ready-prefix visible smoke now covers IPPP P-frame reference tracking and real
+Wayland presentation. The remaining H.264 direct gates are B/reference-list
+features, arbitrary continuous GOP supply, audio/clock integration and stable
+240fps pacing.
 AV1 verifies the next codec front-end stage: demux/parser/appsink produces AV1
 temporal units, the native parser extracts sequence-header fields, and Vulkan
 accepts the resulting `StdVideoAV1SequenceHeader` via

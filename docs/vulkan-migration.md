@@ -396,6 +396,20 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   planned DPB slots 为 `[0,1,0,1,0,1,0,1]`，Y/UV 非零 `8294400/4147194`。
   当前边界仍是不支持 B slice、reference list modification、adaptive MMCO、
   long-term reference 和任意入口点 DPB 重建；这些是继续靠近“任意连续”的下一组问题。
+- H.264 direct 已接到同一套真实 Wayland visible ready-prefix path：新增
+  `--run-h264-ready-prefix-video` 和
+  `scripts/native-vulkan-h264-ready-prefix-video-smoke.sh`。GStreamer 只负责
+  `qtdemux+h264parse+appsink` AU 抽取，H.264 picture decode 由 Vulkan Video queue family 3
+  执行 `vkCmdDecodeVideoKHR`，decoded NV12 array layer 由 present queue family 0 的 native
+  Vulkan shader 采样到 Wayland swapchain。2026-06-21 `WAYLAND_DISPLAY=wayland-1`、
+  `HDMI-A-1` 证据：720p/60 ref=2 `/tmp/gilder-vulkan-h264-ready-prefix-video.faL4eZ`
+  为 `decoded_frame_count=8`、`presented_frame_count=8`、`max_reference_count=2`；
+  4K/240 ref=2 `/tmp/gilder-vulkan-h264-ready-prefix-video.Jy9iXF` 为 240 decode/present、
+  `stream_dpb_slots=3`、`video_resource_memory_bytes=37552128`、
+  `bitstream_buffer_bytes=435200`；480-frame loop
+  `/tmp/gilder-vulkan-h264-ready-prefix-video.S305L5` 验证 `playback_loop_count=2`、
+  `loop_boundary_reset_count=1`。这一步功能形态已追平 H.265 visible ready-prefix；
+  性能上 average present 仍约 212fps，后续要继续优化到稳定 240Hz。
 - `--probe-video-session --extract-bitstream` 已继续把 H.265 VPS/SPS/PPS 转成 Vulkan STD
   session parameters：2026-06-21 在 `WAYLAND_DISPLAY=wayland-1`、NVIDIA 4060、3840x2160@240
   H.265 Main 源上，native parser 真实读取 profile flags、VPS/SPS DPB ordering、SPS VUI
@@ -579,13 +593,13 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   `DMABuf/VAAPI`、可选 `GL/EGLImage`、Vulkan Video 或 libavcodec + external memory。
   GStreamer 可以继续负责 demux、硬解选择、音频和时钟，但最终 present 必须由 native
   Vulkan swapchain/render pass 完成。
-- NVIDIA direct 的下一步是把已验证的 H.265 `VkVideoSessionKHR`、NV12 video resource
-  image、真实 H.265 encoded AU、`VIDEO_DECODE_SRC_KHR` bitstream buffer、
-  `VkVideoSessionParametersKHR`、首帧 `vkCmdDecodeVideoKHR` 和离屏 NV12 shader sampling
-  扩展成连续帧 decode/display：GStreamer 或等价前端只负责 demux/parser/audio/clock，
-  Vulkan Video 模块负责 picture info、reference slots 和 queue 同步，再复用 native Vulkan
-  NV12 shader 合成到 visible swapchain。H.264 仍可实现 baseline/main/high，但 4K/240
-  H.264 level 6.1 不能作为首个 direct 成功标准。AV1 direct 已完成 sequence header
+- NVIDIA direct 的下一步是把已验证的 H.265/H.264 `VkVideoSessionKHR`、NV12 video resource
+  image、真实 encoded AU、`VIDEO_DECODE_SRC_KHR` bitstream buffer、
+  `VkVideoSessionParametersKHR` 和 visible ready-prefix decode/display 扩展成完整持续播放：
+  GStreamer 或等价前端只负责 demux/parser/audio/clock，Vulkan Video 模块负责 picture info、
+  reference slots 和 queue 同步，再复用 native Vulkan NV12 shader 合成到 visible swapchain。
+  H.264 High 8-bit 已有受控 IPPP ready-prefix visible gate，但任意连续 GOP、B/ref-list/MMCO、
+  音频/时钟和稳定 240fps pacing 仍未完成。AV1 direct 已完成 sequence header
   到 Vulkan STD session parameters 的 gate，仍需把 picture info/tile payload 和
   `vkCmdDecodeVideoKHR` 接到连续 present。10-bit H.265/AV1 已有 sampled 2-plane 420
   format evidence，P010 visible importer 已跑通；direct Vulkan Video Main10 还需要单独补
