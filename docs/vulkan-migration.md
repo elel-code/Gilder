@@ -235,7 +235,7 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   session/extent/profile 的固定成本。
 - visible H.265 ready-prefix 的 4K/240 长窗口内存尖峰已定位并修掉：旧路径把所有 AU payload
   保存在 `Vec<Vec<u8>>`，所以即使 Vulkan bitstream buffer 已经是单个 249KiB reusable slot，
-  4800 AU 的 `bitstream_window_payload_bytes=499056595` 仍会变成进程私有内存。当前路径改为
+  4800 AU 的 `bitstream_window_payload_bytes=499056595` 仍会变成进程私有内存。历史中间阶段曾改为
   GStreamer demux/parse 后写入临时 spool 文件，播放时只按 AU offset 读入一个复用 upload buffer；
   runtime JSON 仍报告同样的 encoded window/upload 字节用于吞吐统计，但不再保留为 RSS/USS。
   2026-06-21 真实 Wayland `HDMI-A-1` 证据 `/tmp/gilder-vulkan-h265-memory-spooled.d8pybb`
@@ -243,7 +243,7 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   `RSS/PSS/USS/Private_Dirty max=117732/85864/68248/37664 KiB`；旧 in-memory payload
   证据 `/tmp/gilder-vulkan-h265-memory.GIYC3r` 为
   `1089060/1069592/1061636/1008992 KiB`。
-- H.265 spool upload 已继续减少 CPU 路径并接入固定容量 Bitstream Ring Buffer：可见播放循环现在从
+- H.265 spool upload 曾作为低内存中间阶段接入固定容量 Bitstream Ring Buffer：当时可见播放循环从
   spool file 直接写入持久映射的 `VIDEO_DECODE_SRC_KHR` buffer，不再经由临时 AU `Vec<u8>`；
   顺序读取时跟踪 file position，首帧强制 seek，当前 AU aligned range 内的 padding 每次清理，避免
   stale bitstream tail 进入 decoder。默认 ring 为 2-slot，按 driver 的 offset/size alignment 追加写入，
@@ -253,25 +253,29 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   `bitstream_buffer_strategy=fixed-capacity-persistent-mapped-ring`、`bitstream_buffer_bytes=498688`、
   `bitstream_ring_wrap_count=1200`；同配置 smaps 证据 `/tmp/gilder-vulkan-h265-ring-memory.9RFFoa`
   为 `RSS/PSS/USS/Private_Dirty max=117836/86018/68380/37932 KiB`，确认 ring 没把 RSS/USS
-  拉回旧的 retained AU payload 级别。下一步是把 ready-prefix 文件 spool 替换成连续 demux/parser
-  producer，并用 decode fence/timeline 回收 range。
-- H.264 visible direct path 已先对齐 H.265 的输入内存形态，并开始推进真正 streaming packet queue：
-  默认 ready-prefix input 使用临时 spool + 固定容量 persistent mapped bitstream ring，decode 阶段
-  只使用 first-slice snapshot，不再为每帧重新解析 retained payload；新增
-  `--h264-input streaming-queue` 和脚本 `--streaming-queue`，GStreamer appsink AU 进入 bounded
-  packet queue，播放时按需拉 AU、上传压缩码流到 `VIDEO_DECODE_SRC_KHR` ring，随后丢弃 payload。
+  拉回旧的 retained AU payload 级别。后续维护目标已经切到连续 demux/parser streaming queue；
+  visible H.264/H.265 代码不再保留可选 spool 输入分支。decode fence/timeline 回收 range
+  仍是下一步性能工作。
+- H.264 visible direct path 已切到 streaming packet queue 作为维护目标：
+  `gilder-native-vulkan --run-h264-ready-prefix-video` 和脚本默认使用
+  `h264_input_mode=streaming-queue`，显式 `ready-prefix-spool` CLI 参数会报错；visible video
+  runtime 已移除可选 spool 分支，不再扩展或作为验证口径。GStreamer appsink AU 进入 bounded packet
+  queue，播放时按需拉 AU、上传压缩码流到 `VIDEO_DECODE_SRC_KHR` ring，随后丢弃 payload。
   H.264 parser/reference plan 已支持短期 L0 ref-list modification idc 0/1，并把 streaming mode
   的 reference plan 从每帧全量重算改成增量 planner。2026-06-21 真实 Wayland `HDMI-A-1`
   证据：720p/60 `/tmp/gilder-vulkan-h264-ready-prefix-video.at5uDt` 为 `decoded=8`、
   `p_frames=7`、`max_reference_count=2`、`h264_input_mode=streaming-queue`、queue retained
   payload `0`；4K/240 `/tmp/gilder-vulkan-h264-ready-prefix-video.ZFXzKH` 为
   `decoded/presented=240/240`、`queue_capacity=32`、`queue_pulled=240`、
-  `bitstream_buffer_bytes=1036800`。20s loop `/tmp/gilder-vulkan-h264-streaming-smaps.oULUUh`
+  `bitstream_buffer_bytes=1036800`。2026-06-21 默认 streaming 4K/240 回归
+  `/tmp/gilder-vulkan-h264-streaming-default-regression` 为 `decoded/presented=240/240`、
+  `h264_input_mode=streaming-queue`、`queue_retained=0`、`average_present_fps=213.179`。
+  20s loop `/tmp/gilder-vulkan-h264-streaming-smaps.oULUUh`
   为 `decoded/presented=4800/4800`、`queue_eos/loops=4/4`、`queue_retained=0`，
   90 个 smaps_rollup 样本 `RSS/PSS/USS/Private_Dirty max=112908/68437/49192/31272 KiB`、
   平均 CPU `15.13%`、`average_present_fps=212.375`。当前内存问题已不在 packet retention；
-  H.264 4K/240 剩余瓶颈在 present pacing/同步或驱动 codec 路径。剩余码流边界是 B slice、
-  long-term reference、adaptive MMCO、weighted prediction、field picture 和任意入口点 DPB 重建。
+  H.264 4K/240 剩余瓶颈在 H.264 level/capability 边界、present pacing/同步或驱动 codec 路径。
+  剩余码流边界是 long-term reference、weighted prediction、field picture 和任意入口点 DPB 重建。
 - 2026-06-21 CI 修复复测同一路线时增加了 per-frame present telemetry 和 3-image swapchain
   preference。真实 Wayland `HDMI-A-1`、3840x2160@240、2400-frame streaming queue evidence
   `/tmp/gilder-vulkan-h264-ci-fix-smoke` 为 `decoded/presented=2400/2400`、
@@ -288,23 +292,26 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   playbin/waylandsink 或继续压 packet queue。
   `GILDER_VULKAN_H264_PRESENT_DELAY_US=400` 诊断只把 `vkQueuePresentKHR` avg 降到
   `3934us`，但总 FPS 降到 `212.855`，说明简单 CPU sleep 不是有效方向，已移除该临时开关。
-- H.264 streaming planner 已继续推进一类常见连续码流：非参考 picture 不再被视为 unsupported。
-  planner 会优先选择空闲 output layer 作为 scratch，`setup_slot_index=None`，decode submit 不传
-  setup DPB slot，且运行时不会把该输出写入 active DPB；如果 scratch 覆盖旧 reference，会先从
-  reference map/order 中移除，避免后续错误引用。新增单测
-  `plans_h264_non_reference_pictures_as_scratch_outputs` 覆盖 `IDR -> ref P -> non-ref P -> ref P`
-  仍只引用上一张 reference picture。现有 4K/240 H.264 streaming queue 回归 smoke
-  `/tmp/gilder-vulkan-h264-nonref-regression` 通过 `decoded/presented=2400/2400`、
-  `average_present_fps=214.29252909427166`、`queue_retained=0`；该源本身仍是全 reference P 帧，
-  所以这是可见路径回归证据，不是非参考实流证据。
-- H.265 visible direct input 也已接到 bounded streaming packet queue：新增
-  `--h265-input streaming-queue` 和脚本 `--streaming-queue`，按需拉 AU、上传到 bitstream ring
+- H.264 streaming planner 已继续推进常见连续码流：非参考 picture 不再进入 active DPB，
+  但 visible submit 仍为每个 decode target 提供 setup slot，以满足 NVIDIA H.264 Vulkan Video
+  对 coincident DPB/output target 的 STD 参数要求。planner 已支持默认 B-slice L0/L1 短期引用
+  列表、参考 B picture、非参考 B scratch 输出，以及 MMCO op=1 short-term unused-for-reference
+  的 DPB/reference drop。新增单测覆盖非参考 scratch、默认 B-slice 和 adaptive marking。
+  真实 Wayland `HDMI-A-1` evidence：`/tmp/gilder-vulkan-h264-b1-streaming-smoke` 为
+  `decoded/presented=120/120`、`b_frames=59`、`max_reference_count=2`、`queue_retained=0`；
+  `/tmp/gilder-vulkan-h264-bslice-streaming-smoke-final` 为 `decoded/presented=180/180`、
+  `b_frames=119`、`max_reference_count=3`、`h264_input_mode=streaming-queue`、`queue_retained=0`。
+- H.265 visible direct input 也已接到 bounded streaming packet queue，并同样默认使用
+  `h265_input_mode=streaming-queue`；显式 spool CLI 参数会报错，visible video runtime 已移除
+  可选 spool 分支。按需拉 AU、上传到 bitstream ring
   后释放 payload，runtime JSON 报告 `h265_packet_queue_*`。2026-06-21 真实 Wayland
   `HDMI-A-1` 4K/240 smoke `/tmp/gilder-vulkan-h265-ready-prefix-video.uMgUWp` 为
   `decoded/presented=240/240`、`average_present_fps=238.316`、`queue_pulled=240`、
   `queue_retained=0`；20s smaps `/tmp/gilder-vulkan-h265-streaming-smaps.wTY7vB` 为
   `decoded/presented=4800/4800`、`average_present_fps=240.027`、`queue_eos/loops=19/19`、
   `RSS/PSS/USS/Private_Dirty max=115480/71078/51800/33892 KiB`、平均 CPU `20.11%`。
+  默认 streaming 回归 `/tmp/gilder-vulkan-h265-streaming-default-regression` 为
+  `decoded/presented=240/240`、`average_present_fps=240.915`、`queue_retained=0`。
 - H.264 GPU-memory/native-wgpu 对照是另一条口径：真实 Wayland 证据
   `/tmp/gilder-native-wgpu.SWqa42` 使用 `gst-dmabuf`、`pipeline_kind=cuda-direct`、
   `video_last_memory_types=gst.cuda.memory`、`video_last_export_source=cuda-direct-vulkan-staging`，
@@ -444,8 +451,8 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   `non_idr_frames=7`、`reference_frames=7`、`reset_control_count=1`、
   `reference_plan_dpb_slots=2`，frame reference counts 为 `[0,1,1,1,1,1,1,1]`，
   planned DPB slots 为 `[0,1,0,1,0,1,0,1]`，Y/UV 非零 `8294400/4147194`。
-  当前边界仍是不支持 B slice、reference list modification、adaptive MMCO、
-  long-term reference 和任意入口点 DPB 重建；这些是继续靠近“任意连续”的下一组问题。
+  该阶段边界是 B slice、reference list modification、adaptive MMCO、
+  long-term reference 和任意入口点 DPB 重建；后续 streaming queue 路径已继续推进其中一部分。
 - H.264 direct 已接到同一套真实 Wayland visible ready-prefix path：新增
   `--run-h264-ready-prefix-video` 和
   `scripts/native-vulkan-h264-ready-prefix-video-smoke.sh`。GStreamer 只负责
@@ -459,7 +466,7 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   `bitstream_buffer_bytes=435200`；480-frame loop
   `/tmp/gilder-vulkan-h264-ready-prefix-video.S305L5` 验证 `playback_loop_count=2`、
   `loop_boundary_reset_count=1`。这一步功能形态已追平 H.265 visible ready-prefix；
-  随后 H.264 visible input 继续补到 `ready-prefix-spool` 和 `streaming-queue` 双模式。
+  后续输入方向已收敛到 `streaming-queue`，`ready-prefix-spool` 只作为历史 CLI 值被拒绝。
   `--h264-input streaming-queue` 在 4K/240 evidence
   `/tmp/gilder-vulkan-h264-ready-prefix-video.c4GQ0l` 中验证 `h264_input_mode=streaming-queue`、
   `queue_pulled=240`、`queue_retained=0`、`p_frames=239`、`max_reference_count=2`。性能上

@@ -61,9 +61,9 @@ env WAYLAND_DISPLAY=wayland-1 scripts/native-vulkan-h264-bitstream-smoke.sh --no
 env WAYLAND_DISPLAY=wayland-1 scripts/native-vulkan-h264-first-frame-smoke.sh --no-build --width 3840 --height 2160 --rate 240 --level 5.2 --samples 8
 env WAYLAND_DISPLAY=wayland-1 scripts/native-vulkan-h264-idr-prefix-smoke.sh --no-build --width 3840 --height 2160 --rate 240 --level 5.2 --decode-prefix 8 --samples 8
 env WAYLAND_DISPLAY=wayland-1 scripts/native-vulkan-h264-ready-prefix-smoke.sh --no-build --width 3840 --height 2160 --rate 240 --level 5.2 --decode-prefix 8 --samples 8
-env WAYLAND_DISPLAY=wayland-1 scripts/native-vulkan-h264-ready-prefix-video-smoke.sh --no-build --output-name HDMI-A-1 --decode-prefix 240 --playback-frames 480 --refs 2
-env WAYLAND_DISPLAY=wayland-1 scripts/native-vulkan-h264-ready-prefix-video-smoke.sh --no-build --streaming-queue --output-name HDMI-A-1 --decode-prefix 240 --playback-frames 240 --refs 2
-env WAYLAND_DISPLAY=wayland-1 scripts/native-vulkan-h265-ready-prefix-video-smoke.sh --no-build --streaming-queue --output-name HDMI-A-1 --decode-prefix 240 --playback-frames 240
+env WAYLAND_DISPLAY=wayland-1 scripts/native-vulkan-h264-ready-prefix-video-smoke.sh --no-build --output-name HDMI-A-1 --decode-prefix 240 --playback-frames 240 --refs 2
+env WAYLAND_DISPLAY=wayland-1 scripts/native-vulkan-h264-ready-prefix-video-smoke.sh --no-build --output-name HDMI-A-1 --width 1280 --height 720 --target-fps 60 --level 4.2 --refs 2 --bframes 2 --decode-prefix 180 --playback-frames 180
+env WAYLAND_DISPLAY=wayland-1 scripts/native-vulkan-h265-ready-prefix-video-smoke.sh --no-build --output-name HDMI-A-1 --decode-prefix 240 --playback-frames 240
 scripts/native-vulkan-av1-bitstream-smoke.sh --no-build
 scripts/native-vulkan-av1-bitstream-smoke.sh --no-build --bit-depth 10
 scripts/native-vulkan-h265-main10-bitstream-smoke.sh --no-build
@@ -80,8 +80,10 @@ decodes a continuous source long enough for that playback window. This keeps the
 first Vulkan Video route comparable with the second GStreamer/appsink route's
 continuous 4K/240 source. Passing an explicit shorter `--decode-prefix` keeps
 the old loop-window diagnostic mode; loop boundaries can visibly jump unless the
-source is authored to be seamless. For full playback validation, the next gate is
-continuous demux/parser handoff into the same native Vulkan importer/present path.
+source is authored to be seamless. For full playback validation, H.264/H.265
+direct smokes now use bounded demux/parser streaming queues; the next performance
+gate is decode/present decoupling plus fence/timeline-managed bitstream range
+reuse, not ready-prefix spool.
 The current visible H.265 path uses a fixed-capacity persistent-mapped bitstream
 ring, so valid evidence should report
 `bitstream_buffer_strategy=fixed-capacity-persistent-mapped-ring`,
@@ -92,9 +94,10 @@ presentation contract: GStreamer only supplies parsed H.264 AU buffers, while
 Vulkan Video owns `vkCmdDecodeVideoKHR` and native Vulkan owns the Wayland
 swapchain. Valid H.264 evidence should include non-zero `presented_frame_count`,
 `max_reference_count`/`requested_reference_count` for P frames, DPB slot reuse,
-and the fixed-capacity bitstream ring telemetry. Passing `--streaming-queue`
-switches H.264 encoded input from retained ready-prefix/spool to a bounded
-parser/appsink packet queue. In that mode, valid evidence should report
+and the fixed-capacity bitstream ring telemetry. H.264/H.265 visible direct
+smokes now always use the bounded parser/appsink streaming packet queue;
+`--streaming-queue` is only a compatibility no-op and ready-prefix spool is no
+longer a maintained input mode. Valid evidence should report
 `h264_input_mode=streaming-queue`, non-zero
 `h264_packet_queue_pulled_count`, and
 `h264_packet_queue_retained_payload_bytes=0` at shutdown.
