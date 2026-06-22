@@ -356,6 +356,10 @@ Current 2026-06-22 Main10/P010 direct Vulkan evidence:
   present path. It is not yet the full video-wallpaper playback contract:
   long-duration process sampling, broader real-world Main10 streams, continuous
   demux/loop, audio and clock integration still need separate evidence.
+  Renderer descriptor-set expansion was regression-tested with
+  `/tmp/gilder-vulkan-h265-main10-renderer-regression-4k240`: `decoded=480`,
+  `presented=480`, `average_present_fps=240.2474194054933`, same P010 picture
+  format.
 - H.264 4K/240 remains the current performance debt:
   `/tmp/gilder-vulkan-h264-telemetry-default-4k240-ref1`,
   `decoded_frame_count=480`, `presented_frame_count=480`,
@@ -366,6 +370,13 @@ Current 2026-06-22 Main10/P010 direct Vulkan evidence:
   Direct sampled DPB output removes the extra 25.6MB display ring but regresses
   to about 212fps on the same host, so H.264 240fps work should stay focused on
   decode/display/present scheduling rather than packet queue retention.
+  The latest H.264 display-ring optimization prebinds one descriptor set per
+  display slot. Real Wayland evidence
+  `/tmp/gilder-vulkan-h264-prebound-descriptor-4k240-perf` shows
+  `decoded=1200`, `presented=1200`, `average_present_fps=233.90643962520952`,
+  `avg_descriptor_update_us=0`, and process sampling
+  `RSS/PSS/USS/Private_Dirty max=106000/91369/86404/27424 KiB`, CPU avg
+  `15.60%`. This is a measurable CPU-side cleanup, not a completed 240fps fix.
 
 Current arbitrary-entry H.264/H.265 smokes can capture the same process evidence
 inline with the visible Wayland run:

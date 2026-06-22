@@ -688,6 +688,18 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   `niri msg layers` 只剩 quickshell/dms layer。结论：任意入口连续、EOS replay、
   streaming queue、bitstream ring 和资源采样证据已成立；后续进入 AV1/场景壁纸前不能把
   H.264 4K/240 满帧性能债误写成完成。
+- 同日 H.264 display ring 继续压 CPU 侧热循环：`NativeVulkanVideoRenderer` 支持多个
+  descriptor set，H.264 双槽 display ring 在初始化时按槽位预绑定 Y/UV view，播放循环只选择
+  对应 descriptor set，不再每帧 `vkUpdateDescriptorSets` 或把 cached-view texture 推入 retire
+  队列。真实 Wayland `HDMI-A-1`、3840x2160@240、ref=1 证据
+  `/tmp/gilder-vulkan-h264-prebound-descriptor-4k240-ref1` 为 `decoded/presented=480/480`、
+  `average_present_fps=232.68396113217636`、`avg_descriptor_update_us=0`；5s performance
+  `/tmp/gilder-vulkan-h264-prebound-descriptor-4k240-perf` 为 `decoded/presented=1200/1200`、
+  `average_present_fps=233.90643962520952`、`RSS/PSS/USS/Private_Dirty max=106000/91369/86404/27424 KiB`、
+  平均 CPU `15.60%`、NVIDIA 进程显存 `116 MiB`。H.265 Main10/P010 回归
+  `/tmp/gilder-vulkan-h265-main10-renderer-regression-4k240` 仍为 `decoded/presented=480/480`、
+  `average_present_fps=240.2474194054933`。结论：descriptor 预绑定是实测成立的小幅 CPU/提交面优化，
+  但 H.264 4K/240 仍未达到 H.265 的稳定 240fps，下一步要继续拆 decode/copy/present overlap。
 - H.265 visible/sequence submit 侧不再把 active DPB 简化成 `POC` 数组：新增
   `NativeVulkanH265ActiveDpbReference { poc, used_for_long_term_reference }`，并在
   `vkCmdBeginVideoCodingKHR` 的 begin reference slots 中用当前 entry 的 reference usage
