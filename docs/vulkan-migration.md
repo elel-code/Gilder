@@ -1289,6 +1289,57 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   ownership 未解耦。后续不能继续堆 one-off handoff，而应实现按 DPB/output slot 记录
   layout ownership、decode completion serial、bitstream range lifetime 的
   command-buffer/timeline ring。
+- 2026-06-23 继续把 AV1 hidden decode 推进到 command-buffer ring：新增 8-slot decode
+  command buffer + per-slot fence、pending decode submission、bitstream range overlap wait、
+  show-existing/readback/final wait，并把 AV1 decode prepare barrier 从全 DPB layers 缩到
+  selected layers。关键判断是：同一 video queue 内后续 decode 引用前一帧时不需要 CPU fence
+  wait，队列提交顺序已经保证执行顺序；必须 CPU 等待的只剩 command buffer 复用、bitstream
+  range 覆盖、show-existing 跨 queue 显示、diagnostic readback 和 final cleanup。真实
+  `HDMI-A-1` Main8 readback `/tmp/gilder-av1-main8-decode-ring-queue-ordered-readback`
+  仍保持 `readback_y/uv_distinct=5`，`av1_decode_pending_max_count=8`，hidden fence 总等待
+  从 selected-layer 前的约 `557769us` 降到 `15434us`。最终 10s FIFO performance
+  `/tmp/gilder-av1-main8-final-fifo-4k240-performance` 为 `presented=2400`、
+  `average_present_fps=211.157`、CPU `9.12%`、`RSS/PSS/USS/Private_Dirty max=
+  108760/95956/91272/30744 KiB`、`av1_hidden_decode_fence_wait_elapsed_us=25`、
+  `av1_decode_slot_wait_elapsed_us=68`、NVIDIA process GPU memory `180 MiB`。这说明 CPU/hidden
+  decode wait 已基本清掉，但 4K/240 仍没稳定到 240：同一 evidence 中
+  `queue_present_elapsed_us avg=4627.7`、`present_elapsed_us avg=4642.7`，约 927/2400 帧
+  queue-present 超过 4.166ms。新增 `GILDER_VULKAN_PRESENT_MODE` 验证 present mode：
+  `mailbox` 可用但 480 帧 smoke 仍约 203fps，`immediate` 不被该 Wayland surface 支持并回落
+  FIFO；新增 `GILDER_VULKAN_FRAME_PACING_SPIN_US` 验证高刷新 sleep+spin pacing，500us/2000us
+  对 mailbox 没有实质提升。当前剩余瓶颈应转向 timeline semaphore + bounded
+  decode/display/present 队列、固定 display/descriptor ring 和 compositor/present 侧诊断。
+- 2026-06-23 继续按 FFmpeg/GStreamer 的硬件视频调度模型重做 AV1 present overlap：
+  成熟路径的可借鉴点不是具体 decoder/sink，而是固定 frame/surface pool、bounded queue
+  backpressure、明确的 buffer/frame ownership、延迟 retire，以及 display/WSI queue 的单 owner
+  访问。上一轮散装 `*_by_frame` present slot 试验在真实 Wayland 下出现“不动”，原因是
+  decode、render、present 资源生命周期没有集中到一个 frame context；随后又触发
+  `wl_display_dispatch_queue` assertion，根因是主线程 `pump_events`/`vkAcquireNextImageKHR`
+  与 present worker 的 `vkQueuePresentKHR` 同时碰 Wayland/WSI queue。当前实现改为
+  `NativeVulkanAv1FrameContext` ring：每个 context 持有 acquire/decode/render semaphore、
+  present fence、pending present result 和正在采样的 DPB/output resource；decode 侧只在
+  下一次会写入/改 layout 的 resource 仍被未 retire context 采样时等待。WSI 入口统一用
+  present mutex 串行，decode command ring 和 present worker 仍可重叠。真实 `HDMI-A-1`
+  回归：`/tmp/gilder-av1-main8-frame-context-readback-2` 为 `presented=480`、
+  `readback_y_distinct=9`、`readback_uv_distinct=9`，确认“不动/几张图跳变”已修复；无
+  readback 480 帧 `/tmp/gilder-av1-frame-context-480.json` 为 `average_present_fps=227.275`。
+  默认 2 context + decode/bitstream ring 16 的 readback gate
+  `/tmp/gilder-av1-main8-frame-context-default-ring16-readback` 为 `presented=480`、
+  `readback_y_distinct=9`、`readback_uv_distinct=9`；10s performance
+  `/tmp/gilder-av1-main8-frame-context-default-ring16-performance` 为 `presented=2400`、
+  `average_present_fps=222.273`、CPU `16.74%`、`RSS/PSS/USS/Private_Dirty max=
+  113808/101169/96600/35468 KiB`、NVIDIA process GPU memory `180 MiB`。调参 evidence：
+  手动 2 context + decode/bitstream ring 16 `/tmp/gilder-av1-frame-context-ring16.json`
+  为 `average_present_fps=227.287`、`queue_present p50/p95/max=4080/6598/15362us`；
+  decode ring 16 但 bitstream ring 8 `/tmp/gilder-av1-frame-context-decode16-bitstream8.json`
+  回落到 `average_present_fps=214.905`、`queue_present p95=9005us`，所以 bitstream ring
+  16 是当前性能默认，代价是约 4MiB 级别的 extra bitstream buffer dirty memory。3 context
+  `/tmp/gilder-av1-frame-context3-ring16.json` 降到 `224.017fps`，ring32
+  `/tmp/gilder-av1-frame-context-ring32.json` 降到 `223.635fps`。因此默认收敛到
+  2 frame contexts、AV1 decode command ring 16、AV1 bitstream ring 16；剩余 240fps 缺口
+  不应再靠加深队列盲压，而应继续参考 FFmpeg/GStreamer 的 timeline/clock/backpressure
+  模型：timeline semaphore、decoded surface pool retire、display queue pacing、audio clock
+  和 compositor present telemetry。
 - Web helper 输出要以 texture/frame stream 形式进入后端，避免把 WebKitGTK 当作最终 renderer 架构。
 
 ### Phase 5: 后端切换
