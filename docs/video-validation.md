@@ -253,8 +253,17 @@ The follow-up 4K Main10 gate
 first frame to `av1_first_frame_submit_candidate=true` with concrete
 `tile_offsets=[27]` and `tile_sizes=[33552]`. The remaining direct blocker is
 wiring those parsed fields into `VkVideoDecodeAV1PictureInfoKHR` and submitting
-the first `vkCmdDecodeVideoKHR` frame before expanding to a continuous packet
-queue.
+the first `vkCmdDecodeVideoKHR` frame. The continuous input layer is now partly
+prepared: AV1 temporal units can use the same generic streaming packet queue as
+H.264/H.265, sequence header is a bootstrap parameter set, frame-only temporal
+units can derive first-frame submit snapshots from that active sequence header,
+and packet timeline metadata keeps access-unit index, source-loop index, PTS and
+duration for later audio/clock integration. The 4K Main10 regression
+`/tmp/gilder-vulkan-av1-streaming-queue-prep` still reports
+`av1_first_frame_submit_candidate=true` and
+`session_parameters_codec=av1-main-10`; later temporal units in that sample are
+not submit candidates yet because AV1 inter/reference frame headers are still
+outside the parsed subset.
 
 ## Current Architecture Gates
 
