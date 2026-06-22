@@ -1170,13 +1170,18 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   `decoded=24`、`handoff=8`、`presented=32`、`average_present_fps=264.3964901002394`；
   4K/60 证据 `/tmp/gilder-vulkan-av1-main10-arbitrary-visible-direct-4k60` 为
   `decoded=72`、`handoff=48`、`presented=120`、`average_present_fps=244.7861114137336`；
-  4K/240 完整窗口证据
-  `/tmp/gilder-vulkan-av1-main10-arbitrary-visible-direct-4k240-window240` 为
+  4K/240 完整窗口的旧单 DPB slot 证据后来被真实观察判定为会灰闪：它能通过 submit/present
+  counter，但 inter/show-existing 帧会复用 active reference layer。修正后 AV1 visible
+  runtime 至少使用 9 个 DPB/output slots，并且 active reference state 只保留仍在 reference
+  map 中的 slot。Main10 回归
+  `/tmp/gilder-vulkan-av1-main10-dpb9-regression-4k240` 为
   `requested_codec=av1-main-10`、P010
   `G10X6_B10X6R10X6_2PLANE_420_UNORM_3PACK16`、`decoded=259`、`handoff=221`、
-  `presented=480`、`average_present_fps=238.70626183113086`、`playback_loop_count=2`、
-  `loop_boundary_reset_count=1`、`av1_packet_queue_retained_payload_bytes=0`、
-  `video_resource_memory_bytes=25034752`、`session_memory_bytes=14143488`。H.265 Main10
+  `presented=480`、`average_present_fps=239.94913990040843`、`stream_dpb_slots=9`、
+  `video_resource_memory_bytes=225312768`、`session_memory_bytes=14143488`。Main8 10s
+  observation `/tmp/gilder-vulkan-av1-main8-observe-10s-dpb9-v3` 为 `decoded=1305`、
+  `handoff=1095`、`presented=2400`、`average_present_fps=239.6313194270436`、
+  displayed layers `0..8`、`video_resource_memory_bytes=112656384`。H.265 Main10
   同轮 4K/240 任意入口回归
   `/tmp/gilder-vulkan-h265-main10-final-regression-4k240` 为
   `decoded/presented=480/480`、`average_present_fps=240.71777490911953`、

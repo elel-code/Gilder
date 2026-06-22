@@ -549,18 +549,23 @@
   `h265_packet_queue_loop_skip_access_units=156`、
   `h265_packet_queue_bootstrap_discarded_access_units=156`、
   `h265_packet_queue_retained_payload_bytes=0`。
-- [x] 将 AV1 Main10 推进到 direct Vulkan Video 任意入口连续可见：新增
+- [x] 将 AV1 Main8/Main10 推进到 direct Vulkan Video 任意入口连续可见：新增
   `--run-av1-ready-prefix-video` 和
   `scripts/native-vulkan-av1-ready-prefix-video-smoke.sh`，以 GStreamer 只负责
   demux/parser/appsink TU 输入，native Vulkan Video 负责 AV1 picture info、inter decode、
-  show-existing handoff、bitstream ring 和 Wayland swapchain present。2026-06-22
-  真实 Wayland `HDMI-A-1` 4K/240 证据
-  `/tmp/gilder-vulkan-av1-main10-arbitrary-visible-direct-4k240-window240` 为
+  show-existing handoff、bitstream ring 和 Wayland swapchain present。2026-06-22 修正
+  AV1 单 DPB slot 假通过问题：inter/show-existing 流不能把 transient output 解到正在作为
+  reference 的同一 layer，runtime 现在至少使用 9 个 DPB/output slots，并且 smoke 要求多
+  displayed layer。真实 Wayland `HDMI-A-1` 4K/240 证据
+  `/tmp/gilder-vulkan-av1-main10-dpb9-regression-4k240` 为
   `requested_codec=av1-main-10`、P010
   `G10X6_B10X6R10X6_2PLANE_420_UNORM_3PACK16`、`decoded_frame_count=259`、
   `displayed_handoff_frame_count=221`、`presented_frame_count=480`、
-  `average_present_fps=238.70626183113086`、`playback_loop_count=2`、
-  `loop_boundary_reset_count=1`、`av1_packet_queue_retained_payload_bytes=0`。
+  `average_present_fps=239.94913990040843`、`stream_dpb_slots=9`、
+  `video_resource_memory_bytes=225312768`、`av1_packet_queue_retained_payload_bytes=0`。
+  Main8 10s 观察证据 `/tmp/gilder-vulkan-av1-main8-observe-10s-dpb9-v3` 为
+  `decoded=1305`、`handoff=1095`、`presented=2400`、`average_present_fps=239.6313194270436`、
+  `stream_dpb_slots=9`、displayed layers `0..8`、`video_resource_memory_bytes=112656384`。
 - [ ] 继续攻克 H.264 4K/240 稳帧：2026-06-22 默认 direct Vulkan Video H.264 4K/240 ref=1
   `/tmp/gilder-vulkan-h264-telemetry-default-4k240-ref1` 为 `decoded/presented=480/480`、
   `average_present_fps=230.37179368303578`、`h264_present_queue_count=1`、

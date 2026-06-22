@@ -449,23 +449,27 @@ Current 2026-06-22 Main10/P010 direct Vulkan evidence:
   `/tmp/gilder-vulkan-h265-main10-renderer-regression-4k240`: `decoded=480`,
   `presented=480`, `average_present_fps=240.2474194054933`, same P010 picture
   format.
-- AV1 Main10 visible ready-prefix:
-  `/tmp/gilder-vulkan-av1-main10-arbitrary-visible-direct-4k240-window240`,
+- AV1 visible ready-prefix:
+  `/tmp/gilder-vulkan-av1-main10-dpb9-regression-4k240`,
   `requested_codec=av1-main-10`,
   `picture_format=G10X6_B10X6R10X6_2PLANE_420_UNORM_3PACK16`,
   `decoded_frame_count=259`, `displayed_handoff_frame_count=221`,
-  `presented_frame_count=480`, `average_present_fps=238.70626183113086`,
-  `target_max_fps=240`, `playback_loop_count=2`,
-  `loop_boundary_reset_count=1`, `av1_packet_queue_loop_count=1`,
+  `presented_frame_count=480`, `average_present_fps=239.94913990040843`,
+  `stream_dpb_slots=9`, `session_max_dpb_slots=9`, `driver_max_dpb_slots=16`,
   `av1_packet_queue_retained_payload_bytes=0`,
   `bitstream_buffer_strategy=fixed-capacity-persistent-mapped-ring`,
-  `bitstream_ring_wrap_count=9`, `video_resource_memory_bytes=25034752`,
-  `session_memory_bytes=14143488`. This completes the first direct Vulkan Video
-  AV1 Main10 arbitrary-entry visible gate, including inter-frame decode and
-  show-existing display handoff. Remaining AV1 work is broader stream coverage,
-  physical DPB slot compaction, long-duration process sampling, audio/clock
-  integration and replacing the synthetic libaom smoke source with more real
-  wallpaper samples.
+  `video_resource_memory_bytes=225312768`, `session_memory_bytes=14143488`.
+  Main8 was rechecked with 10 seconds of 4K/240 playback at
+  `/tmp/gilder-vulkan-av1-main8-observe-10s-dpb9-v3`: `decoded=1305`,
+  `handoff=1095`, `presented=2400`, `average_present_fps=239.6313194270436`,
+  `stream_dpb_slots=9`, all displayed layers `0..8`, and
+  `av1_packet_queue_retained_payload_bytes=0`. This supersedes the earlier
+  single-DPB-slot AV1 evidence, which could pass submit/present counters while
+  visibly flashing gray because inter/show-existing output reused active
+  reference layers. Remaining AV1 work is broader stream coverage, physical DPB
+  slot compaction or a lower-memory display handoff, long-duration process
+  sampling, audio/clock integration and replacing the synthetic libaom smoke
+  source with more real wallpaper samples.
 - H.264 4K/240 remains the current performance debt:
   `/tmp/gilder-vulkan-h264-telemetry-default-4k240-ref1`,
   `decoded_frame_count=480`, `presented_frame_count=480`,
