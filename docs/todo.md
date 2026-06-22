@@ -529,6 +529,20 @@
   `/tmp/gilder-vulkan-h264-ready-prefix-video.S305L5` 为 480 decode/present、2 loops、1 次
   loop-boundary reset。当前功能形态已追平 H.265 ready-prefix visible path；性能上 average present
   约 212fps，下一步继续压 present pacing/同步。
+- [x] 将 H.265 Main10/P010 接到 visible direct ready-prefix：`scripts/native-vulkan-h265-ready-prefix-video-smoke.sh --bit-depth 10`
+  生成/验证 Main10 源，runtime 输出 `requested_codec=h265-main-10` 和
+  `picture_format=G10X6_B10X6R10X6_2PLANE_420_UNORM_3PACK16`。2026-06-22 真实 Wayland
+  `HDMI-A-1` 证据 `/tmp/gilder-vulkan-h265-main10-visible-p010-4k240` 为
+  `decoded/presented=480/480`、`average_present_fps=240.32978160780624`、P010
+  `video_resource_memory_bytes=75104256`、`session_memory_bytes=46309376`。
+- [ ] 继续攻克 H.264 4K/240 稳帧：2026-06-22 默认 direct Vulkan Video H.264 4K/240 ref=1
+  `/tmp/gilder-vulkan-h264-telemetry-default-4k240-ref1` 为 `decoded/presented=480/480`、
+  `average_present_fps=230.37179368303578`、`h264_present_queue_count=1`、
+  `h264_async_present_depth=1`、`queue_retained=0`；`GILDER_H264_DISPLAY_HANDOFF=direct`
+  去掉 25.6MB display ring 后只到 `/tmp/gilder-vulkan-h264-direct-sampled-4k240-ref1`
+  的 `211.867fps`，双 present queue/deeper async present 在本机也未提升。下一步不能再把
+  packet queue 当主因，应继续拆 H.264 decode/display/present critical path、timeline/fence
+  和更细粒度 GPU handoff。
 - [ ] 将 visible direct H.265 ready-prefix 从受控窗口循环推进到完整播放循环：补持续 AU
   demux/parser、timeline semaphore 或更完整的 pacing/scheduling、loop/seek、音频/时钟接入和更长时间
   240Hz frame pacing telemetry。

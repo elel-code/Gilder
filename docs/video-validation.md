@@ -342,6 +342,31 @@ The same run shows H.264 is still present-limited, not packet-retention limited:
 H.265, while both paths report zero retained packet payload and the same
 1,036,800-byte bitstream ring.
 
+Current 2026-06-22 Main10/P010 direct Vulkan evidence:
+
+- H.265 Main10 visible ready-prefix:
+  `/tmp/gilder-vulkan-h265-main10-visible-p010-4k240`,
+  `requested_codec=h265-main-10`,
+  `picture_format=G10X6_B10X6R10X6_2PLANE_420_UNORM_3PACK16`,
+  `decoded_frame_count=480`, `presented_frame_count=480`,
+  `average_present_fps=240.32978160780624`,
+  `video_resource_memory_bytes=75104256`,
+  `session_memory_bytes=46309376`.
+  This completes the controlled direct Vulkan Video Main10 decode + P010 shader
+  present path. It is not yet the full video-wallpaper playback contract:
+  long-duration process sampling, broader real-world Main10 streams, continuous
+  demux/loop, audio and clock integration still need separate evidence.
+- H.264 4K/240 remains the current performance debt:
+  `/tmp/gilder-vulkan-h264-telemetry-default-4k240-ref1`,
+  `decoded_frame_count=480`, `presented_frame_count=480`,
+  `average_present_fps=230.37179368303578`,
+  `h264_present_queue_count=1`, `h264_async_present_depth=1`,
+  `h264_display_handoff_strategy=gpu-copy-to-dual-slot-nv12-display-ring`,
+  `h264_packet_queue_retained_payload_bytes=0`.
+  Direct sampled DPB output removes the extra 25.6MB display ring but regresses
+  to about 212fps on the same host, so H.264 240fps work should stay focused on
+  decode/display/present scheduling rather than packet queue retention.
+
 Current arbitrary-entry H.264/H.265 smokes can capture the same process evidence
 inline with the visible Wayland run:
 

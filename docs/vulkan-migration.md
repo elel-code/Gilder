@@ -1075,6 +1075,22 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   `239.83fps`。因此后续 H.264 性能主线应转向固定帧槽、descriptor/present ring、
   timeline/fence 管理和更深 decode/present decoupling；全量 DPB->display copy 只能作为
   hazard 规避实验，不是最终零拷贝/低内存目标。
+- 同日继续把 H.265 Main10 从 first-frame/readback 推进到 visible ready-prefix：H.265 smoke
+  支持 `--bit-depth 10`，CLI 用 `--video-codec h265-main-10` 创建 Main10 session、
+  `G10X6_B10X6R10X6_2PLANE_420_UNORM_3PACK16` P010 picture/resource，并由 native Vulkan
+  shader 采样到 Wayland swapchain。真实 Wayland `HDMI-A-1` 4K/240 证据
+  `/tmp/gilder-vulkan-h265-main10-visible-p010-4k240` 为 `decoded/presented=480/480`、
+  `average_present_fps=240.32978160780624`、`playback_loop_count=2`、
+  `video_resource_memory_bytes=75104256`、`session_memory_bytes=46309376`。
+  H.264 同轮实验确认了性能/内存边界：`GILDER_H264_DISPLAY_HANDOFF=direct` 可以去掉
+  25.6MB display ring，但 4K/240 ref=1 只有
+  `/tmp/gilder-vulkan-h264-direct-sampled-4k240-ref1` 的 `211.867fps`；双 present queue
+  (`GILDER_H264_PRESENT_QUEUE_COUNT=2`) 和更深 async present 在本机也未提升，默认保守回到
+  `h264_present_queue_count=1`、`h264_async_present_depth=1`。最新默认 H.264 4K/240
+  `/tmp/gilder-vulkan-h264-telemetry-default-4k240-ref1` 为 `decoded/presented=480/480`、
+  `average_present_fps=230.37179368303578`、`queue_retained=0`。结论仍是：
+  H.264 稳定 240fps 未完成，瓶颈在 H.264 decode/display/present critical path，
+  不是 streaming packet retention。
 - Web helper 输出要以 texture/frame stream 形式进入后端，避免把 WebKitGTK 当作最终 renderer 架构。
 
 ### Phase 5: 后端切换
