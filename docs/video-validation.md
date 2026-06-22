@@ -210,6 +210,19 @@ evidence `/tmp/gilder-vulkan-av1-main10-after-h264-general-layout-4k` reports
 `first_frame_decode_codec=av1-main-10`, P010 readback bytes `24883200`, and
 RGBA sampling with `rgba_unique_values=256`.
 
+AV1 has now moved past the old inter-header hard stop. The native parser emits
+`reference_order_hints`, `frame_refs_short_signaling`, `last_frame_idx`,
+`gold_frame_idx`, and 7 `ref_frame_indices` in
+`NativeVulkanAv1FrameSubmitSnapshot`. Real Wayland Main10 evidence
+`/tmp/gilder-vulkan-av1-inter-ref-telemetry-main10` keeps first-frame P010 direct
+decode/sampling valid and shows later temporal units as inter frames with
+`order_hint` and `ref_frame_indices`, while still marking them non-submit-ready
+until reference-name slot planning exists. H.265 Main10 visible 4K/240 was
+rechecked after that parser change:
+`/tmp/gilder-vulkan-h265-main10-after-av1-inter-ref-telemetry-4k240` reports
+`decoded/presented=480/480`, `average_present_fps=240.30745235839046`, P010, and
+`h265_packet_queue_retained_payload_bytes=0`.
+
 The visible codec smokes are native Wayland + native Vulkan presentation gates:
 GStreamer owns demux/decode/appsink and may output GPU memory, but it does not
 own a display sink or Wayland surface. They validate importer, shader sampling,

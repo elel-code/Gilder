@@ -1144,6 +1144,17 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   `/tmp/gilder-vulkan-av1-main10-after-h264-general-layout-4k` 为
   `first-frame-decode-output-sampled-and-readback-completed`，P010 readback 和 RGBA
   shader sampling 均非零。
+- AV1 continuous direct 的下一块已从 first-frame submit 扩到 inter reference telemetry：
+  `NativeVulkanAv1FrameSubmitSnapshot` 输出 `reference_order_hints`、
+  `frame_refs_short_signaling`、`last_frame_idx`、`gold_frame_idx` 和 7 个
+  `ref_frame_indices`。真实 Main10 `/tmp/gilder-vulkan-av1-inter-ref-telemetry-main10`
+  首帧仍完成 P010 direct decode/readback/sampling，后续 temporal units 已显示 inter
+  `order_hint` 和 `ref_frame_indices`，但 `vulkan_submit_candidate=false`，因为
+  reference-name slot planner、show-existing-frame 和 inter `vkCmdDecodeVideoKHR` 尚未完成。
+  同轮 H.265 Main10 visible 4K/240 回归
+  `/tmp/gilder-vulkan-h265-main10-after-av1-inter-ref-telemetry-4k240` 为
+  `decoded/presented=480/480`、`average_present_fps=240.30745235839046`、P010、
+  `h265_packet_queue_retained_payload_bytes=0`。
 - Web helper 输出要以 texture/frame stream 形式进入后端，避免把 WebKitGTK 当作最终 renderer 架构。
 
 ### Phase 5: 后端切换
