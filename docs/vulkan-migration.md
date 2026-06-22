@@ -1127,6 +1127,23 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   `/tmp/gilder-vulkan-h265-main10-after-h264-framepool-fence-4k240` 为
   `decoded/presented=480/480`、`average_present_fps=240.3833285970556`、
   P010 `G10X6_B10X6R10X6_2PLANE_420_UNORM_3PACK16`。
+- 继续下探 H.264 layout 成本后，新增 `GILDER_H264_RESOURCE_LAYOUT=general`
+  实验入口：H.264 decode resource image 和 display-copy source/final layout 可保持
+  `GENERAL`，runtime/summary 增加 `h264_resource_image_layout`。真实 Wayland
+  `/tmp/gilder-vulkan-h264-resource-general-4k240-ref1` 为
+  `decoded/presented=480/480`、`average_present_fps=233.11475907497862`，
+  但重跑 `/tmp/gilder-vulkan-h264-resource-general-layout-field-4k240-ref1` 为
+  `232.52402677308388fps`；该方向证明 layout churn 有成本，但收益波动，不足以解释
+  H.264 与 H.265 稳 240 的差距。`--probe-video` 同时确认本机 NVIDIA H.264 只暴露
+  `dpb-and-output-coincide` 且 max level 为 `5.2`，没有 `dpb-and-output-distinct`，
+  因此 H.264 zero-copy + reference decode/present overlap 受驱动能力约束。
+- 同轮保持 Main10/AV1 不退化：H.265 Main10 visible 4K/240
+  `/tmp/gilder-vulkan-h265-main10-after-h264-general-layout-4k240` 为
+  `decoded/presented=480/480`、`average_present_fps=239.76366459616204`；AV1 Main10
+  4K first-frame direct gate
+  `/tmp/gilder-vulkan-av1-main10-after-h264-general-layout-4k` 为
+  `first-frame-decode-output-sampled-and-readback-completed`，P010 readback 和 RGBA
+  shader sampling 均非零。
 - Web helper 输出要以 texture/frame stream 形式进入后端，避免把 WebKitGTK 当作最终 renderer 架构。
 
 ### Phase 5: 后端切换

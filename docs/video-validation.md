@@ -187,6 +187,29 @@ H.265 Main10 remains the stable control after these H.264-only changes:
 `decoded/presented=480/480`, `average_present_fps=240.3833285970556`, P010
 `G10X6_B10X6R10X6_2PLANE_420_UNORM_3PACK16`, and average `queue_present_us=3859`.
 
+The next H.264 low-level experiment is resource-image layout control. With
+`GILDER_H264_RESOURCE_LAYOUT=general`, H.264 keeps the decode resource image in
+`GENERAL` and copies from `GENERAL` back to `GENERAL`, avoiding the repeated
+`VIDEO_DECODE_DPB_KHR -> TRANSFER_SRC_OPTIMAL -> VIDEO_DECODE_DPB_KHR` source
+layout churn during display-copy. The runtime and summary now expose
+`h264_resource_image_layout`. Real Wayland evidence
+`/tmp/gilder-vulkan-h264-resource-general-4k240-ref1` passed `480/480` and
+reached `233.11475907497862fps` with lower average decode/record timings, but
+the follow-up telemetry run
+`/tmp/gilder-vulkan-h264-resource-general-layout-field-4k240-ref1` passed at
+`232.52402677308388fps`. Treat `GENERAL` layout as a valid but noisy H.264
+synchronization experiment, not as the 240fps fix.
+
+Main10 and AV1 were also rechecked after the H.264 layout work. H.265 Main10
+visible 4K/240 evidence
+`/tmp/gilder-vulkan-h265-main10-after-h264-general-layout-4k240` reports
+`decoded/presented=480/480`, `average_present_fps=239.76366459616204`, and P010
+`G10X6_B10X6R10X6_2PLANE_420_UNORM_3PACK16`. AV1 Main10 4K direct first-frame
+evidence `/tmp/gilder-vulkan-av1-main10-after-h264-general-layout-4k` reports
+`first-frame-decode-output-sampled-and-readback-completed`,
+`first_frame_decode_codec=av1-main-10`, P010 readback bytes `24883200`, and
+RGBA sampling with `rgba_unique_values=256`.
+
 The visible codec smokes are native Wayland + native Vulkan presentation gates:
 GStreamer owns demux/decode/appsink and may output GPU memory, but it does not
 own a display sink or Wayland surface. They validate importer, shader sampling,
