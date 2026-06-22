@@ -129,11 +129,26 @@ and `average_present_fps=239.82864245894595`; retained smaps evidence in
 
 The H.264 dual-slot display ring removes the previous DPB/read hazard: the same
 complex stream now submits every decode-ahead candidate (`2399/2399`) instead of
-skipping reference hazards. It does not yet make complex H.264 4K/240 stable:
-FIFO `vkQueuePresentKHR` still averages about `4509us` for H.264 versus
-`4045us` for H.265, and the extra display ring costs about `25.6MB` of Vulkan
-image memory. Treat it as a correctness/perf experiment, not as the final
-zero-copy memory target.
+skipping reference hazards. A follow-up present-overlap run moved H.264 decode
+ahead after `vkQueuePresentKHR` and then replaced the per-frame scoped present
+thread with a scoped persistent present worker. The retained 2026-06-22 real
+Wayland evidence `/tmp/gilder-vulkan-h264-present-worker` on `HDMI-A-1` reports
+`decoded_frame_count=2400`, `presented_frame_count=2400`,
+`average_present_fps=234.53720838404902`, `h264_decode_ahead_submit_count=2399`,
+average `queue_present_us=3975`, average `present_us=4252`,
+p50/p90/p99 present `4224/4415/4995us`, and no retained packet payload. Smaps
+evidence in `/tmp/gilder-vulkan-h264-present-worker/performance` reports
+`RSS/PSS/USS/Private_Dirty max=104972/76817/60048/28580 KiB`, average CPU
+`14.77%`, and NVIDIA process GPU memory `128 MiB`.
+
+This is a real improvement over `/tmp/gilder-vulkan-h264-barrier-tightened-final`
+(`207.34187751641383fps`, average `queue_present_us=4509`) and keeps the
+per-frame thread version's pacing (`/tmp/gilder-vulkan-h264-present-overlap`,
+`234.4142733415641fps`) while removing its extra scheduling cost. It does not
+yet make complex H.264 4K/240 fully stable at 240fps: the remaining gap is still
+the FIFO present/display-copy submit chain, and the dual-slot display ring costs
+about `25.6MB` of Vulkan image memory. Treat it as a correctness/perf
+experiment, not as the final zero-copy memory target.
 
 The visible codec smokes are native Wayland + native Vulkan presentation gates:
 GStreamer owns demux/decode/appsink and may output GPU memory, but it does not
@@ -226,7 +241,14 @@ temporal units, the native parser extracts sequence-header fields, and Vulkan
 accepts the resulting `StdVideoAV1SequenceHeader` via
 `VkVideoSessionParametersKHR`. It also requires the selected temporal unit to be
 a decode candidate: sequence header plus a frame OBU, or sequence header plus
-frame-header/tile-group OBUs.
+frame-header/tile-group OBUs. The 2026-06-22 Main10 gate
+`/tmp/gilder-vulkan-av1-bitstream-present-worker-10-fixed3` confirms a
+segmentation-enabled AV1 Main10 frame OBU now preserves first-frame telemetry:
+`av1_first_frame_header_found=true`, `av1_first_frame_type=key`,
+`av1_first_frame_tile_count=16`, `av1_first_frame_tile_columns=4`,
+`av1_first_frame_tile_rows=4`, and `session_parameters_codec=av1-main-10`.
+It is still not a direct submit candidate; the current blocker is the frame OBU
+tile table/header alignment reported in `av1_first_frame_submit_reason`.
 
 ## Current Architecture Gates
 
