@@ -150,6 +150,43 @@ the FIFO present/display-copy submit chain, and the dual-slot display ring costs
 about `25.6MB` of Vulkan image memory. Treat it as a correctness/perf
 experiment, not as the final zero-copy memory target.
 
+Follow-up H.264 ownership work borrowed the same high-level shape used by mature
+hardware-video paths: fixed frame/surface pools, explicit slot ownership, command
+rings, descriptors updated only when bindings change, and timeline/fence based
+handoff. Local Sunshine reference points are its Vulkan hardware-frame path
+(`AVHWFramesContext` pool, DMABuf import with explicit modifiers, command ring,
+and timeline semaphore handoff to FFmpeg), but Gilder still owns decode and
+presentation directly. The 2026-06-22 real Wayland `HDMI-A-1` smoke
+`/tmp/gilder-vulkan-h264-display-slot-fence-4k240-ref1` added per-frame acquire
+semaphores/fences plus display-slot reuse fences and reports
+`decoded/presented=480/480`, `average_present_fps=230.31172461134605`,
+`h264_present_result_wait_elapsed_us=1929885`, average fence wait about `0.89us`,
+and no retained packet payload. This is a stability/ownership step, not an FPS
+breakthrough.
+
+The longer performance run
+`/tmp/gilder-vulkan-h264-display-slot-fence-4k240-perf` reports
+`decoded/presented=1200/1200`, `average_present_fps=232.89863472099296`,
+`RSS/PSS/USS/Private_Dirty max=106000/90291/84616/27544 KiB`, and NVIDIA process
+GPU memory `116 MiB`. Its raw CPU average is `36.84%` because the first 0s sample
+is `100%`; the following samples are `28.6/20.9/18.0/16.7%`. Treat the memory
+result as unchanged relative to the previous display-ring path.
+
+Two deeper present experiments should remain negative evidence: with
+`GILDER_H264_ASYNC_PRESENT_DEPTH=2`,
+`/tmp/gilder-vulkan-h264-per-frame-fence-depth2-4k240-short-seq` completed but
+fell to `219.4879316010344fps` because single-queue present blocking moved into
+`avg_submit_us=4175.98`; with `GILDER_H264_PRESENT_QUEUE_COUNT=2`,
+`/tmp/gilder-vulkan-h264-per-frame-fence-dual-present-4k240-short-seq` timed out
+after 20s and produced empty runtime/stderr. Keep H.264 default at single present
+queue/depth 1 until the binary-semaphore path is replaced by a real timeline
+frame-pool scheduler.
+
+H.265 Main10 remains the stable control after these H.264-only changes:
+`/tmp/gilder-vulkan-h265-main10-after-h264-framepool-fence-4k240` reports
+`decoded/presented=480/480`, `average_present_fps=240.3833285970556`, P010
+`G10X6_B10X6R10X6_2PLANE_420_UNORM_3PACK16`, and average `queue_present_us=3859`.
+
 The visible codec smokes are native Wayland + native Vulkan presentation gates:
 GStreamer owns demux/decode/appsink and may output GPU memory, but it does not
 own a display sink or Wayland surface. They validate importer, shader sampling,

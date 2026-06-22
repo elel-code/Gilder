@@ -1103,6 +1103,30 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   `average_present_fps=230.37179368303578`、`queue_retained=0`。结论仍是：
   H.264 稳定 240fps 未完成，瓶颈在 H.264 decode/display/present critical path，
   不是 streaming packet retention。
+- 后续调度重构应借鉴成熟硬件视频路径的“frame pool + ownership”模型，而不是继续
+  对现有 present worker 小修小补。Sunshine 本地 Vulkan/FFmpeg 路径的可借鉴点包括：
+  `AVHWFramesContext` 预分配硬件帧池、DMABuf 导入时携带 explicit modifier/plane layout、
+  source/target 变化时才更新 descriptor、命令 buffer ring、timeline semaphore 把 GPU
+  写入完成状态交还给 FFmpeg，以及 source image 延迟销毁。Gilder 的 decode/present 仍走
+  自有 Vulkan Video/swapchain，但 H.264/H.265/AV1 应共享同一套 slot state：
+  `Free -> DecodeWriting -> DecodeReady -> DisplayCopyWriting -> Sampling -> Presented/Retired`，
+  并由 timeline value 或 per-slot fence 回收 bitstream range、DPB layer、display ring slot
+  和 swapchain image。
+- 2026-06-22 H.264 已完成第一步 slot ownership 化：display-ring 路径改为 per-frame
+  acquire semaphore/fence，并在复用 display slot 前等待上一次采样该 slot 的 frame fence。
+  真实 Wayland `HDMI-A-1` 证据 `/tmp/gilder-vulkan-h264-display-slot-fence-4k240-ref1` 为
+  `decoded/presented=480/480`、`average_present_fps=230.31172461134605`、
+  `h264_present_result_wait_elapsed_us=1929885`、平均 fence wait 约 `0.89us`。这验证了
+  所有权 guard 没有引入明显阻塞，但它不是 240fps 突破。更深 async present 的负面结果也已
+  固化：`GILDER_H264_ASYNC_PRESENT_DEPTH=2`
+  `/tmp/gilder-vulkan-h264-per-frame-fence-depth2-4k240-short-seq` 降到
+  `219.4879316010344fps`，因为单队列 mutex 让 `avg_submit_us=4175.98`；双 present queue
+  `/tmp/gilder-vulkan-h264-per-frame-fence-dual-present-4k240-short-seq` 20s 超时且 runtime
+  为空。下一步应迁移 timeline semaphore/range scheduler，而不是继续提高当前 worker depth。
+- H.265 Main10 作为对照仍稳定：同工作树真实 Wayland
+  `/tmp/gilder-vulkan-h265-main10-after-h264-framepool-fence-4k240` 为
+  `decoded/presented=480/480`、`average_present_fps=240.3833285970556`、
+  P010 `G10X6_B10X6R10X6_2PLANE_420_UNORM_3PACK16`。
 - Web helper 输出要以 texture/frame stream 形式进入后端，避免把 WebKitGTK 当作最终 renderer 架构。
 
 ### Phase 5: 后端切换
