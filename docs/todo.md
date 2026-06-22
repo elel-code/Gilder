@@ -549,7 +549,7 @@
   `h265_packet_queue_loop_skip_access_units=156`、
   `h265_packet_queue_bootstrap_discarded_access_units=156`、
   `h265_packet_queue_retained_payload_bytes=0`。
-- [x] 将 AV1 Main8/Main10 推进到 direct Vulkan Video 任意入口连续可见：新增
+- [ ] 将 AV1 Main8/Main10 推进到 direct Vulkan Video 任意入口连续可见：新增
   `--run-av1-ready-prefix-video` 和
   `scripts/native-vulkan-av1-ready-prefix-video-smoke.sh`，以 GStreamer 只负责
   demux/parser/appsink TU 输入，native Vulkan Video 负责 AV1 picture info、inter decode、
@@ -566,6 +566,14 @@
   Main8 10s 观察证据 `/tmp/gilder-vulkan-av1-main8-observe-10s-dpb9-v3` 为
   `decoded=1305`、`handoff=1095`、`presented=2400`、`average_present_fps=239.6313194270436`、
   `stream_dpb_slots=9`、displayed layers `0..8`、`video_resource_memory_bytes=112656384`。
+  后续更严格的 readback diversity gate 证明上述 present/FPS 证据仍可能是假阳性：
+  `/tmp/gilder-av1-frameid-begin-test` 和 `/tmp/gilder-av1-tile-order-test` 均为
+  `decoded/presented=12/12` 且 `average_present_fps=264-280`，但
+  `readback_y_distinct=1`、`readback_uv_distinct=1`，说明 inter 帧提交/引用链仍在重复同一
+  画面。当前 AV1 真实状态改回未完成：parser 已补 `current_frame_id`、
+  `expectedFrameId` 和 FFmpeg-like begin reference slots telemetry，但还需要继续对齐
+  AV1 STD picture/reference fields，必要时实现 FFmpeg 同形态的 dedicated/out-of-place DPB
+  与 output 分离路径。
 - [ ] 继续攻克 H.264 4K/240 稳帧：2026-06-22 默认 direct Vulkan Video H.264 4K/240 ref=1
   `/tmp/gilder-vulkan-h264-telemetry-default-4k240-ref1` 为 `decoded/presented=480/480`、
   `average_present_fps=230.37179368303578`、`h264_present_queue_count=1`、

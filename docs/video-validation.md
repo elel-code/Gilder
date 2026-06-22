@@ -235,6 +235,17 @@ again after this parser change:
 `decoded/presented=480/480`, `average_present_fps=240.157162809936`, P010, and
 `h265_packet_queue_retained_payload_bytes=0`.
 
+Stricter AV1 readback diversity checks later exposed the remaining false
+positive: the AV1 ready-prefix runtime can present at target cadence while the
+decoded inter-frame content still repeats. `/tmp/gilder-av1-frameid-begin-test`
+and `/tmp/gilder-av1-tile-order-test` both reported `decoded/presented=12/12`
+and `average_present_fps=264-280`, but failed with `readback_y_distinct=1` and
+`readback_uv_distinct=1`. Treat AV1 continuous direct as unfinished until the
+readback hashes change across inter frames. The current likely gap is still in
+AV1 STD picture/reference construction or in the coincident DPB/output model;
+the next validation target is FFmpeg-like decode references plus a
+dedicated/out-of-place DPB experiment.
+
 The visible codec smokes are native Wayland + native Vulkan presentation gates:
 GStreamer owns demux/decode/appsink and may output GPU memory, but it does not
 own a display sink or Wayland surface. They validate importer, shader sampling,
