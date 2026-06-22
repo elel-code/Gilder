@@ -598,13 +598,22 @@
   `readback_y_distinct=16`、`readback_uv_distinct=16`；Main10/P010
   `/tmp/gilder-av1-main10-native-res-libaom-lowdelay-observe-10s` 为
   `presented=2400`、`average_present_fps=230.54892214299622`、
-  `readback_y_distinct=16`、`readback_uv_distinct=16`。但 SVT-AV1 random-access
-  2560x1600@240 `/tmp/gilder-av1-main8-native-res-svt-observe-10s` 仍失败：
-  `presented=2400`、`average_present_fps=213.25216091706739`、
-  `readback_y_distinct=1`、`readback_uv_distinct=1`，而 ffmpeg framehash 证明源帧不同。
-  因此 AV1 当前结论是 low-delay/native-res 可见正确，random-access hidden/show-existing
-  链仍需继续完善；下一步仍需更长时长 process sampling、更多真实码流矩阵、低内存
-  DPB/output handoff、audio/clock 接入，以及替换/扩展 synthetic libaom smoke 源。
+  `readback_y_distinct=16`、`readback_uv_distinct=16`。2026-06-23 继续修复
+  SVT-AV1 random-access 2560x1600@240：根因是 inter single-tile OBU 的 tile payload
+  边界比 FFmpeg/Vulkan compact slice 多吃了 1 个 leading zero byte，导致提交 payload
+  size 始终比 FFmpeg 大 1，解码后 readback 重复。`native_vulkan_av1_tile_group_offsets_from_payload`
+  现在只对 inter、single-tile、1x1 tile layout 且首字节为 0 的 payload 跳过 1 byte，
+  并补 `trims_av1_single_tile_inter_leading_zero_for_tile_payload_window`。真实 Wayland
+  `HDMI-A-1` 证据：`/tmp/gilder-av1-svt-leading-zero-default-ring-readback`
+  为 `presented=64`、`readback_y_distinct=9`、`readback_uv_distinct=9`；
+  `/tmp/gilder-av1-svt-leading-zero-default-ring-20s` 为 `presented=4800`、
+  `decoded_frame_count=2420`、`hidden_decoded_frame_count=2380`、
+  `displayed_handoff_frame_count=2380`、`average_present_fps=238.2264888256383`。
+  同轮把 AV1 streaming bitstream ring 默认从 2 slots 提到 8 slots，H.264/H.265
+  仍保持 2 slots，`GILDER_VULKAN_BITSTREAM_RING_SLOTS` 可覆盖；当前 AV1 random-access
+  正确性已过，剩余重点是更长时长 process sampling、更多真实码流矩阵、present-overlap/
+  persistent present worker、低内存 DPB/output handoff、audio/clock 接入，以及替换/扩展
+  synthetic libaom smoke 源。
 - [ ] 继续攻克 H.264 4K/240 稳帧：2026-06-22 默认 direct Vulkan Video H.264 4K/240 ref=1
   `/tmp/gilder-vulkan-h264-telemetry-default-4k240-ref1` 为 `decoded/presented=480/480`、
   `average_present_fps=230.37179368303578`、`h264_present_queue_count=1`、

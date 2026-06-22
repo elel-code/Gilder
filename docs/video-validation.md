@@ -285,14 +285,20 @@ path can render native-resolution AV1 correctly, but they also expose the next
 performance target because neither run sustains a full 240fps average at this
 resolution.
 
-SVT-AV1 random-access is still a separate correctness gap. The 2560x1600@240
-SVT source at `/tmp/gilder-av1-observe-native-res-source/av1-main8-2560x1600-240fps-240frames.mkv`
-decodes to distinct frames with FFmpeg framehash, but the direct Vulkan run
-`/tmp/gilder-av1-main8-native-res-svt-observe-10s` fails with
-`average_present_fps=213.25216091706739`, `readback_y_distinct=1`, and
-`readback_uv_distinct=1`. Its visible frames include many `refresh_frame_flags=0`
-inter frames and show-existing handoffs, so the likely remaining gap is in the
-full hidden/show-existing reference state chain rather than image scaling.
+SVT-AV1 random-access has moved from repeated-frame failure to visible continuous
+decode. The 2560x1600@240 SVT source at
+`/tmp/gilder-av1-observe-native-res-source/av1-main8-2560x1600-240fps-240frames.mkv`
+still decodes to distinct frames with FFmpeg framehash, and the direct Vulkan
+run now matches FFmpeg's compact single-tile payload sizes for the first frames
+(`97725`, `109775`, `85111`, `67245`). The short correctness gate
+`/tmp/gilder-av1-svt-leading-zero-default-ring-readback` reports
+`presented=64`, `readback_y_distinct=9`, and `readback_uv_distinct=9`. The longer
+default 8-slot bitstream-ring run
+`/tmp/gilder-av1-svt-leading-zero-default-ring-20s` reports `presented=4800`,
+`decoded_frame_count=2420`, `hidden_decoded_frame_count=2380`,
+`displayed_handoff_frame_count=2380`, `average_present_fps=238.2264888256383`,
+and 19 clean source loops. This makes SVT random-access a performance/coverage
+target rather than the old correctness blocker.
 
 AV1 repeated-frame root cause and fix notes:
 
@@ -318,6 +324,18 @@ AV1 repeated-frame root cause and fix notes:
   streaming reference planner is recreated before planning the first temporal
   unit of the new loop, so stale reference maps do not leak across loop
   boundaries.
+- SVT tile-payload fix: SVT random-access inter frame OBUs expose a leading
+  zero byte before the actual single-tile entropy payload at the parser's
+  previous tile boundary. FFmpeg/Vulkan submits the compact tile payload one
+  byte later. `native_vulkan_av1_tile_group_offsets_from_payload` now skips that
+  byte only for inter, single-tile, 1x1 tile layouts whose first tile byte is
+  zero; key frames and non-zero tile starts remain unchanged. The regression
+  test is `trims_av1_single_tile_inter_leading_zero_for_tile_payload_window`.
+- Performance fix: AV1 streaming bitstream rings now default to 8 slots while
+  H.264/H.265 stay at 2 slots. On the same SVT source this reduced ring wraps
+  and improved the no-readback 10s observation from roughly 236fps to a
+  238-239fps range, with `GILDER_VULKAN_BITSTREAM_RING_SLOTS` still available
+  for explicit override.
 - Diagnostics added: runtime snapshots now include submitted picture
   `OrderHints`, setup/reference `SavedOrderHints`, reference frame types, sign
   bias, frame-size flags, and hidden-frame diagnostics so future false positives
@@ -571,9 +589,12 @@ Current 2026-06-22 Main10/P010 direct Vulkan evidence:
   frames at roughly 240fps with `readback_y_distinct=10` and
   `readback_uv_distinct=10`. Native-resolution low-delay AV1 is also visible
   and readback-valid, but Main8 averages about 235fps and Main10/P010 about
-  230fps at 2560x1600@240. SVT-AV1 random-access remains a correctness blocker:
-  `/tmp/gilder-av1-main8-native-res-svt-observe-10s` repeats the key-frame
-  readback even though FFmpeg proves the source frames differ.
+  230fps at 2560x1600@240. SVT-AV1 random-access is no longer the repeated-frame
+  correctness blocker after the single-tile leading-zero fix:
+  `/tmp/gilder-av1-svt-leading-zero-default-ring-readback` reports
+  `readback_y_distinct=9` and `readback_uv_distinct=9`, while
+  `/tmp/gilder-av1-svt-leading-zero-default-ring-20s` presents 4800 frames at
+  `average_present_fps=238.2264888256383`.
 - H.264 4K/240 remains the current performance debt:
   `/tmp/gilder-vulkan-h264-telemetry-default-4k240-ref1`,
   `decoded_frame_count=480`, `presented_frame_count=480`,

@@ -1222,11 +1222,25 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   `readback_y_distinct=16`、`readback_uv_distinct=16`；Main10/P010
   `/tmp/gilder-av1-main10-native-res-libaom-lowdelay-observe-10s` 为
   `presented=2400`、`average_present_fps=230.54892214299622`、
-  `readback_y_distinct=16`、`readback_uv_distinct=16`。同时 SVT-AV1 random-access
+  `readback_y_distinct=16`、`readback_uv_distinct=16`。当时 SVT-AV1 random-access
   `/tmp/gilder-av1-main8-native-res-svt-observe-10s` 仍失败，`readback_y_distinct=1`、
-  `readback_uv_distinct=1`，说明 hidden/show-existing reference chain 还未完整覆盖。
-  下一阶段仍以真实样本覆盖、长时采样、低内存 DPB/output handoff、240fps 性能和
-  audio/clock 为 gate。
+  `readback_uv_distinct=1`，说明后续必须继续验证 hidden/show-existing reference chain。
+- 2026-06-23 修复 SVT-AV1 random-access repeated-frame：对比 FFmpeg Vulkan 后确认
+  FFmpeg 提交的 inter single-tile payload 比本实现小 1 byte；SVT inter frame OBU
+  在当前 parser tile boundary 前有一个 leading zero byte，旧代码把它喂给
+  `vkCmdDecodeVideoKHR`，导致 readback 反复落在同一画面。现在
+  `native_vulkan_av1_tile_group_offsets_from_payload` 只在 inter、single-tile、1x1 tile
+  layout 且 tile payload 首字节为 0 时跳过该 byte，key frame 与非零 tile start
+  不变，并用 `trims_av1_single_tile_inter_leading_zero_for_tile_payload_window` 锁住。
+  真实 Wayland `HDMI-A-1` 证据：`/tmp/gilder-av1-svt-leading-zero-default-ring-readback`
+  为 `presented=64`、`readback_y_distinct=9`、`readback_uv_distinct=9`；
+  `/tmp/gilder-av1-svt-leading-zero-default-ring-20s` 为 `presented=4800`、
+  `decoded=2420`、`hidden_decoded=2380`、`displayed_handoff=2380`、
+  `average_present_fps=238.2264888256383`、19 次 clean source loop。AV1 streaming
+  bitstream ring 默认也调到 8 slots（H.264/H.265 仍为 2），降低 wrap 频率并把
+  SVT no-readback 10s 样本推进到约 238-239fps 区间；剩余差距主要在 AV1 runtime
+  仍把 hidden decode/reference planning/present 串在单线程，后续应复用 H.264/H.265
+  的 present-overlap/persistent present worker。
 - Web helper 输出要以 texture/frame stream 形式进入后端，避免把 WebKitGTK 当作最终 renderer 架构。
 
 ### Phase 5: 后端切换
