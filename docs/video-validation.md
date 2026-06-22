@@ -300,6 +300,52 @@ default 8-slot bitstream-ring run
 and 19 clean source loops. This makes SVT random-access a performance/coverage
 target rather than the old correctness blocker.
 
+AV1 arbitrary-entry visible direct correctness is now gated in the same style as
+H.264/H.265, with one AV1-specific distinction: WebM/`av1parse` may discard the
+broken pre-key prefix before packets reach Gilder's streaming queue. The AV1
+smoke therefore records either runtime queue discard or demux/parser prefix
+discard as explicit evidence, and requires loop replay, first-frame key restart,
+zero retained payload, 8-slot bitstream ring, DPB/session consistency, and
+optional readback diversity. Real `WAYLAND_DISPLAY=wayland-1`, `HDMI-A-1`
+evidence:
+
+- Main8 640x368/60 arbitrary-entry loop/readback:
+  `/tmp/gilder-av1-arbitrary-main8-script-gate`, `presented=120`,
+  `playback_loop_count=2`, `loop_boundary_reset_count=1`,
+  `arbitrary_entry_demux_dropped_prefix=yes`, `first_key_pts=0.650000`,
+  `readback_y_distinct=5`, `readback_uv_distinct=5`.
+- Main10/P010 640x368/60 arbitrary-entry loop/readback:
+  `/tmp/gilder-av1-arbitrary-main10-script-gate`, `presented=120`,
+  `playback_loop_count=2`, `loop_boundary_reset_count=1`,
+  `picture_format=G10X6_B10X6R10X6_2PLANE_420_UNORM_3PACK16`,
+  `readback_y_distinct=5`, `readback_uv_distinct=5`.
+- Main8 4K/240 arbitrary-entry loop/readback:
+  `/tmp/gilder-av1-main8-arbitrary-4k240-script-gate`, `presented=480`,
+  `decoded=260`, `hidden_decoded=238`, `displayed_handoff=220`,
+  `playback_loop_count=2`, `readback_y_distinct=5`,
+  `average_present_fps=214.3091083253833`.
+- Main10/P010 4K/240 arbitrary-entry loop/readback:
+  `/tmp/gilder-av1-main10-arbitrary-4k240-script-gate`, `presented=480`,
+  `decoded=260`, `hidden_decoded=238`, `displayed_handoff=220`,
+  `playback_loop_count=2`, `readback_y_distinct=5`,
+  `average_present_fps=195.08401023440956`.
+
+Longer no-readback 4K/240 performance samples keep the same arbitrary-entry
+loop correctness but still miss stable 240fps. Main8
+`/tmp/gilder-av1-main8-arbitrary-4k240-performance` reports
+`presented=2400`, `playback_loop_count=8`, `loop_boundary_reset_count=7`,
+`average_present_fps=212.34285202161269`, RSS/PSS/USS/Private_Dirty
+max `105732/72353/58468/29380 KiB`, average CPU `23.41%`, NVIDIA process GPU
+memory `180 MiB`. Main10/P010
+`/tmp/gilder-av1-main10-arbitrary-4k240-performance` reports
+`presented=2400`, `playback_loop_count=8`, `loop_boundary_reset_count=7`,
+`average_present_fps=211.02778884327637`, RSS/PSS/USS/Private_Dirty
+max `108404/74981/61104/30172 KiB`, average CPU `10.09%`, NVIDIA process GPU
+memory `288 MiB`. Current status: arbitrary-entry continuous correctness is
+usable for Main8/Main10; remaining AV1 work is 4K/240 scheduling performance,
+broader real-wallpaper stream coverage, audio/clock integration, and DPB/output
+memory compaction.
+
 AV1 repeated-frame root cause and fix notes:
 
 - Failure mode: present cadence and decoded-frame counters were normal, but

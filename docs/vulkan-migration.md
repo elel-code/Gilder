@@ -1241,6 +1241,31 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   SVT no-readback 10s 样本推进到约 238-239fps 区间；剩余差距主要在 AV1 runtime
   仍把 hidden decode/reference planning/present 串在单线程，后续应复用 H.264/H.265
   的 present-overlap/persistent present worker。
+- 2026-06-23 继续把 AV1 任意入口可见 direct gate 补到 H.264/H.265 同级的
+  correctness 形态：`scripts/native-vulkan-av1-ready-prefix-video-smoke.sh` 新增
+  `--arbitrary-entry-offset` 证据强化、`--require-readback-diversity`、performance
+  sampling、layer/fit/display 参数和 summary 中的 RSS/PSS/USS/Private_Dirty 字段。
+  AV1/WebM 的坏前缀可能在 `av1parse`/demux 阶段就被丢弃，因此 gate 明确记录
+  `arbitrary_entry_demux_dropped_prefix=yes`，而不是强行要求 Gilder runtime queue
+  必须看到并丢弃坏 TU。真实 Wayland `HDMI-A-1` 证据：Main8 小窗口
+  `/tmp/gilder-av1-arbitrary-main8-script-gate` 和 Main10/P010
+  `/tmp/gilder-av1-arbitrary-main10-script-gate` 都为 `presented=120`、
+  `playback_loop_count=2`、`loop_boundary_reset_count=1`、`readback_y/uv_distinct=5`。
+  4K/240 correctness gate：Main8
+  `/tmp/gilder-av1-main8-arbitrary-4k240-script-gate` 为 `presented=480`、
+  `decoded=260`、`hidden_decoded=238`、`displayed_handoff=220`、
+  `readback_y_distinct=5`、`average_present_fps=214.309`；Main10/P010
+  `/tmp/gilder-av1-main10-arbitrary-4k240-script-gate` 为同样帧数结构、
+  `readback_y_distinct=5`、`average_present_fps=195.084`。长一点的 no-readback
+  4K/240 performance：Main8 `/tmp/gilder-av1-main8-arbitrary-4k240-performance`
+  为 `presented=2400`、`playback_loop_count=8`、`average_present_fps=212.343`、
+  `RSS/PSS/USS/Private_Dirty max=105732/72353/58468/29380 KiB`、CPU `23.41%`、
+  NVIDIA process GPU memory `180 MiB`；Main10/P010
+  `/tmp/gilder-av1-main10-arbitrary-4k240-performance` 为 `presented=2400`、
+  `average_present_fps=211.028`、RSS/PSS/USS/Private_Dirty max
+  `108404/74981/61104/30172 KiB`、CPU `10.09%`、NVIDIA process GPU memory
+  `288 MiB`。结论：AV1 Main8/Main10 任意入口连续 correctness 已可用；未完成项是
+  4K/240 稳定性能、真实壁纸码流矩阵、audio/clock 和 DPB/output 内存压缩。
 - Web helper 输出要以 texture/frame stream 形式进入后端，避免把 WebKitGTK 当作最终 renderer 架构。
 
 ### Phase 5: 后端切换
