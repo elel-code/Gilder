@@ -1266,6 +1266,29 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   `108404/74981/61104/30172 KiB`、CPU `10.09%`、NVIDIA process GPU memory
   `288 MiB`。结论：AV1 Main8/Main10 任意入口连续 correctness 已可用；未完成项是
   4K/240 稳定性能、真实壁纸码流矩阵、audio/clock 和 DPB/output 内存压缩。
+- 2026-06-23 继续压 AV1 hidden decode 同步：先试的 immediate show-existing semaphore
+  handoff 在 4K/240 arbitrary-entry Main8 源 `/tmp/gilder-av1-main8-hidden-handoff-readback`
+  中没有命中，`av1_hidden_decode_async_handoff_count=0`，仍有
+  `av1_hidden_decode_queue_wait_count=238`，`average_present_fps=201.318`。这说明真实
+  AV1 流里 hidden decode 与 show-existing handoff 不保证相邻，单纯窥探下一帧不足以解决
+  4K/240 瓶颈。当前代码已把 hidden decode 默认从 `vkQueueWaitIdle` 改为 per-submit
+  fence wait，并在 runtime JSON/summary 输出 `av1_hidden_decode_fence_wait_count`、
+  `av1_hidden_decode_fence_wait_elapsed_us`、`av1_hidden_decode_fence_wait_max_us` 和
+  `bitstream_ring_allocation_count`；旧行为可用
+  `GILDER_VULKAN_AV1_HIDDEN_DECODE_SYNC=queue-wait` 回退。真实 Wayland 回归：
+  Main8 4K/240 readback `/tmp/gilder-av1-main8-hidden-fence-readback` 为
+  `presented=480`、`readback_y/uv_distinct=5`、`average_present_fps=205.137`、
+  `av1_hidden_decode_fence_wait_count=238`、`queue_wait_count=0`；Main8 no-readback
+  performance `/tmp/gilder-av1-main8-hidden-fence-4k240-performance` 为
+  `presented=2400`、`average_present_fps=209.958`、`RSS/PSS/USS/Private_Dirty max=
+  108732/95546/90860/30652 KiB`、CPU `15.03%`、NVIDIA process GPU memory `180 MiB`；
+  Main10 readback `/tmp/gilder-av1-main10-hidden-fence-readback` 为 `presented=480`、
+  `readback_y/uv_distinct=5`、`average_present_fps=195.827`、`queue_wait_count=0`。
+  结论：fence wait 明确清掉了 CPU 侧 `vkQueueWaitIdle` fallback，并降低 Main8 长跑 CPU，
+  但 FPS 没有提升，说明 4K/240 主要瓶颈仍是 hidden decode 串行等待和 layout/slot
+  ownership 未解耦。后续不能继续堆 one-off handoff，而应实现按 DPB/output slot 记录
+  layout ownership、decode completion serial、bitstream range lifetime 的
+  command-buffer/timeline ring。
 - Web helper 输出要以 texture/frame stream 形式进入后端，避免把 WebKitGTK 当作最终 renderer 架构。
 
 ### Phase 5: 后端切换
