@@ -1069,16 +1069,12 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   GStreamer 或等价前端只负责 demux/parser/audio/clock，Vulkan Video 模块负责 picture info、
   reference slots 和 queue 同步，再复用 native Vulkan NV12 shader 合成到 visible swapchain。
   H.264/H.265 High/Main 8-bit 已有 4K/240 任意入口 visible direct gate，覆盖 B 帧、
-  多参考、ref-list/MMCO、loop skip replay 和 fixed-capacity bitstream ring；继续推进
-  AV1/scene wallpaper 前，video 侧还应补长时段稳定 240fps、audio/clock 和更多真实码流
-  采样。AV1 direct 已完成 sequence header 到 Vulkan STD session parameters，以及 Main8/Main10
-  first-frame `vkCmdDecodeVideoKHR` decode-output readback gate；仍需把
-  picture info/tile payload 和
-  `vkCmdDecodeVideoKHR` 接到连续 present。10-bit H.265/AV1 已有 sampled 2-plane 420
-  format evidence，P010 visible importer 已跑通，direct Vulkan Video Main10 first-frame
-  P010 shader sampling 也已跑通；后续还需要把 Main10 接入连续 DPB、display handoff 和
-  visible decode/present。CUDA copy path 只保留为 fallback
-  和对照基线。
+  多参考、ref-list/MMCO、loop skip replay 和 fixed-capacity bitstream ring；H.265
+  Main10/P010 和 AV1 Main10/P010 也已推进到真实 Wayland 4K/240 任意入口 direct visible
+  gate。后续 video 侧还应补长时段稳定 240fps、audio/clock 和更多真实码流采样。
+  AV1 direct 当前采用逻辑 reference-name slot planner 和 show-existing handoff，优先保证
+  连续可见正确性；物理 DPB slot 压缩和更真实码流覆盖留作后续优化。CUDA copy path 只保留为
+  fallback 和对照基线。
 - 成功标准是同场景优于历史 native-wgpu/GStreamer CUDA copy 路线，而不是理论零拷贝。
 - 2026-06-22 的 H.264 display-copy handoff 证明了一个重要边界：双槽 NV12 display
   ring 可以把 H.264 decode-ahead submit 从 hazard-skip 状态推进到 `2399/2399`，并在
@@ -1164,6 +1160,29 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   `/tmp/gilder-vulkan-h265-main10-after-av1-show-existing-fix-4k240` 为
   `decoded/presented=480/480`、`average_present_fps=240.157162809936`、P010、
   `h265_packet_queue_retained_payload_bytes=0`。
+- AV1 direct 已跨过上述 show-existing/reference planner 阻塞，接入真实可见 runtime：
+  新增 `--run-av1-ready-prefix-video` 和
+  `scripts/native-vulkan-av1-ready-prefix-video-smoke.sh`。runtime 支持 AV1 Main8/Main10、
+  inter `vkCmdDecodeVideoKHR`、show-existing display handoff、fixed-capacity persistent
+  mapped bitstream ring 和 Wayland swapchain present。2026-06-22 真实 Wayland
+  `HDMI-A-1` 小窗口任意入口证据
+  `/tmp/gilder-vulkan-av1-main10-arbitrary-visible-direct-32tu-final` 为
+  `decoded=24`、`handoff=8`、`presented=32`、`average_present_fps=264.3964901002394`；
+  4K/60 证据 `/tmp/gilder-vulkan-av1-main10-arbitrary-visible-direct-4k60` 为
+  `decoded=72`、`handoff=48`、`presented=120`、`average_present_fps=244.7861114137336`；
+  4K/240 完整窗口证据
+  `/tmp/gilder-vulkan-av1-main10-arbitrary-visible-direct-4k240-window240` 为
+  `requested_codec=av1-main-10`、P010
+  `G10X6_B10X6R10X6_2PLANE_420_UNORM_3PACK16`、`decoded=259`、`handoff=221`、
+  `presented=480`、`average_present_fps=238.70626183113086`、`playback_loop_count=2`、
+  `loop_boundary_reset_count=1`、`av1_packet_queue_retained_payload_bytes=0`、
+  `video_resource_memory_bytes=25034752`、`session_memory_bytes=14143488`。H.265 Main10
+  同轮 4K/240 任意入口回归
+  `/tmp/gilder-vulkan-h265-main10-final-regression-4k240` 为
+  `decoded/presented=480/480`、`average_present_fps=240.71777490911953`、
+  `h265_packet_queue_loop_skip_access_units=156`、`h265_packet_queue_retained_payload_bytes=0`。
+  当前 AV1 正确性优先使用逻辑 reference-name slot 规划；物理 DPB slot compaction、长时段
+  process sampling、更多真实 AV1 码流、audio/clock 接入仍是后续工作。
 - Web helper 输出要以 texture/frame stream 形式进入后端，避免把 WebKitGTK 当作最终 renderer 架构。
 
 ### Phase 5: 后端切换

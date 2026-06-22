@@ -430,21 +430,42 @@ H.265, while both paths report zero retained packet payload and the same
 Current 2026-06-22 Main10/P010 direct Vulkan evidence:
 
 - H.265 Main10 visible ready-prefix:
-  `/tmp/gilder-vulkan-h265-main10-visible-p010-4k240`,
+  `/tmp/gilder-vulkan-h265-main10-final-regression-4k240`,
   `requested_codec=h265-main-10`,
   `picture_format=G10X6_B10X6R10X6_2PLANE_420_UNORM_3PACK16`,
   `decoded_frame_count=480`, `presented_frame_count=480`,
-  `average_present_fps=240.32978160780624`,
+  `average_present_fps=240.71777490911953`,
+  `h265_packet_queue_loop_count=1`,
+  `h265_packet_queue_loop_skip_access_units=156`,
+  `h265_packet_queue_retained_payload_bytes=0`,
   `video_resource_memory_bytes=75104256`,
   `session_memory_bytes=46309376`.
-  This completes the controlled direct Vulkan Video Main10 decode + P010 shader
-  present path. It is not yet the full video-wallpaper playback contract:
+  This completes the arbitrary-entry direct Vulkan Video Main10 decode + P010
+  shader present gate on the 4K/240 real Wayland path. It is not yet the full
+  video-wallpaper playback contract:
   long-duration process sampling, broader real-world Main10 streams, continuous
   demux/loop, audio and clock integration still need separate evidence.
   Renderer descriptor-set expansion was regression-tested with
   `/tmp/gilder-vulkan-h265-main10-renderer-regression-4k240`: `decoded=480`,
   `presented=480`, `average_present_fps=240.2474194054933`, same P010 picture
   format.
+- AV1 Main10 visible ready-prefix:
+  `/tmp/gilder-vulkan-av1-main10-arbitrary-visible-direct-4k240-window240`,
+  `requested_codec=av1-main-10`,
+  `picture_format=G10X6_B10X6R10X6_2PLANE_420_UNORM_3PACK16`,
+  `decoded_frame_count=259`, `displayed_handoff_frame_count=221`,
+  `presented_frame_count=480`, `average_present_fps=238.70626183113086`,
+  `target_max_fps=240`, `playback_loop_count=2`,
+  `loop_boundary_reset_count=1`, `av1_packet_queue_loop_count=1`,
+  `av1_packet_queue_retained_payload_bytes=0`,
+  `bitstream_buffer_strategy=fixed-capacity-persistent-mapped-ring`,
+  `bitstream_ring_wrap_count=9`, `video_resource_memory_bytes=25034752`,
+  `session_memory_bytes=14143488`. This completes the first direct Vulkan Video
+  AV1 Main10 arbitrary-entry visible gate, including inter-frame decode and
+  show-existing display handoff. Remaining AV1 work is broader stream coverage,
+  physical DPB slot compaction, long-duration process sampling, audio/clock
+  integration and replacing the synthetic libaom smoke source with more real
+  wallpaper samples.
 - H.264 4K/240 remains the current performance debt:
   `/tmp/gilder-vulkan-h264-telemetry-default-4k240-ref1`,
   `decoded_frame_count=480`, `presented_frame_count=480`,
