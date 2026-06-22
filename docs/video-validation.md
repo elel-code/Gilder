@@ -237,33 +237,39 @@ Wayland presentation. The remaining H.264 direct gates are B/reference-list
 features, arbitrary continuous GOP supply, audio/clock integration and stable
 240fps pacing.
 AV1 verifies the next codec front-end stage: demux/parser/appsink produces AV1
-temporal units, the native parser extracts sequence-header fields, and Vulkan
-accepts the resulting `StdVideoAV1SequenceHeader` via
-`VkVideoSessionParametersKHR`. It also requires the selected temporal unit to be
-a decode candidate: sequence header plus a frame OBU, or sequence header plus
-frame-header/tile-group OBUs. The 2026-06-22 Main10 gate
-`/tmp/gilder-vulkan-av1-bitstream-present-worker-10-fixed3` confirms a
-segmentation-enabled AV1 Main10 frame OBU now preserves first-frame telemetry:
-`av1_first_frame_header_found=true`, `av1_first_frame_type=key`,
-`av1_first_frame_tile_count=16`, `av1_first_frame_tile_columns=4`,
-`av1_first_frame_tile_rows=4`, and `session_parameters_codec=av1-main-10`.
-The follow-up 4K Main10 gate
-`/tmp/gilder-vulkan-av1-disable-frame-end-cdf-gate` adds
-`disable_frame_end_update_cdf` and uniform tile spacing parsing, moving the
-first frame to `av1_first_frame_submit_candidate=true` with concrete
-`tile_offsets=[27]` and `tile_sizes=[33552]`. The remaining direct blocker is
-wiring those parsed fields into `VkVideoDecodeAV1PictureInfoKHR` and submitting
-the first `vkCmdDecodeVideoKHR` frame. The continuous input layer is now partly
-prepared: AV1 temporal units can use the same generic streaming packet queue as
-H.264/H.265, sequence header is a bootstrap parameter set, frame-only temporal
-units can derive first-frame submit snapshots from that active sequence header,
-and packet timeline metadata keeps access-unit index, source-loop index, PTS and
-duration for later audio/clock integration. The 4K Main10 regression
-`/tmp/gilder-vulkan-av1-streaming-queue-prep` still reports
-`av1_first_frame_submit_candidate=true` and
-`session_parameters_codec=av1-main-10`; later temporal units in that sample are
-not submit candidates yet because AV1 inter/reference frame headers are still
-outside the parsed subset.
+temporal units, the native parser extracts sequence-header and first-frame STD
+fields, Vulkan accepts the resulting `StdVideoAV1SequenceHeader`, and the first
+shown key frame is submitted through `vkCmdDecodeVideoKHR`. The AV1 smoke now
+defaults to `--decode-first-frame`, allocates video resource images, and requires
+non-zero decode-output readback. The 2026-06-22 readback fix makes the output
+layout format-aware instead of hard-coding NV12: Main8 reports
+`G8_B8R8_2PLANE_420_UNORM`, while Main10 reports
+`G10X6_B10X6R10X6_2PLANE_420_UNORM_3PACK16` with P010-sized Y/UV planes.
+Current real `WAYLAND_DISPLAY=wayland-1` decode/readback evidence:
+`/tmp/gilder-vulkan-av1-smoke-first-frame-main8`,
+`/tmp/gilder-vulkan-av1-smoke-first-frame-main10`, and
+`/tmp/gilder-vulkan-av1-smoke-first-frame-main10-4k`; all report
+`result=first-frame-decode-and-output-readback-completed`,
+`first_frame_decode.completed=true`, and non-zero Y/UV readback. The 4K Main10
+run reads back 24,883,200 bytes as P010-like output.
+P010 shader sampling is now verified as well: AV1 Main10 4K script evidence
+`/tmp/gilder-vulkan-av1-p010-sampling-script` reports
+`result=first-frame-decode-output-sampled-and-readback-completed`,
+`first_frame_decode.codec=av1-main-10`, `output_sampling.rendered=true`,
+`rgba_unique_values=256`; H.265 Main10 evidence
+`/tmp/gilder-vulkan-h265-main10-p010-sampling.CGax7L` reports the same result
+shape with `first_frame_decode.codec=h265-main-10`.
+
+The continuous input layer is partly prepared: AV1 temporal units can use the
+same generic streaming packet queue as H.264/H.265, sequence header is a
+bootstrap parameter set, frame-only temporal units can derive first-frame submit
+snapshots from that active sequence header, and packet timeline metadata keeps
+access-unit index, source-loop index, PTS and duration for later audio/clock
+integration. The remaining direct AV1 work is continuous inter/reference frame
+headers, reference-name slot planning, and visible playback. Main10 now has
+format-aware P010 plane views and first-frame shader sampling; the remaining
+visible path is continuous DPB/display handoff and swapchain present, not plane
+view creation.
 
 ## Current Architecture Gates
 

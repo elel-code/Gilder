@@ -881,11 +881,18 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   `WAYLAND_DISPLAY=wayland-1` 证据 `/tmp/gilder-vulkan-h265-main10-bitstream.Y0bB5M`
   显示 H.265 Main10 成功创建 P010-like resource image、上传 encoded AU、创建
   `VkVideoSessionParametersKHR`，`session_parameters_codec=h265-main-10`、
-  `video_image_format=G10X6_B10X6R10X6_2PLANE_420_UNORM_3PACK16`；AV1 Main10 证据
-  `/tmp/gilder-vulkan-av1-bitstream.86Mw24` 显示 `av1_sequence_bit_depth=10`、
-  `session_parameters_codec=av1-main-10`、`av1_decode_candidate=true`。当前边界仍是
-  10-bit 可见路径：P010 sampling shader、plane view/readback size 和 direct present path
-  需要单独实现，不能复用现有 NV12/8-bit visible smoke。
+  `video_image_format=G10X6_B10X6R10X6_2PLANE_420_UNORM_3PACK16`；2026-06-22 继续把
+  AV1 Main10 从 session/submit-candidate 推到真实 first-frame `vkCmdDecodeVideoKHR`
+  readback gate。`/tmp/gilder-vulkan-av1-smoke-first-frame-main10` 和
+  `/tmp/gilder-vulkan-av1-smoke-first-frame-main10-4k` 均为
+  `first-frame-decode-and-output-readback-completed`，并报告
+  `first_frame_readback_format=G10X6_B10X6R10X6_2PLANE_420_UNORM_3PACK16`。同日新增
+  P010 plane view sampling：AV1 Main10 4K script gate
+  `/tmp/gilder-vulkan-av1-p010-sampling-script`、H.265 Main10
+  `/tmp/gilder-vulkan-h265-main10-p010-sampling.CGax7L` 均为
+  `first-frame-decode-output-sampled-and-readback-completed`，RGBA readback 非零且
+  unique=256。当前 10-bit 边界收敛到连续 DPB/display handoff 和 direct present path，
+  不能复用现有 NV12/8-bit visible smoke。
 - `--probe-video-session --decode-first-frame --source <h265.mp4>` 已进入真实 H.265
   Vulkan Video command buffer：2026-06-21 在 `WAYLAND_DISPLAY=wayland-1`、NVIDIA 4060、
   3840x2160@240 H.265 Main 源上，probe 解析 IDR slice offset 2444，使用 8-layer
@@ -1052,11 +1059,13 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   H.264/H.265 High/Main 8-bit 已有 4K/240 任意入口 visible direct gate，覆盖 B 帧、
   多参考、ref-list/MMCO、loop skip replay 和 fixed-capacity bitstream ring；继续推进
   AV1/scene wallpaper 前，video 侧还应补长时段稳定 240fps、audio/clock 和更多真实码流
-  采样。AV1 direct 已完成 sequence header 到 Vulkan STD session parameters 的 gate，仍需把
+  采样。AV1 direct 已完成 sequence header 到 Vulkan STD session parameters，以及 Main8/Main10
+  first-frame `vkCmdDecodeVideoKHR` decode-output readback gate；仍需把
   picture info/tile payload 和
   `vkCmdDecodeVideoKHR` 接到连续 present。10-bit H.265/AV1 已有 sampled 2-plane 420
-  format evidence，P010 visible importer 已跑通；direct Vulkan Video Main10 还需要单独补
-  P010 resource sampling、DPB 和 visible decode/present。CUDA copy path 只保留为 fallback
+  format evidence，P010 visible importer 已跑通，direct Vulkan Video Main10 first-frame
+  P010 shader sampling 也已跑通；后续还需要把 Main10 接入连续 DPB、display handoff 和
+  visible decode/present。CUDA copy path 只保留为 fallback
   和对照基线。
 - 成功标准是同场景优于历史 native-wgpu/GStreamer CUDA copy 路线，而不是理论零拷贝。
 - 2026-06-22 的 H.264 display-copy handoff 证明了一个重要边界：双槽 NV12 display
