@@ -223,6 +223,18 @@ rechecked after that parser change:
 `decoded/presented=480/480`, `average_present_fps=240.30745235839046`, P010, and
 `h265_packet_queue_retained_payload_bytes=0`.
 
+The next AV1 blocker was a real-stream `show_existing_frame` temporal unit using
+a standalone frame-header OBU with no tile-group OBU. That is now parsed as a
+display-handoff planning item instead of a malformed split frame:
+`/tmp/gilder-vulkan-av1-show-existing-split-fix-main10` reports first-frame
+Main10 P010 direct decode/sampling and later temporal units with
+`show_existing_frame=true`, `frame_to_show_map_idx=2/5`, and unsupported reason
+`display handoff needs reference slot planning`. H.265 Main10 was rechecked
+again after this parser change:
+`/tmp/gilder-vulkan-h265-main10-after-av1-show-existing-fix-4k240` reports
+`decoded/presented=480/480`, `average_present_fps=240.157162809936`, P010, and
+`h265_packet_queue_retained_payload_bytes=0`.
+
 The visible codec smokes are native Wayland + native Vulkan presentation gates:
 GStreamer owns demux/decode/appsink and may output GPU memory, but it does not
 own a display sink or Wayland surface. They validate importer, shader sampling,

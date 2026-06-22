@@ -1155,6 +1155,15 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   `/tmp/gilder-vulkan-h265-main10-after-av1-inter-ref-telemetry-4k240` 为
   `decoded/presented=480/480`、`average_present_fps=240.30745235839046`、P010、
   `h265_packet_queue_retained_payload_bytes=0`。
+- AV1 show-existing 的真实 frame-header-only TU 已不再被 split OBU 路径误判为缺
+  tile-group：`/tmp/gilder-vulkan-av1-show-existing-split-fix-main10` 中后续 temporal
+  units 输出 `show_existing_frame=true`、`frame_to_show_map_idx=2/5`，unsupported reason
+  变为 `display handoff needs reference slot planning`。这把 AV1 连续路线推进到
+  reference map/display handoff 层，但仍未完成 inter `vkCmdDecodeVideoKHR` 或连续可见
+  runtime。同轮 H.265 Main10 visible 4K/240 回归
+  `/tmp/gilder-vulkan-h265-main10-after-av1-show-existing-fix-4k240` 为
+  `decoded/presented=480/480`、`average_present_fps=240.157162809936`、P010、
+  `h265_packet_queue_retained_payload_bytes=0`。
 - Web helper 输出要以 texture/frame stream 形式进入后端，避免把 WebKitGTK 当作最终 renderer 架构。
 
 ### Phase 5: 后端切换
