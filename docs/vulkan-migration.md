@@ -1188,6 +1188,45 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   `h265_packet_queue_loop_skip_access_units=156`、`h265_packet_queue_retained_payload_bytes=0`。
   当前 AV1 正确性优先使用逻辑 reference-name slot 规划；物理 DPB slot compaction、长时段
   process sampling、更多真实 AV1 码流、audio/clock 接入仍是后续工作。
+- 2026-06-22 继续修正 AV1 repeated-frame 假阳性：严格 readback diversity gate 曾显示
+  present/FPS counter 正常但 inter 内容重复，根因是 native parser 的 frame-header bit order
+  和 GStreamer/FFmpeg 不一致。`allow_warped_motion` 需要在 `skip_mode_present` 之后、
+  `reduced_tx_set` 之前读取；旧代码提前推断该字段且没有消费 bit，导致后续 inter
+  picture/reference 字段错位。修正后真实 `WAYLAND_DISPLAY=wayland-1`、`HDMI-A-1`、
+  Main8 10s evidence `/tmp/gilder-av1-10s-warped-regression` 为
+  `decoded_frame_count=2400`、`presented_frame_count=2400`、
+  `average_present_fps=240.20825729224006`、`readback_y_distinct=5`、
+  `readback_uv_distinct=5`、`loop_count=79`。这把 AV1 Main8 continuous direct 从旧的
+  repeated-frame blocker 推进到可见/readback 有效状态；后续重点转为 Main10 长时覆盖、
+  真实壁纸样本矩阵、降低 9-slot DPB/output 内存和接入 audio/clock。
+- 2026-06-22 同轮继续修复 AV1 hidden alt-ref reference chain：`OrderHints` 和
+  reference `SavedOrderHints` 需要按 AV1 reference-name order 提交，不能按内部 map slot
+  order。旧顺序会在 libaom hidden frame 第二帧附近把 ALTREF order hint 放错位置，导致
+  readback 又退化为重复关键帧。修正后真实 Wayland rerun
+  `/tmp/gilder-av1-main8-reference-name-order-hints-rerun` 为
+  `decoded=40`、`hidden_decoded=26`、`presented=64`、
+  `average_present_fps=240.55662367081612`、`readback_y_distinct=5`、
+  `readback_uv_distinct=5`；Main10/P010
+  `/tmp/gilder-av1-main10-reference-name-order-hints-rerun` 为 `decoded=40`、
+  `hidden_decoded=26`、`presented=64`、`average_present_fps=244.68053337771838`、
+  `readback_y_distinct=5`、`readback_uv_distinct=5`。随后分别跑 10s 观察测试：
+  Main8 `/tmp/gilder-av1-main8-observe-reference-name-order-10s` 为
+  `presented=2400`、`average_present_fps=239.9047972118651`、`readback_y_distinct=10`、
+  `readback_uv_distinct=10`；Main10/P010
+  `/tmp/gilder-av1-main10-observe-reference-name-order-10s` 为 `presented=2400`、
+  `average_present_fps=239.99269927809237`、`readback_y_distinct=10`、
+  `readback_uv_distinct=10`。AV1 现在从“能 present 但可能重复”
+  推进到 Main8/Main10 可见且 readback 有效。原生分辨率 low-delay 源进一步验证显示质量：
+  Main8 `/tmp/gilder-av1-main8-native-res-libaom-lowdelay-observe-10s` 为
+  `presented=2400`、`average_present_fps=235.13213456630402`、
+  `readback_y_distinct=16`、`readback_uv_distinct=16`；Main10/P010
+  `/tmp/gilder-av1-main10-native-res-libaom-lowdelay-observe-10s` 为
+  `presented=2400`、`average_present_fps=230.54892214299622`、
+  `readback_y_distinct=16`、`readback_uv_distinct=16`。同时 SVT-AV1 random-access
+  `/tmp/gilder-av1-main8-native-res-svt-observe-10s` 仍失败，`readback_y_distinct=1`、
+  `readback_uv_distinct=1`，说明 hidden/show-existing reference chain 还未完整覆盖。
+  下一阶段仍以真实样本覆盖、长时采样、低内存 DPB/output handoff、240fps 性能和
+  audio/clock 为 gate。
 - Web helper 输出要以 texture/frame stream 形式进入后端，避免把 WebKitGTK 当作最终 renderer 架构。
 
 ### Phase 5: 后端切换

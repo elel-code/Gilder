@@ -566,14 +566,45 @@
   Main8 10s 观察证据 `/tmp/gilder-vulkan-av1-main8-observe-10s-dpb9-v3` 为
   `decoded=1305`、`handoff=1095`、`presented=2400`、`average_present_fps=239.6313194270436`、
   `stream_dpb_slots=9`、displayed layers `0..8`、`video_resource_memory_bytes=112656384`。
-  后续更严格的 readback diversity gate 证明上述 present/FPS 证据仍可能是假阳性：
+  后续更严格的 readback diversity gate 曾证明上述 present/FPS 证据仍可能是假阳性：
   `/tmp/gilder-av1-frameid-begin-test` 和 `/tmp/gilder-av1-tile-order-test` 均为
   `decoded/presented=12/12` 且 `average_present_fps=264-280`，但
-  `readback_y_distinct=1`、`readback_uv_distinct=1`，说明 inter 帧提交/引用链仍在重复同一
-  画面。当前 AV1 真实状态改回未完成：parser 已补 `current_frame_id`、
-  `expectedFrameId` 和 FFmpeg-like begin reference slots telemetry，但还需要继续对齐
-  AV1 STD picture/reference fields，必要时实现 FFmpeg 同形态的 dedicated/out-of-place DPB
-  与 output 分离路径。
+  `readback_y_distinct=1`、`readback_uv_distinct=1`。2026-06-22 已定位根因：native
+  AV1 frame-header parser 把 `allow_warped_motion` 放在 `reduced_tx_set` 前的错误位置推断，
+  但没有在 `skip_mode_present` 后实际消费该 bit，导致后续 inter fields 错位。修正后
+  对齐 GStreamer/FFmpeg 的解析顺序，真实 `WAYLAND_DISPLAY=wayland-1`、`HDMI-A-1`
+  Main8 10s 证据 `/tmp/gilder-av1-10s-warped-regression` 为 `decoded_frame_count=2400`、
+  `presented_frame_count=2400`、`average_present_fps=240.20825729224006`、
+  `readback_y_distinct=5`、`readback_uv_distinct=5`、`loop_count=79`。同日进一步修复
+  libaom hidden alt-ref reference chain：AV1 `StdVideoDecodeAV1PictureInfo.OrderHints` 和
+  saved reference `SavedOrderHints` 必须按 AV1 reference-name order 填充，而不是按 DPB
+  map slot order。真实 `WAYLAND_DISPLAY=wayland-1`、`HDMI-A-1` 回归
+  `/tmp/gilder-av1-main8-reference-name-order-hints-rerun` 为
+  `decoded=40`、`hidden_decoded=26`、`presented=64`、
+  `average_present_fps=240.55662367081612`、`readback_y_distinct=5`、
+  `readback_uv_distinct=5`；Main10/P010
+  `/tmp/gilder-av1-main10-reference-name-order-hints-rerun` 为 `decoded=40`、
+  `hidden_decoded=26`、`presented=64`、`average_present_fps=244.68053337771838`、
+  `readback_y_distinct=5`、`readback_uv_distinct=5`。随后分别做 10s 观察测试：
+  Main8 `/tmp/gilder-av1-main8-observe-reference-name-order-10s` 为
+  `presented=2400`、`average_present_fps=239.9047972118651`、
+  `readback_y_distinct=10`、`readback_uv_distinct=10`；Main10/P010
+  `/tmp/gilder-av1-main10-observe-reference-name-order-10s` 为 `presented=2400`、
+  `average_present_fps=239.99269927809237`、`readback_y_distinct=10`、
+  `readback_uv_distinct=10`。当前 AV1 Main8/Main10 已跨过旧的 repeated-frame blocker；
+  对低分辨率糊的问题，原生输出分辨率源已经验证可明显改善：libaom low-delay
+  2560x1600@240 Main8 `/tmp/gilder-av1-main8-native-res-libaom-lowdelay-observe-10s`
+  为 `presented=2400`、`average_present_fps=235.13213456630402`、
+  `readback_y_distinct=16`、`readback_uv_distinct=16`；Main10/P010
+  `/tmp/gilder-av1-main10-native-res-libaom-lowdelay-observe-10s` 为
+  `presented=2400`、`average_present_fps=230.54892214299622`、
+  `readback_y_distinct=16`、`readback_uv_distinct=16`。但 SVT-AV1 random-access
+  2560x1600@240 `/tmp/gilder-av1-main8-native-res-svt-observe-10s` 仍失败：
+  `presented=2400`、`average_present_fps=213.25216091706739`、
+  `readback_y_distinct=1`、`readback_uv_distinct=1`，而 ffmpeg framehash 证明源帧不同。
+  因此 AV1 当前结论是 low-delay/native-res 可见正确，random-access hidden/show-existing
+  链仍需继续完善；下一步仍需更长时长 process sampling、更多真实码流矩阵、低内存
+  DPB/output handoff、audio/clock 接入，以及替换/扩展 synthetic libaom smoke 源。
 - [ ] 继续攻克 H.264 4K/240 稳帧：2026-06-22 默认 direct Vulkan Video H.264 4K/240 ref=1
   `/tmp/gilder-vulkan-h264-telemetry-default-4k240-ref1` 为 `decoded/presented=480/480`、
   `average_present_fps=230.37179368303578`、`h264_present_queue_count=1`、

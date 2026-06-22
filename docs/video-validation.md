@@ -235,16 +235,93 @@ again after this parser change:
 `decoded/presented=480/480`, `average_present_fps=240.157162809936`, P010, and
 `h265_packet_queue_retained_payload_bytes=0`.
 
-Stricter AV1 readback diversity checks later exposed the remaining false
-positive: the AV1 ready-prefix runtime can present at target cadence while the
-decoded inter-frame content still repeats. `/tmp/gilder-av1-frameid-begin-test`
-and `/tmp/gilder-av1-tile-order-test` both reported `decoded/presented=12/12`
-and `average_present_fps=264-280`, but failed with `readback_y_distinct=1` and
-`readback_uv_distinct=1`. Treat AV1 continuous direct as unfinished until the
-readback hashes change across inter frames. The current likely gap is still in
-AV1 STD picture/reference construction or in the coincident DPB/output model;
-the next validation target is FFmpeg-like decode references plus a
-dedicated/out-of-place DPB experiment.
+Stricter AV1 readback diversity checks later exposed a false positive: the AV1
+ready-prefix runtime could present at target cadence while decoded inter-frame
+content still repeated. The root cause was the native AV1 frame-header parser
+reading `allow_warped_motion` in the wrong order. It must be consumed after
+`skip_mode_present` and before `reduced_tx_set`; reading it earlier shifted the
+following inter fields and made the runtime submit stale picture/reference
+state. After fixing the bit order and matching the GStreamer/FFmpeg parser
+shape, real `WAYLAND_DISPLAY=wayland-1` evidence
+`/tmp/gilder-av1-10s-warped-regression` reports `decoded_frame_count=2400`,
+`presented_frame_count=2400`, `average_present_fps=240.20825729224006`,
+`readback_y_distinct=5`, `readback_uv_distinct=5`, and `loop_count=79` on the
+Main8 640x368 AV1 inter stream.
+
+A second hidden-reference-chain regression was then traced to reference order:
+`StdVideoDecodeAV1PictureInfo.OrderHints` and saved DPB `SavedOrderHints` must
+be submitted in AV1 reference-name order (`INTRA`, `LAST`, `LAST2`, ...,
+`ALTREF`), not in the internal reference-map slot order. Real Wayland reruns
+after that fix are `/tmp/gilder-av1-main8-reference-name-order-hints-rerun`
+(`decoded=40`, `hidden_decoded=26`, `presented=64`,
+`average_present_fps=240.55662367081612`, `readback_y_distinct=5`,
+`readback_uv_distinct=5`) and
+`/tmp/gilder-av1-main10-reference-name-order-hints-rerun` (`decoded=40`,
+`hidden_decoded=26`, `presented=64`,
+`average_present_fps=244.68053337771838`, P010,
+`readback_y_distinct=5`, `readback_uv_distinct=5`). AV1 continuous direct is
+no longer blocked on the old repeated-frame failures; remaining work is broader
+Main8/Main10 stream coverage, longer process sampling, lower-memory DPB/output
+handling, and audio/clock integration.
+
+The follow-up 10-second observation runs also pass separately:
+`/tmp/gilder-av1-main8-observe-reference-name-order-10s` presents 2400 Main8
+frames at `average_present_fps=239.9047972118651` with
+`readback_y_distinct=10` and `readback_uv_distinct=10`;
+`/tmp/gilder-av1-main10-observe-reference-name-order-10s` presents 2400
+Main10/P010 frames at `average_present_fps=239.99269927809237` with
+`readback_y_distinct=10` and `readback_uv_distinct=10`.
+
+Native-resolution observation separates quality from codec coverage. The old
+640x368 smoke source is useful for parser/debug turnaround but looks soft when
+scaled to the 2560x1600 output. Libaom low-delay 2560x1600@240 sources look
+much better and pass readback: `/tmp/gilder-av1-main8-native-res-libaom-lowdelay-observe-10s`
+reports `presented=2400`, `average_present_fps=235.13213456630402`,
+`readback_y_distinct=16`, `readback_uv_distinct=16`; the Main10/P010 rerun
+`/tmp/gilder-av1-main10-native-res-libaom-lowdelay-observe-10s` reports
+`presented=2400`, `average_present_fps=230.54892214299622`,
+`readback_y_distinct=16`, `readback_uv_distinct=16`. These prove the direct
+path can render native-resolution AV1 correctly, but they also expose the next
+performance target because neither run sustains a full 240fps average at this
+resolution.
+
+SVT-AV1 random-access is still a separate correctness gap. The 2560x1600@240
+SVT source at `/tmp/gilder-av1-observe-native-res-source/av1-main8-2560x1600-240fps-240frames.mkv`
+decodes to distinct frames with FFmpeg framehash, but the direct Vulkan run
+`/tmp/gilder-av1-main8-native-res-svt-observe-10s` fails with
+`average_present_fps=213.25216091706739`, `readback_y_distinct=1`, and
+`readback_uv_distinct=1`. Its visible frames include many `refresh_frame_flags=0`
+inter frames and show-existing handoffs, so the likely remaining gap is in the
+full hidden/show-existing reference state chain rather than image scaling.
+
+AV1 repeated-frame root cause and fix notes:
+
+- Failure mode: present cadence and decoded-frame counters were normal, but
+  readback hashes collapsed to the key-frame/gray output on libaom-style hidden
+  alt-ref streams. This made early FPS-only smokes false positives.
+- Parser bug: `allow_warped_motion` was inferred before `reduced_tx_set` but
+  not actually consumed after `skip_mode_present`, shifting the following AV1
+  inter-frame fields. The fix consumes `skip_mode_present`, then
+  `allow_warped_motion`, then `reduced_tx_set`, matching the AV1 bitstream order.
+- Reference bug: the runtime filled Vulkan AV1 `OrderHints` from internal
+  reference-map slot order. Vulkan/FFmpeg expect AV1 reference-name order
+  (`INTRA`, `LAST`, `LAST2`, `LAST3`, `GOLDEN`, `BWDREF`, `ALTREF2`, `ALTREF`).
+  The visible symptom in diagnostics was hidden frame 2 submitting
+  `[0,29,0,0,0,0,0,0]` where the correct reference-name array was
+  `[0,0,0,0,0,29,0,0]`.
+- Code fix: `native_vulkan_av1_picture_order_hints_for_submit` now submits
+  `reference_name_order_hints` directly, and saved DPB `SavedOrderHints` are
+  kept in the same reference-name order. The old NVIDIA/order-hint offset path
+  is disabled by default and only enabled explicitly with
+  `GILDER_VULKAN_AV1_ORDER_HINT_OFFSET`.
+- Streaming fix: when the packet queue loops back to the source, the AV1
+  streaming reference planner is recreated before planning the first temporal
+  unit of the new loop, so stale reference maps do not leak across loop
+  boundaries.
+- Diagnostics added: runtime snapshots now include submitted picture
+  `OrderHints`, setup/reference `SavedOrderHints`, reference frame types, sign
+  bias, frame-size flags, and hidden-frame diagnostics so future false positives
+  can be checked without relying on visual inspection alone.
 
 The visible codec smokes are native Wayland + native Vulkan presentation gates:
 GStreamer owns demux/decode/appsink and may output GPU memory, but it does not
@@ -477,10 +554,26 @@ Current 2026-06-22 Main10/P010 direct Vulkan evidence:
   `av1_packet_queue_retained_payload_bytes=0`. This supersedes the earlier
   single-DPB-slot AV1 evidence, which could pass submit/present counters while
   visibly flashing gray because inter/show-existing output reused active
-  reference layers. Remaining AV1 work is broader stream coverage, physical DPB
-  slot compaction or a lower-memory display handoff, long-duration process
-  sampling, audio/clock integration and replacing the synthetic libaom smoke
-  source with more real wallpaper samples.
+  reference layers. A stricter Main8 parser/readback regression
+  `/tmp/gilder-av1-10s-warped-regression` now also proves content changes across
+  inter frames: `decoded=2400`, `presented=2400`,
+  `average_present_fps=240.20825729224006`, `readback_y_distinct=5`,
+  `readback_uv_distinct=5`. Remaining AV1 work is broader stream coverage,
+  Main10 long-duration readback/present evidence, physical DPB slot compaction
+  or a lower-memory display handoff, process sampling, audio/clock integration
+  and replacing the synthetic libaom smoke source with more real wallpaper
+  samples. The latest hidden-reference-chain reruns also pass for both Main8
+  and Main10: `/tmp/gilder-av1-main8-reference-name-order-hints-rerun` and
+  `/tmp/gilder-av1-main10-reference-name-order-hints-rerun` both report
+  `readback_y_distinct=5` and `readback_uv_distinct=5`. Separate 10-second
+  observation runs `/tmp/gilder-av1-main8-observe-reference-name-order-10s` and
+  `/tmp/gilder-av1-main10-observe-reference-name-order-10s` both present 2400
+  frames at roughly 240fps with `readback_y_distinct=10` and
+  `readback_uv_distinct=10`. Native-resolution low-delay AV1 is also visible
+  and readback-valid, but Main8 averages about 235fps and Main10/P010 about
+  230fps at 2560x1600@240. SVT-AV1 random-access remains a correctness blocker:
+  `/tmp/gilder-av1-main8-native-res-svt-observe-10s` repeats the key-frame
+  readback even though FFmpeg proves the source frames differ.
 - H.264 4K/240 remains the current performance debt:
   `/tmp/gilder-vulkan-h264-telemetry-default-4k240-ref1`,
   `decoded_frame_count=480`, `presented_frame_count=480`,
