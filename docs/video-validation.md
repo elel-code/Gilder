@@ -247,8 +247,14 @@ segmentation-enabled AV1 Main10 frame OBU now preserves first-frame telemetry:
 `av1_first_frame_header_found=true`, `av1_first_frame_type=key`,
 `av1_first_frame_tile_count=16`, `av1_first_frame_tile_columns=4`,
 `av1_first_frame_tile_rows=4`, and `session_parameters_codec=av1-main-10`.
-It is still not a direct submit candidate; the current blocker is the frame OBU
-tile table/header alignment reported in `av1_first_frame_submit_reason`.
+The follow-up 4K Main10 gate
+`/tmp/gilder-vulkan-av1-disable-frame-end-cdf-gate` adds
+`disable_frame_end_update_cdf` and uniform tile spacing parsing, moving the
+first frame to `av1_first_frame_submit_candidate=true` with concrete
+`tile_offsets=[27]` and `tile_sizes=[33552]`. The remaining direct blocker is
+wiring those parsed fields into `VkVideoDecodeAV1PictureInfoKHR` and submitting
+the first `vkCmdDecodeVideoKHR` frame before expanding to a continuous packet
+queue.
 
 ## Current Architecture Gates
 
