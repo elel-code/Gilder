@@ -179,6 +179,28 @@ passed `presented_frame_count=2400`, `processed_temporal_unit_count=3574`,
 `average_present_result_fps=239.91641028246332`, and
 `average_present_result_drop_first_60_fps=239.99865379121943`.
 
+Follow-up AV1 copy-cost work on 2026-06-23 made `show_existing_frame` presentation
+sample the decoded DPB image directly by default instead of copying those handoff
+frames into the display ring again. `GILDER_VULKAN_AV1_SHOW_EXISTING_DIRECT_DPB=0`
+keeps the old display-copy fallback available. Default real Wayland gates passed:
+AV1 Main8
+`/tmp/gilder-av1-main8-show-existing-direct-dpb-default-4k240-2400-a`
+reported `presented_frame_count=2400`, `displayed_handoff_frame_count=1091`,
+`av1_display_handoff_strategy=video-queue-early-keep-last-copy-display-ring+show-existing-direct-dpb`,
+`av1_display_copy_count=1309`, `av1_show_existing_direct_dpb_count=1091`,
+`av1_present_frame_queue_record_elapsed_us=24878`,
+`average_present_fps=240.015153212689`, and
+`average_present_result_drop_first_60_fps=240.03158277892948`. AV1 Main10
+`/tmp/gilder-av1-main10-show-existing-direct-dpb-default-4k240-2400-a`
+reported `presented_frame_count=2400`, `displayed_handoff_frame_count=1091`,
+`av1_display_handoff_strategy=video-queue-early-keep-last-copy-display-ring+show-existing-direct-dpb`,
+`av1_display_copy_count=1309`, `av1_show_existing_direct_dpb_count=1091`,
+`av1_present_frame_queue_record_elapsed_us=27584`,
+`average_present_fps=239.87471039235322`, and
+`average_present_result_drop_first_60_fps=240.0080365239079`. Compared with the
+previous 2400-frame AV1 matrix, these runs keep 4K/240 pacing while avoiding
+1091 display-copy operations per 2400 presented frames on this stream.
+
 Latest 2026-06-22 retained real Wayland arbitrary-entry direct gates on
 `WAYLAND_DISPLAY=wayland-1`, `HDMI-A-1`, 3840x2160@240:
 H.264 `/tmp/gilder-vulkan-h264-barrier-tightened-final` passed
