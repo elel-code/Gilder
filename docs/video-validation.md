@@ -272,10 +272,15 @@ slot wait to `58611us` but moved the cost into
 `av1_present_result_wait_elapsed_us=9692746`, dropping average FPS to
 `239.80400159488644`; the default depth remains 4.
 
-On 2026-06-24 the AV1 ready-prefix smoke was brought into the same
-FFmpeg-aligned timestamp validation shape as H.264/H.265: it now fails when
-`pts_delta_min_ms` or `pts_delta_max_ms` is missing and prints both values in
-the pass/fail summary. Generated AV1 sources are cached under
+On 2026-06-24 the ready-prefix smokes were tightened to a shared
+FFmpeg-aligned timestamp validation shape. The Rust runtime now computes
+`pts_delta_expected_min_ms`, `pts_delta_expected_max_ms`, and
+`pts_delta_in_expected_range` from `target_max_fps` in
+`src/renderer/native_vulkan/timeline.rs`, while the shell smokes reuse
+`scripts/native-vulkan-ready-prefix-video-common.sh` for source-cache paths and
+the same expected range check. H.264, H.265 and AV1 smokes now fail if the
+runtime PTS delta range is missing or outside the target frame-period bounds.
+Generated AV1 sources are cached under
 `artifacts/video-sources/av1/` by default, with `--source-cache-dir` available
 for overrides; reports can still live in `/tmp`. Cache-reuse Wayland checks
 passed for Main8 `/tmp/gilder-av1-main8-pts-cache-reuse-640x368-240-480-a` and
@@ -296,6 +301,71 @@ reported `pts_delta_min_ms=4`, `pts_delta_max_ms=4`,
 reported the same PTS/preroll/copy/direct-DPB counts and
 `average_present_result_drop_first_60_fps=239.59697387306508`. The 2400-frame
 matrix above remains the stronger long-run performance evidence.
+
+The same 2026-06-24 pass moved H.264/H.265 generated sources into repo-local
+ignored caches and validated the stricter PTS range gate at 4K/240, 480 frames.
+H.264 `/tmp/gilder-h264-pts-range-cache-4k240-480-a` used
+`artifacts/video-sources/h264/h264-high-b0-ref2-weightp0-weightb0-3840x2160-240fps-242frames-g241-d240.mp4`,
+reported `presented_frame_count=480`, `pts_delta_min_ms=4`,
+`pts_delta_max_ms=5`, expected range `4..5`,
+`pts_delta_in_expected_range=true`, and
+`average_present_result_drop_first_60_fps=240.04308171776893`. H.265 Main8
+`/tmp/gilder-h265-main8-pts-range-cache-4k240-480-a` used
+`artifacts/video-sources/h265/h265-main-8-b0-ref1-3840x2160-240fps-242frames-g240-d240.mp4`,
+reported `presented_frame_count=480`, NV12 format, expected PTS range `4..5`,
+and `pts_delta_in_expected_range=true`. H.265 Main10
+`/tmp/gilder-h265-main10-pts-range-cache-4k240-480-a` used
+`artifacts/video-sources/h265/h265-main-10-b0-ref1-3840x2160-240fps-242frames-g240-d240.mp4`,
+reported `presented_frame_count=480`, P010 format, expected PTS range `4..5`,
+and `pts_delta_in_expected_range=true`. AV1 was rerun with the stricter runtime
+range fields in `/tmp/gilder-av1-main8-pts-range-cache-4k240-480-a` and
+`/tmp/gilder-av1-main10-pts-range-cache-4k240-480-a`; both kept zero display
+copy, direct-DPB display for all 480 frames, default `av1_present_frame_preroll_count=0`,
+and `pts_delta_in_expected_range=true`.
+
+The real MP4 validation set under
+`/home/yk/Documents/mpv/动态视频MP4-假面骑士/` exposed two 2026-06-24 correctness
+issues that synthetic High-profile sources did not cover. First, the direct
+H.264 Vulkan session/profile selection was still hardcoded around High-profile
+streams; it now maps SPS `profile_idc` 66/77/100 to Baseline/Main/High Vulkan
+STD profiles and accepts 8-bit 4:2:0 Main streams. The first real file
+`1.假面骑士555-Kamen Rider Faiz（试作255）.mp4` now passes as
+`h264_stream_profile=main`, `h264_stream_profile_idc=77`, and
+`h264_vulkan_std_profile_idc=77`. Second, sampled video appeared vertically
+inverted because the fullscreen-triangle shader path treated raw UV Y as a
+bottom-left screen coordinate while decoded video frames follow top-left origin
+semantics like FFmpeg/GStreamer. `src/renderer/native_vulkan/sampling.rs` now
+folds the vertical flip into the fit push constants while preserving cover
+crop. The follow-up pacing fix is also root behavior, not a timeout change:
+FIFO present no longer substitutes for source/target FPS pacing when a 60fps
+stream is shown on a 240Hz output. With `--target-fps 60 --decode-prefix 600
+--playback-frames 600`, real Wayland evidence
+`/tmp/gilder-h264-real-kamen-1-orientation-pacing-10s-1440p60-600` reported
+`runtime_elapsed_ms=9988`, `presented_frame_count=600`,
+`present_mode=fifo`, `pacing_strategy=target-fps-cpu-sleep-with-fifo-present`,
+`frame_sleep_count=599`, `missed_frame_pacing_count=0`,
+`average_present_result_drop_first_60_fps=59.98248822941043`,
+`pts_delta_min_ms=16`, `pts_delta_max_ms=17`, and
+`pts_delta_in_expected_range=true`.
+
+After that pacing change, the 4K/240 generated-source gates were rerun against
+the same FIFO Wayland output. H.264 long-run evidence
+`/tmp/gilder-h264-pacing-plan-4k240-2400-a` passed `decoded_frame_count=2400`,
+`presented_frame_count=2400`, `runtime_elapsed_ms=10012`,
+`pacing_strategy=target-fps-cpu-sleep-with-fifo-present`,
+`average_present_fps=239.69567237903803`, and
+`average_present_result_drop_first_60_fps=239.9397391191329`. The shorter
+480-frame H.265/AV1 matrix also passed with the same expected pacing strategy:
+H.265 Main8 `/tmp/gilder-h265-main8-pacing-plan-4k240-480-a` reported
+`average_present_fps=240.10211819204144`; H.265 Main10
+`/tmp/gilder-h265-main10-pacing-plan-4k240-480-a` reported
+`average_present_fps=239.89495455740342`; AV1 Main8
+`/tmp/gilder-av1-main8-pacing-plan-4k240-480-a` reported
+`average_present_result_drop_first_60_fps=239.96389660133235`,
+`av1_display_copy_count=0`, and `av1_displayed_direct_dpb_count=480`; AV1
+Main10 `/tmp/gilder-av1-main10-pacing-plan-4k240-480-a` reported
+`average_present_result_drop_first_60_fps=239.9814887787176`,
+`av1_display_copy_count=0`, and `av1_displayed_direct_dpb_count=480`.
 
 Follow-up H.264 copy-cost work on 2026-06-23 made the
 `GILDER_H264_DISPLAY_HANDOFF=direct-sampled-dpb-output` path use a persistent

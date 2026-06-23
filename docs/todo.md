@@ -650,9 +650,13 @@
   `av1_present_result_wait_elapsed_us=9692746` 且 `average_present_fps=239.80400159488644`，
   不默认。当前 AV1 synthetic arbitrary-entry 4K/240 correctness/performance 已可用，剩余重点是
   更多真实码流矩阵、低内存 DPB/output compaction、audio/clock 接入，以及替换/扩展 synthetic
-  libaom smoke 源。2026-06-24 已把 AV1 ready-prefix smoke 的 PTS delta gate 对齐
-  H.264/H.265：缺失 `pts_delta_min_ms`/`pts_delta_max_ms` 会失败，summary 会打印二者；
-  生成源默认缓存到仓库内 `artifacts/video-sources/av1/`，避免重启后丢失，目录由
+  libaom smoke 源。2026-06-24 已把 ready-prefix smoke 的 PTS delta gate 推进为通用
+  timeline range 契约：Rust 侧拆出 `src/renderer/native_vulkan/timeline.rs`，输出
+  `pts_delta_expected_min_ms`、`pts_delta_expected_max_ms` 和
+  `pts_delta_in_expected_range`；shell 侧拆出
+  `scripts/native-vulkan-ready-prefix-video-common.sh`，H.264/H.265/AV1 三条 smoke 复用
+  source-cache 和目标帧率 PTS range 校验。缺失 PTS delta 或超出 target FPS 对应帧周期范围会失败。
+  生成源默认缓存到仓库内 `artifacts/video-sources/<codec>/`，避免重启后丢失，目录由
   `.gitignore` 排除。缓存复用 gate：Main8
   `/tmp/gilder-av1-main8-pts-cache-reuse-640x368-240-480-a`、Main10
   `/tmp/gilder-av1-main10-pts-cache-reuse-640x368-240-480-a` 均为
@@ -666,6 +670,50 @@
   `pts_delta_min_ms=4`、`pts_delta_max_ms=4`、`av1_present_frame_preroll_count=0`、
   `av1_display_copy_count=0`、`av1_displayed_direct_dpb_count=480`。这是时间线/默认路径
   验收；2400-frame 矩阵仍是更强的长跑性能证据。
+- [x] 将 PTS range gate 和持久源缓存扩到 H.264/H.265：2026-06-24 真实 Wayland
+  `HDMI-A-1`、4K/240、480-frame 串行 gate 均通过。H.264
+  `/tmp/gilder-h264-pts-range-cache-4k240-480-a` 使用
+  `artifacts/video-sources/h264/h264-high-b0-ref2-weightp0-weightb0-3840x2160-240fps-242frames-g241-d240.mp4`，
+  `presented_frame_count=480`、`pts_delta_min_ms=4`、`pts_delta_max_ms=5`、
+  `pts_delta_expected_min_ms=4`、`pts_delta_expected_max_ms=5`、
+  `pts_delta_in_expected_range=true`。H.265 Main8
+  `/tmp/gilder-h265-main8-pts-range-cache-4k240-480-a` 与 Main10
+  `/tmp/gilder-h265-main10-pts-range-cache-4k240-480-a` 分别使用
+  `artifacts/video-sources/h265/h265-main-8-b0-ref1-3840x2160-240fps-242frames-g240-d240.mp4`
+  和
+  `artifacts/video-sources/h265/h265-main-10-b0-ref1-3840x2160-240fps-242frames-g240-d240.mp4`，
+  二者均为 `presented_frame_count=480`、`pts_delta_min_ms=4`、`pts_delta_max_ms=5`、
+  `pts_delta_in_expected_range=true`。AV1 Main8/Main10 也用新 runtime 字段复测通过：
+  `/tmp/gilder-av1-main8-pts-range-cache-4k240-480-a`、
+  `/tmp/gilder-av1-main10-pts-range-cache-4k240-480-a` 均为 `pts_delta_in_expected_range=true`、
+  `av1_display_copy_count=0`、`av1_displayed_direct_dpb_count=480`。
+- [x] 真实 MP4 回归推进 H.264 Main profile、采样方向和 60fps pacing：2026-06-24
+  `/home/yk/Documents/mpv/动态视频MP4-假面骑士/` 下样本均为 H.264 Main/yuv420p/2560x1440/60fps。
+  真实源先暴露 direct H.264 仍按 High profile 建 session/profile query 的根因；现已拆出
+  `src/renderer/native_vulkan/h264.rs`，按 SPS `profile_idc` 66/77/100 映射
+  Baseline/Main/High Vulkan STD profile，并接受 8-bit 4:2:0 Main。样本 1 已通过
+  `/tmp/gilder-h264-real-kamen-1-orientation-pacing-10s-1440p60-600`：
+  `h264_stream_profile=main`、`h264_stream_profile_idc=77`、
+  `h264_vulkan_std_profile_idc=77`、`decoded/presented=600/600`。用户指出画面上下颠倒后，
+  已拆出 `src/renderer/native_vulkan/sampling.rs`，把视频 top-left frame origin 的 Y 翻转折进
+  fit push constants，并用单测覆盖 cover crop 不变。随后修正 FIFO pacing：240Hz FIFO 不能代替
+  60fps source/target pacing；`src/renderer/native_vulkan/pacing.rs` 让 FIFO+target-fps 走
+  `target-fps-cpu-sleep-with-fifo-present`。10 秒真实源证据为 `runtime_elapsed_ms=9988`、
+  `average_present_result_drop_first_60_fps=59.98248822941043`、`frame_sleep_count=599`、
+  `missed_frame_pacing_count=0`、`pts_delta_min/max=16/17`。
+- [x] pacing 修正后回归 4K/240 生成源：2026-06-24 H.264 长跑
+  `/tmp/gilder-h264-pacing-plan-4k240-2400-a` 为 `decoded/presented=2400/2400`、
+  `runtime_elapsed_ms=10012`、`pacing_strategy=target-fps-cpu-sleep-with-fifo-present`、
+  `average_present_fps=239.69567237903803`、
+  `average_present_result_drop_first_60_fps=239.9397391191329`、`pts_delta_min/max=4/5`。
+  H.265 Main8 `/tmp/gilder-h265-main8-pacing-plan-4k240-480-a` 为
+  `average_present_fps=240.10211819204144`，Main10
+  `/tmp/gilder-h265-main10-pacing-plan-4k240-480-a` 为
+  `average_present_fps=239.89495455740342`。AV1 Main8
+  `/tmp/gilder-av1-main8-pacing-plan-4k240-480-a` 为
+  `average_present_result_drop_first_60_fps=239.96389660133235`、`av1_display_copy_count=0`；
+  Main10 `/tmp/gilder-av1-main10-pacing-plan-4k240-480-a` 为
+  `average_present_result_drop_first_60_fps=239.9814887787176`、`av1_display_copy_count=0`。
 - [x] 继续攻克 AV1 display-copy 成本和 present 直采路径：2026-06-23 已从
   show-existing-only direct-DPB 推进到 displayed-frame direct-DPB 默认路径。默认不再创建 AV1
   display ring，4K Main8 display resource 从旧 display-ring+DPB 降为 DPB-only
