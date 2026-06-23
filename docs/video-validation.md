@@ -5,6 +5,34 @@ GStreamer remains the codec/container/audio frontend, but display sinks do not
 own the Wayland surface. Do not use the retired GTK or native
 `playbin/waylandsink` smoke paths for current validation.
 
+## Codec Reference Priority
+
+FFmpeg is the first engineering reference for direct codec behavior. For AV1,
+H.264 and H.265 work, use FFmpeg's mature packet/frame model, parser resilience,
+bitstream resynchronization, reference/DPB handling, reorder semantics, loop/seek
+behavior and low-copy buffer ownership as the primary comparison point. A Gilder
+direct Vulkan Video path is not considered broadly usable just because a narrow
+closed-GOP generated stream passes; it must move toward the same practical
+behavior users expect from FFmpeg-backed playback: arbitrary continuous input,
+arbitrary entry points, malformed or partial leading data skipped until a
+decodable boundary, and steady-state playback without retaining long compressed
+payload windows.
+
+GStreamer is the second reference and the active integration frontend. It should
+continue to provide container demux, parser/appsink handoff, timestamp/segment
+behavior, audio/clock integration and practical pipeline diagnostics. When
+FFmpeg and GStreamer expose different symptoms, treat FFmpeg as the primary
+codec semantics reference and GStreamer as the frontend contract that must be
+adapted or instrumented. Vulkan Video specifications, driver capabilities and
+real Wayland evidence remain the final API and hardware validation boundary.
+
+The next direct-video phase is therefore AV1, H.264 and H.265 arbitrary
+continuous/arbitrary-bitstream usability before audio integration. Validation
+must explicitly cover non-zero entry offsets, loop replay after EOS/seek, codec
+state rebuild after skipped leading data, bounded packet queues, fixed-capacity
+bitstream rings and present/decode overlap. Increasing timeouts, accepting empty
+runtime evidence or only optimizing generated happy paths is not sufficient.
+
 ## Validation Layers
 
 Use the checks in this order:
@@ -101,6 +129,56 @@ longer a maintained input mode. Valid evidence should report
 `h264_input_mode=streaming-queue`, non-zero
 `h264_packet_queue_pulled_count`, and
 `h264_packet_queue_retained_payload_bytes=0` at shutdown.
+
+Latest 2026-06-23 FFmpeg-aligned arbitrary-entry loop gates reused complete
+4K/240 sources and ran without an external `timeout` wrapper. In this Wayland
+session, GNU `timeout` could produce an empty runtime with `Could not find
+wayland compositor`; treat that as invalid environment evidence, not codec
+evidence. The current 2400-frame single-run matrix on `WAYLAND_DISPLAY=wayland-1`,
+`HDMI-A-1`, 3840x2160@240 is:
+H.264 `/tmp/gilder-h264-arbitrary-loop-replay-4k240-solo-2400-no-timeout-a`
+passed `decoded_frame_count=2400`, `presented_frame_count=2400`,
+`playback_loop_count=7`, `loop_boundary_reset_count=6`,
+`h264_packet_queue_bootstrap_discarded_access_units=126`,
+`h264_packet_queue_loop_skip_access_units=126`,
+`h264_packet_queue_retained_payload_bytes=0`, `first_frame_recovery=true`,
+`loop_first_unrecovered_count=0`, `bitstream_ring_wrap_count=219`,
+`average_present_fps=239.52339060880522`,
+`average_present_result_fps=239.5585093449288`, and
+`average_present_result_drop_first_60_fps=239.9394191434932`. H.265 Main8
+`/tmp/gilder-h265-main8-arbitrary-loop-replay-4k240-solo-2400-no-timeout-a`
+passed `decoded_frame_count=2400`, `presented_frame_count=2400`,
+`playback_loop_count=8`, `loop_boundary_reset_count=7`,
+`h265_packet_queue_bootstrap_discarded_access_units=156`,
+`h265_packet_queue_loop_skip_access_units=156`,
+`h265_packet_queue_retained_payload_bytes=0`, `first_frame_idr=true`,
+`loop_first_non_idr_count=0`, `bitstream_ring_wrap_count=253`, and
+`average_present_fps=239.30586018474193`. H.265 Main10
+`/tmp/gilder-h265-main10-arbitrary-loop-replay-4k240-solo-2400-no-timeout-a`
+passed `decoded_frame_count=2400`, `presented_frame_count=2400`,
+`playback_loop_count=8`, `loop_boundary_reset_count=7`,
+`h265_packet_queue_bootstrap_discarded_access_units=156`,
+`h265_packet_queue_loop_skip_access_units=156`,
+`h265_packet_queue_retained_payload_bytes=0`, `first_frame_idr=true`,
+`loop_first_non_idr_count=0`, `bitstream_ring_wrap_count=245`, and
+`average_present_fps=239.09677180017684`. AV1 Main8
+`/tmp/gilder-av1-main8-arbitrary-loop-replay-4k240-solo-2400-no-timeout-a`
+passed `presented_frame_count=2400`, `processed_temporal_unit_count=3574`,
+`decoded_frame_count=1309`, `hidden_decoded_frame_count=1174`,
+`displayed_handoff_frame_count=1091`, `playback_loop_count=8`,
+`loop_boundary_reset_count=7`, `av1_packet_queue_retained_payload_bytes=0`,
+`bitstream_ring_wrap_count=7`, `average_present_fps=239.99982482412787`,
+`average_present_result_fps=239.91585843824276`, and
+`average_present_result_drop_first_60_fps=240.0008208664245`. AV1 Main10
+`/tmp/gilder-av1-main10-arbitrary-loop-replay-4k240-solo-2400-no-timeout-a`
+passed `presented_frame_count=2400`, `processed_temporal_unit_count=3574`,
+`decoded_frame_count=1309`, `hidden_decoded_frame_count=1174`,
+`displayed_handoff_frame_count=1091`, `playback_loop_count=8`,
+`loop_boundary_reset_count=7`, `av1_packet_queue_retained_payload_bytes=0`,
+`bitstream_ring_wrap_count=5`, `average_present_fps=239.99886607735746`,
+`average_present_result_fps=239.91641028246332`, and
+`average_present_result_drop_first_60_fps=239.99865379121943`.
+
 Latest 2026-06-22 retained real Wayland arbitrary-entry direct gates on
 `WAYLAND_DISPLAY=wayland-1`, `HDMI-A-1`, 3840x2160@240:
 H.264 `/tmp/gilder-vulkan-h264-barrier-tightened-final` passed
