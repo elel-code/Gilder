@@ -714,6 +714,18 @@
   `average_present_result_drop_first_60_fps=239.96389660133235`、`av1_display_copy_count=0`；
   Main10 `/tmp/gilder-av1-main10-pacing-plan-4k240-480-a` 为
   `average_present_result_drop_first_60_fps=239.9814887787176`、`av1_display_copy_count=0`。
+- [x] 参考 FFmpeg/ffplay frame timer，把重复的固定 `next_frame += interval` sleep
+  推进成 `src/renderer/native_vulkan/pacing.rs` 里的 `NativeVulkanVideoClockPacer`：
+  target deadline 用整数纳秒累计，短 late 先追赶，超过 resync threshold 才重锚定 timer；
+  当前仍以 target-fps 为 master clock，后续可切到 audio clock。2026-06-24 真实源 10 秒
+  `/tmp/gilder-h264-real-kamen-1-ffmpeg-clock-pacer-10s-1440p60-600` 为
+  `runtime_elapsed_ms=9988`、`average_present_result_drop_first_60_fps=59.98499818598243`、
+  `missed_frame_pacing_count=0`。H.264 4K/240 长跑
+  `/tmp/gilder-h264-ffmpeg-clock-pacer-4k240-2400-a` 为
+  `average_present_fps=239.8605765305128`、
+  `average_present_result_drop_first_60_fps=240.0756582168383`、`missed_frame_pacing_count=9`。
+  H.265 Main8/Main10 为 `240.1629163155045`/`240.10727993267392fps`；AV1 Main8/Main10
+  warmup 后为 `239.95496406116047`/`240.01269375010384fps` 且 `av1_display_copy_count=0`。
 - [x] 继续攻克 AV1 display-copy 成本和 present 直采路径：2026-06-23 已从
   show-existing-only direct-DPB 推进到 displayed-frame direct-DPB 默认路径。默认不再创建 AV1
   display ring，4K Main8 display resource 从旧 display-ring+DPB 降为 DPB-only

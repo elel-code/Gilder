@@ -367,6 +367,31 @@ Main10 `/tmp/gilder-av1-main10-pacing-plan-4k240-480-a` reported
 `average_present_result_drop_first_60_fps=239.9814887787176`,
 `av1_display_copy_count=0`, and `av1_displayed_direct_dpb_count=480`.
 
+The next 2026-06-24 pacing pass moved the repeated per-loop
+`next_frame += interval` sleep blocks into `src/renderer/native_vulkan/pacing.rs`
+as `NativeVulkanVideoClockPacer`, matching the ffplay-style frame timer shape
+more closely: target deadlines are accumulated with integer nanoseconds,
+sleeping stops before a configurable spin margin, short lateness is allowed to
+catch up on later frames, and only larger lateness resynchronizes the timer. The
+first step still uses target FPS as the master clock, so it is a safe bridge
+toward later audio-clock pacing rather than an audio policy change. Real
+Wayland evidence stayed stable or improved: the same real 1440p60 H.264 Main
+file in `/tmp/gilder-h264-real-kamen-1-ffmpeg-clock-pacer-10s-1440p60-600`
+reported `runtime_elapsed_ms=9988`,
+`average_present_result_drop_first_60_fps=59.98499818598243`,
+`frame_sleep_count=599`, and `missed_frame_pacing_count=0`. H.264 4K/240
+long-run evidence `/tmp/gilder-h264-ffmpeg-clock-pacer-4k240-2400-a` reported
+`runtime_elapsed_ms=10005`, `average_present_fps=239.8605765305128`,
+`average_present_result_drop_first_60_fps=240.0756582168383`,
+`missed_frame_pacing_count=9`, and `max_frame_pacing_late_us=641`. H.265 Main8
+`/tmp/gilder-h265-main8-ffmpeg-clock-pacer-4k240-480-a` and Main10
+`/tmp/gilder-h265-main10-ffmpeg-clock-pacer-4k240-480-a` reported
+`average_present_fps=240.1629163155045` and `240.10727993267392`. AV1 Main8
+`/tmp/gilder-av1-main8-ffmpeg-clock-pacer-4k240-480-a` and Main10
+`/tmp/gilder-av1-main10-ffmpeg-clock-pacer-4k240-480-a` kept direct-DPB display
+with `av1_display_copy_count=0`; their warmup-dropped present-result FPS values
+were `239.95496406116047` and `240.01269375010384`.
+
 Follow-up H.264 copy-cost work on 2026-06-23 made the
 `GILDER_H264_DISPLAY_HANDOFF=direct-sampled-dpb-output` path use a persistent
 direct-DPB present worker instead of doing acquire/record/submit/present on the
