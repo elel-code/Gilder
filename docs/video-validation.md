@@ -231,11 +231,12 @@ and Main10
 both reported `readback_y_distinct=9`, `readback_uv_distinct=9`,
 `av1_display_copy_count=0`, and `av1_displayed_direct_dpb_count=480`.
 
-The next AV1 present-cost pass aligned AV1 with the H.264/H.265 direct paths by
-making present-frame clear preroll default to 2 frames. Set
-`GILDER_VULKAN_AV1_PRESENT_FRAME_CLEAR_PREROLL=0` to disable it, or
-`GILDER_VULKAN_AV1_PRESENT_FRAME_CLEAR_PREROLL_COUNT` to override the count.
-Real Wayland 4K/240 validation stayed zero-copy: Main8
+The next AV1 present-cost pass tested H.264/H.265-style 2-frame present-frame
+clear preroll but kept it opt-in because the result was mixed. Set
+`GILDER_VULKAN_AV1_PRESENT_FRAME_CLEAR_PREROLL=1` to enable it; the default
+enabled count remains 2 and can be overridden with
+`GILDER_VULKAN_AV1_PRESENT_FRAME_CLEAR_PREROLL_COUNT`. Real Wayland 4K/240
+validation stayed zero-copy with preroll enabled: Main8
 `/tmp/gilder-av1-main8-direct-dpb-clear-preroll-4k240-2400-a` reported
 `av1_present_frame_preroll_count=2`, `av1_display_copy_count=0`,
 `av1_displayed_direct_dpb_count=2400`, `average_present_fps=239.9417797107689`,
@@ -257,8 +258,11 @@ RSS/PSS/USS/Private_Dirty max `116776/80249/66892/36688 KiB`, NVIDIA process
 GPU memory `289 MiB`, `av1_display_copy_count=0`, and
 `av1_present_frame_preroll_count=2`.
 
-Two AV1 present-side tuning probes were intentionally not made default.
-`GILDER_VULKAN_AV1_READY_CONTEXT_SELECTION=1` passed
+Three AV1 present-side tuning probes were intentionally not made default. The
+clear-preroll probe improved the Main10 no-sampling average versus the earlier
+direct-DPB run but slightly reduced Main8, so the default direct-DPB path keeps
+`av1_present_frame_preroll_count=0`. `GILDER_VULKAN_AV1_READY_CONTEXT_SELECTION=1`
+passed
 `/tmp/gilder-av1-main8-direct-dpb-ready-context-preroll-4k240-2400-a`, but the
 ready-probe path only found 143 ready contexts out of 2400 and increased
 missed-vblank-after-warmup to 7, so round-robin remains the default. Forcing
@@ -267,6 +271,31 @@ missed-vblank-after-warmup to 7, so round-robin remains the default. Forcing
 slot wait to `58611us` but moved the cost into
 `av1_present_result_wait_elapsed_us=9692746`, dropping average FPS to
 `239.80400159488644`; the default depth remains 4.
+
+On 2026-06-24 the AV1 ready-prefix smoke was brought into the same
+FFmpeg-aligned timestamp validation shape as H.264/H.265: it now fails when
+`pts_delta_min_ms` or `pts_delta_max_ms` is missing and prints both values in
+the pass/fail summary. Generated AV1 sources are cached under
+`artifacts/video-sources/av1/` by default, with `--source-cache-dir` available
+for overrides; reports can still live in `/tmp`. Cache-reuse Wayland checks
+passed for Main8 `/tmp/gilder-av1-main8-pts-cache-reuse-640x368-240-480-a` and
+Main10 `/tmp/gilder-av1-main10-pts-cache-reuse-640x368-240-480-a`. Both used
+repo-local cached sources, reported `pts_delta_min_ms=4`,
+`pts_delta_max_ms=4`, `av1_present_frame_preroll_count=0`,
+`av1_display_copy_count=0`, and `av1_displayed_direct_dpb_count=480`. These are
+timestamp/default-path checks. The same cache path was then populated for 4K
+sources and validated with 480-frame Wayland gates: Main8
+`/tmp/gilder-av1-main8-pts-cache-4k240-480-a` used
+`artifacts/video-sources/av1/av1-main8-3840x2160-240fps-242frames-g240.webm`,
+reported `pts_delta_min_ms=4`, `pts_delta_max_ms=4`,
+`av1_present_frame_preroll_count=0`, `av1_display_copy_count=0`,
+`av1_displayed_direct_dpb_count=480`, and
+`average_present_result_drop_first_60_fps=239.99770885242145`. Main10
+`/tmp/gilder-av1-main10-pts-cache-4k240-480-a` used
+`artifacts/video-sources/av1/av1-main10-3840x2160-240fps-242frames-g240.webm`,
+reported the same PTS/preroll/copy/direct-DPB counts and
+`average_present_result_drop_first_60_fps=239.59697387306508`. The 2400-frame
+matrix above remains the stronger long-run performance evidence.
 
 Follow-up H.264 copy-cost work on 2026-06-23 made the
 `GILDER_H264_DISPLAY_HANDOFF=direct-sampled-dpb-output` path use a persistent

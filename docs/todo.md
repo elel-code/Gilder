@@ -630,7 +630,10 @@
   `/tmp/gilder-av1-main8-displayed-direct-dpb-general-readback-4k240-480-a` 和
   `/tmp/gilder-av1-main10-displayed-direct-dpb-general-readback-4k240-480-a` 都为
   `readback_y_distinct=9`、`readback_uv_distinct=9`、`av1_display_copy_count=0`。
-  本轮还把 AV1 present-frame clear preroll 默认对齐 H.264/H.265 为 2 帧：
+  本轮还验证了 AV1 present-frame clear preroll 对齐 H.264/H.265 的 2 帧策略，但因
+  Main8/Main10 收益不一致，保持 opt-in：设置
+  `GILDER_VULKAN_AV1_PRESENT_FRAME_CLEAR_PREROLL=1` 才启用，默认仍为
+  `av1_present_frame_preroll_count=0`。
   `/tmp/gilder-av1-main8-direct-dpb-clear-preroll-4k240-2400-a` 和
   `/tmp/gilder-av1-main10-direct-dpb-clear-preroll-4k240-2400-a` 均为
   `av1_present_frame_preroll_count=2`、`av1_display_copy_count=0`、
@@ -647,7 +650,22 @@
   `av1_present_result_wait_elapsed_us=9692746` 且 `average_present_fps=239.80400159488644`，
   不默认。当前 AV1 synthetic arbitrary-entry 4K/240 correctness/performance 已可用，剩余重点是
   更多真实码流矩阵、低内存 DPB/output compaction、audio/clock 接入，以及替换/扩展 synthetic
-  libaom smoke 源。
+  libaom smoke 源。2026-06-24 已把 AV1 ready-prefix smoke 的 PTS delta gate 对齐
+  H.264/H.265：缺失 `pts_delta_min_ms`/`pts_delta_max_ms` 会失败，summary 会打印二者；
+  生成源默认缓存到仓库内 `artifacts/video-sources/av1/`，避免重启后丢失，目录由
+  `.gitignore` 排除。缓存复用 gate：Main8
+  `/tmp/gilder-av1-main8-pts-cache-reuse-640x368-240-480-a`、Main10
+  `/tmp/gilder-av1-main10-pts-cache-reuse-640x368-240-480-a` 均为
+  `pts_delta_min_ms=4`、`pts_delta_max_ms=4`、`av1_present_frame_preroll_count=0`、
+  `av1_display_copy_count=0`、`av1_displayed_direct_dpb_count=480`。同轮已生成并缓存
+  4K Main8/Main10 源：
+  `artifacts/video-sources/av1/av1-main8-3840x2160-240fps-242frames-g240.webm` 和
+  `artifacts/video-sources/av1/av1-main10-3840x2160-240fps-242frames-g240.webm`；
+  4K 480-frame gate `/tmp/gilder-av1-main8-pts-cache-4k240-480-a` 与
+  `/tmp/gilder-av1-main10-pts-cache-4k240-480-a` 均为
+  `pts_delta_min_ms=4`、`pts_delta_max_ms=4`、`av1_present_frame_preroll_count=0`、
+  `av1_display_copy_count=0`、`av1_displayed_direct_dpb_count=480`。这是时间线/默认路径
+  验收；2400-frame 矩阵仍是更强的长跑性能证据。
 - [x] 继续攻克 AV1 display-copy 成本和 present 直采路径：2026-06-23 已从
   show-existing-only direct-DPB 推进到 displayed-frame direct-DPB 默认路径。默认不再创建 AV1
   display ring，4K Main8 display resource 从旧 display-ring+DPB 降为 DPB-only
