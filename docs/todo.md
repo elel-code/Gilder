@@ -615,9 +615,44 @@
   `displayed_handoff_frame_count=2380`、`average_present_fps=238.2264888256383`。
   同轮把 AV1 streaming bitstream ring 默认从 2 slots 提到 8 slots，H.264/H.265
   仍保持 2 slots，`GILDER_VULKAN_BITSTREAM_RING_SLOTS` 可覆盖；当前 AV1 random-access
-  正确性已过，剩余重点是更长时长 process sampling、更多真实码流矩阵、present-overlap/
-  persistent present worker、低内存 DPB/output handoff、audio/clock 接入，以及替换/扩展
-  synthetic libaom smoke 源。
+  正确性已过。2026-06-23 随后把 AV1 默认 handoff 推进到 displayed-frame
+  direct-DPB：默认使用 `GENERAL` layout 直采 decoded DPB resource，frame context 持有 sampled
+  resource 到 present retire，后续 decode 只在 output 覆盖同一 DPB slot 时等待；
+  `GILDER_VULKAN_AV1_DISPLAYED_DIRECT_DPB=0` 保留旧 display-ring fallback。真实 Wayland
+  4K/240 证据：Main8 `/tmp/gilder-av1-main8-displayed-direct-dpb-general-4k240-2400-b`
+  为 `presented=2400`、`average_present_fps=240.0128447194083`、
+  `av1_display_copy_count=0`、`av1_displayed_direct_dpb_count=2400`、
+  `av1_display_ring_memory_bytes=0`；Main10
+  `/tmp/gilder-av1-main10-displayed-direct-dpb-general-4k240-2400-a` 为
+  `presented=2400`、`average_present_fps=239.8255409247888`、P010、
+  `av1_display_copy_count=0`、`av1_displayed_direct_dpb_count=2400`、
+  `av1_display_ring_memory_bytes=0`。短 readback gate 也已覆盖：
+  `/tmp/gilder-av1-main8-displayed-direct-dpb-general-readback-4k240-480-a` 和
+  `/tmp/gilder-av1-main10-displayed-direct-dpb-general-readback-4k240-480-a` 都为
+  `readback_y_distinct=9`、`readback_uv_distinct=9`、`av1_display_copy_count=0`。
+  本轮还把 AV1 present-frame clear preroll 默认对齐 H.264/H.265 为 2 帧：
+  `/tmp/gilder-av1-main8-direct-dpb-clear-preroll-4k240-2400-a` 和
+  `/tmp/gilder-av1-main10-direct-dpb-clear-preroll-4k240-2400-a` 均为
+  `av1_present_frame_preroll_count=2`、`av1_display_copy_count=0`、
+  `av1_displayed_direct_dpb_count=2400`。process sampling 证据：
+  Main8 `/tmp/gilder-av1-main8-direct-dpb-clear-preroll-performance-4k240-2400-a`
+  为 `average_present_fps=239.9059074396761`、CPU `12.95%`、
+  RSS/PSS/USS/Private_Dirty max `117112/80418/67100/36912 KiB`、NVIDIA GPU memory
+  `181 MiB`；Main10 `/tmp/gilder-av1-main10-direct-dpb-clear-preroll-performance-4k240-2400-a`
+  为 `average_present_fps=239.9695573179769`、CPU `12.46%`、
+  RSS/PSS/USS/Private_Dirty max `116776/80249/66892/36688 KiB`、NVIDIA GPU memory
+  `289 MiB`。负证据：`GILDER_VULKAN_AV1_READY_CONTEXT_SELECTION=1`
+  只命中 143/2400 个 ready context 且 warmup 后 missed-vblank 到 7，不默认；
+  `GILDER_VULKAN_AV1_PRESENT_FRAME_QUEUE_DEPTH=2` 把 decode wait 转移为
+  `av1_present_result_wait_elapsed_us=9692746` 且 `average_present_fps=239.80400159488644`，
+  不默认。当前 AV1 synthetic arbitrary-entry 4K/240 correctness/performance 已可用，剩余重点是
+  更多真实码流矩阵、低内存 DPB/output compaction、audio/clock 接入，以及替换/扩展 synthetic
+  libaom smoke 源。
+- [x] 继续攻克 AV1 display-copy 成本和 present 直采路径：2026-06-23 已从
+  show-existing-only direct-DPB 推进到 displayed-frame direct-DPB 默认路径。默认不再创建 AV1
+  display ring，4K Main8 display resource 从旧 display-ring+DPB 降为 DPB-only
+  `112656384` bytes，Main10/P010 为 `225312768` bytes；2400 帧 Main8/Main10 gate 均为
+  `av1_display_copy_count=0`、`av1_displayed_direct_dpb_count=2400`。
 - [x] 继续攻克 H.264 4K/240 稳帧和 display-copy 成本：2026-06-23
   `GILDER_H264_DISPLAY_HANDOFF=direct-sampled-dpb-output` 已切到 direct-DPB
   persistent present worker，默认 2 帧 present preroll，并在硬件允许时默认请求 2 条

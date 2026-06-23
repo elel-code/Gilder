@@ -201,6 +201,73 @@ reported `presented_frame_count=2400`, `displayed_handoff_frame_count=1091`,
 previous 2400-frame AV1 matrix, these runs keep 4K/240 pacing while avoiding
 1091 display-copy operations per 2400 presented frames on this stream.
 
+The later 2026-06-23 AV1 direct-DPB pass supersedes the show-existing-only
+optimization for the default path. AV1 now treats FFmpeg-style decoded-frame
+ownership as the primary model: displayed frames sample the decoded DPB resource
+in `GENERAL` layout, frame contexts keep the sampled resource live until present
+retire, and decode only waits when a later output would overwrite that DPB slot.
+`GILDER_VULKAN_AV1_DISPLAYED_DIRECT_DPB=0` keeps the old display-ring fallback.
+Real Wayland 4K/240 gates passed with no AV1 display ring and no display copy:
+Main8 `/tmp/gilder-av1-main8-displayed-direct-dpb-general-4k240-2400-b`
+reported `presented_frame_count=2400`,
+`av1_display_handoff_strategy=direct-sampled-dpb-general-layout+frame-context-retire`,
+`av1_display_ring_slot_count=0`, `av1_display_ring_memory_bytes=0`,
+`av1_display_copy_count=0`, `av1_displayed_direct_dpb_count=2400`,
+`av1_show_existing_direct_dpb_count=1091`,
+`average_present_fps=240.0128447194083`, and
+`average_present_result_drop_first_60_fps=240.00899700250415`. Main10
+`/tmp/gilder-av1-main10-displayed-direct-dpb-general-4k240-2400-a`
+reported `presented_frame_count=2400`, P010
+`G10X6_B10X6R10X6_2PLANE_420_UNORM_3PACK16`,
+`av1_display_ring_slot_count=0`, `av1_display_ring_memory_bytes=0`,
+`av1_display_copy_count=0`, `av1_displayed_direct_dpb_count=2400`,
+`av1_show_existing_direct_dpb_count=1091`,
+`average_present_fps=239.8255409247888`, and
+`average_present_result_drop_first_60_fps=240.001288762799`. Short readback
+diversity gates confirmed the direct-DPB sampled content changes: Main8
+`/tmp/gilder-av1-main8-displayed-direct-dpb-general-readback-4k240-480-a`
+and Main10
+`/tmp/gilder-av1-main10-displayed-direct-dpb-general-readback-4k240-480-a`
+both reported `readback_y_distinct=9`, `readback_uv_distinct=9`,
+`av1_display_copy_count=0`, and `av1_displayed_direct_dpb_count=480`.
+
+The next AV1 present-cost pass aligned AV1 with the H.264/H.265 direct paths by
+making present-frame clear preroll default to 2 frames. Set
+`GILDER_VULKAN_AV1_PRESENT_FRAME_CLEAR_PREROLL=0` to disable it, or
+`GILDER_VULKAN_AV1_PRESENT_FRAME_CLEAR_PREROLL_COUNT` to override the count.
+Real Wayland 4K/240 validation stayed zero-copy: Main8
+`/tmp/gilder-av1-main8-direct-dpb-clear-preroll-4k240-2400-a` reported
+`av1_present_frame_preroll_count=2`, `av1_display_copy_count=0`,
+`av1_displayed_direct_dpb_count=2400`, `average_present_fps=239.9417797107689`,
+and `average_present_result_drop_first_60_fps=239.9933347725409`; Main10
+`/tmp/gilder-av1-main10-direct-dpb-clear-preroll-4k240-2400-a` reported
+`av1_present_frame_preroll_count=2`, `av1_display_copy_count=0`,
+`av1_displayed_direct_dpb_count=2400`, `average_present_fps=239.93205426537594`,
+and `average_present_result_drop_first_60_fps=239.99924480784875`.
+Process sampling on the same path shows the new zero-copy baseline rather than
+the historical display-ring path: Main8
+`/tmp/gilder-av1-main8-direct-dpb-clear-preroll-performance-4k240-2400-a`
+reported `average_present_fps=239.9059074396761`, average CPU `12.95%`,
+RSS/PSS/USS/Private_Dirty max `117112/80418/67100/36912 KiB`, NVIDIA process
+GPU memory `181 MiB`, `av1_display_copy_count=0`, and
+`av1_present_frame_preroll_count=2`; Main10
+`/tmp/gilder-av1-main10-direct-dpb-clear-preroll-performance-4k240-2400-a`
+reported `average_present_fps=239.9695573179769`, average CPU `12.46%`,
+RSS/PSS/USS/Private_Dirty max `116776/80249/66892/36688 KiB`, NVIDIA process
+GPU memory `289 MiB`, `av1_display_copy_count=0`, and
+`av1_present_frame_preroll_count=2`.
+
+Two AV1 present-side tuning probes were intentionally not made default.
+`GILDER_VULKAN_AV1_READY_CONTEXT_SELECTION=1` passed
+`/tmp/gilder-av1-main8-direct-dpb-ready-context-preroll-4k240-2400-a`, but the
+ready-probe path only found 143 ready contexts out of 2400 and increased
+missed-vblank-after-warmup to 7, so round-robin remains the default. Forcing
+`GILDER_VULKAN_AV1_PRESENT_FRAME_QUEUE_DEPTH=2` in
+`/tmp/gilder-av1-main10-direct-dpb-preroll-depth2-4k240-2400-a` reduced decode
+slot wait to `58611us` but moved the cost into
+`av1_present_result_wait_elapsed_us=9692746`, dropping average FPS to
+`239.80400159488644`; the default depth remains 4.
+
 Follow-up H.264 copy-cost work on 2026-06-23 made the
 `GILDER_H264_DISPLAY_HANDOFF=direct-sampled-dpb-output` path use a persistent
 direct-DPB present worker instead of doing acquire/record/submit/present on the
@@ -481,8 +548,9 @@ evidence:
   `playback_loop_count=2`, `readback_y_distinct=5`,
   `average_present_fps=195.08401023440956`.
 
-Longer no-readback 4K/240 performance samples keep the same arbitrary-entry
-loop correctness but still miss stable 240fps. Main8
+Historical longer no-readback 4K/240 performance samples kept the same
+arbitrary-entry loop correctness but still missed stable 240fps before the AV1
+displayed direct-DPB pass. Main8
 `/tmp/gilder-av1-main8-arbitrary-4k240-performance` reports
 `presented=2400`, `playback_loop_count=8`, `loop_boundary_reset_count=7`,
 `average_present_fps=212.34285202161269`, RSS/PSS/USS/Private_Dirty
@@ -492,10 +560,13 @@ memory `180 MiB`. Main10/P010
 `presented=2400`, `playback_loop_count=8`, `loop_boundary_reset_count=7`,
 `average_present_fps=211.02778884327637`, RSS/PSS/USS/Private_Dirty
 max `108404/74981/61104/30172 KiB`, average CPU `10.09%`, NVIDIA process GPU
-memory `288 MiB`. Current status: arbitrary-entry continuous correctness is
-usable for Main8/Main10; remaining AV1 work is 4K/240 scheduling performance,
-broader real-wallpaper stream coverage, audio/clock integration, and DPB/output
-memory compaction.
+memory `288 MiB`. These are superseded for the synthetic arbitrary-entry path by
+the direct-DPB general-layout evidence above: Main8/Main10 now keep 2400-frame
+4K/240 pacing with zero AV1 display copy and no display ring. Current status:
+arbitrary-entry continuous correctness and synthetic 4K/240 present performance
+are usable for Main8/Main10; remaining AV1 work is broader real-wallpaper stream
+coverage, longer process sampling, audio/clock integration, and codec-specific
+DPB/output memory compaction.
 
 AV1 repeated-frame root cause and fix notes:
 
