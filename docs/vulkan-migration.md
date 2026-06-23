@@ -1340,6 +1340,22 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   不应再靠加深队列盲压，而应继续参考 FFmpeg/GStreamer 的 timeline/clock/backpressure
   模型：timeline semaphore、decoded surface pool retire、display queue pacing、audio clock
   和 compositor present telemetry。
+- 2026-06-24 H.264 direct-DPB handoff 对齐 H.265/AV1 的 frame-context 思路：direct
+  sampled DPB 不再复用 2 个 decode semaphore/command buffer，而是按 swapchain image
+  建 decode-finished semaphore ring 和 decode command buffer ring，并允许
+  `GILDER_H264_DIRECT_ASYNC_PRESENT_DEPTH` 调整 depth。旧 display-copy 路径保留为
+  `GILDER_H264_DISPLAY_HANDOFF=copy` 回退；默认改为 `direct-sampled-dpb-output`。真实
+  `HDMI-A-1` 4K/240 对照：旧 direct-DPB `/tmp/gilder-h264-direct-dpb-4k240-480-probe`
+  虽然 `display_copy_count=0`，但 depth 2 导致 `missed_frame_pacing_count=181`、
+  `h264_present_result_wait_elapsed_us=1626371`；新 frame ring
+  `/tmp/gilder-h264-direct-dpb-frame-ring-4k240-480` 为 `decoded/presented=480/480`、
+  `h264_async_present_depth=3`、`display_copy_count=0`、`missed_frame_pacing_count=0`、
+  `h264_present_result_wait_elapsed_us=10845`、`average_present_result_drop_first_60_fps=240.041`。
+  同一真实 H.264 Main/AAC 1440p60 源 `/tmp/gilder-h264-real-direct-dpb-audio-900`
+  为 `decoded/presented=900/900`、`playback_loop_count=2`、`audio_loop_seek/restart=1/1`、
+  `audio_video_master_clock_drift_abs_max_ns=117598`、`audio_decoders=["avdec_aac"]`、
+  `video_decoders=[]`。这一步把 H.264 从“每帧 copy 到 display ring”推进到默认少 copy
+  的 sampled-DPB handoff，同时保留旧路径用于驱动/码流回归对照。
 - Web helper 输出要以 texture/frame stream 形式进入后端，避免把 WebKitGTK 当作最终 renderer 架构。
 
 ### Phase 5: 后端切换
