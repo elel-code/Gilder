@@ -728,7 +728,8 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   `B8G8R8A8_UNORM`、1707x1067、3 images、FIFO present。
 - `--type-support` 暴露完整壁纸类型矩阵：static/video/slideshow/scene-lite 已有 Vulkan render item
   入口；scene-lite render item 已携带 deterministic snapshot layers、display plan、bound
-  properties 和 source/fps 信息，下一步是消费这些 layers 的原生 Vulkan shape/image/text draw
+  properties 和 source/fps 信息，session 初始化已消费 image/color display plan，分别复用 static
+  upload path 或 Vulkan clear color。下一步是消费这些 layers 的原生 Vulkan shape/image/text draw
   pass；web/shader/playlist 仍按 helper/fallback/selection contract 推进。
 - `--run-static` 已接入静态图片最小显示路径：使用 `image 0.25.10` 解码 PNG/JPEG/WebP，按
   `cover/contain/stretch/center/tile` CPU fit 到 swapchain 尺寸，通过 host-visible staging buffer

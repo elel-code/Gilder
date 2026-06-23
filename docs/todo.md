@@ -762,6 +762,8 @@
   和 GPU/resource telemetry。
 - [x] 接入 scene-lite runtime 输出到 Vulkan render item 边界：native Vulkan item 消费同一
   deterministic scene graph/timeline snapshot layer 结果，不新增 scene 专用 manifest 分支。
+- [x] 接入 scene-lite image/color display 到 native Vulkan session：image display 复用 static upload
+  path，color display 覆盖 Vulkan clear color；这保证当前 snapshot/fallback display 不再退回默认清屏。
 - [ ] 接入 scene-lite 原生 Vulkan draw pass：消费 render item 中的 image/color/shape/text/path
   layers，建立 GPU/resource telemetry 和 Wayland smoke。
 - [ ] 设计 Web helper frame/texture handoff：WebKitGTK/浏览器 helper 只作为隔离实现，native Vulkan
