@@ -760,8 +760,10 @@
   更长 process sampling 和 audio/clock，而不是当前 ready-prefix present critical path。
 - [ ] 接入 shader-first 路径：fullscreen triangle、time/resolution/property uniform、Wayland smoke
   和 GPU/resource telemetry。
-- [ ] 接入 scene-lite runtime 输出：Vulkan 后端消费同一 deterministic scene graph/timeline
-  结果，不新增 scene 专用 manifest 分支。
+- [x] 接入 scene-lite runtime 输出到 Vulkan render item 边界：native Vulkan item 消费同一
+  deterministic scene graph/timeline snapshot layer 结果，不新增 scene 专用 manifest 分支。
+- [ ] 接入 scene-lite 原生 Vulkan draw pass：消费 render item 中的 image/color/shape/text/path
+  layers，建立 GPU/resource telemetry 和 Wayland smoke。
 - [ ] 设计 Web helper frame/texture handoff：WebKitGTK/浏览器 helper 只作为隔离实现，native Vulkan
   后端通过稳定 helper 协议接收 frame stream 或可导入 texture。
 - [ ] 继续 video interop：删除 `gpu-video` 与 native-wgpu 依赖路线后，以 GStreamer 作为 video/audio
