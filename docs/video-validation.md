@@ -33,6 +33,19 @@ state rebuild after skipped leading data, bounded packet queues, fixed-capacity
 bitstream rings and present/decode overlap. Increasing timeouts, accepting empty
 runtime evidence or only optimizing generated happy paths is not sufficient.
 
+## Pipeline Boundary Contract
+
+The native Vulkan video contract exposed by `gilder-native-vulkan --contract`
+now names the runtime boundaries explicitly: render-plan source selection,
+frontend demux, parser normalization, bounded packet queue, codec state/DPB,
+Vulkan Video decode, decoded-image handoff, render, present and separate audio
+clock. FFmpeg is the first reference for packet/frame/clock semantics at each
+boundary; GStreamer is the second reference and active demux/parser/audio
+frontend. This is the implementation split target: demux/parser code may remain
+GStreamer-backed, but decode, render, present and audio-clock telemetry must stay
+independently attributable and compressed payload retention must remain bounded
+by the packet queue and bitstream ring.
+
 ## Validation Layers
 
 Use the checks in this order:
