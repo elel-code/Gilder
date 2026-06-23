@@ -618,20 +618,29 @@
   正确性已过，剩余重点是更长时长 process sampling、更多真实码流矩阵、present-overlap/
   persistent present worker、低内存 DPB/output handoff、audio/clock 接入，以及替换/扩展
   synthetic libaom smoke 源。
-- [ ] 继续攻克 H.264 4K/240 稳帧：2026-06-22 默认 direct Vulkan Video H.264 4K/240 ref=1
-  `/tmp/gilder-vulkan-h264-telemetry-default-4k240-ref1` 为 `decoded/presented=480/480`、
-  `average_present_fps=230.37179368303578`、`h264_present_queue_count=1`、
-  `h264_async_present_depth=1`、`queue_retained=0`；`GILDER_H264_DISPLAY_HANDOFF=direct`
-  去掉 25.6MB display ring 后只到 `/tmp/gilder-vulkan-h264-direct-sampled-4k240-ref1`
-  的 `211.867fps`，双 present queue/deeper async present 在本机也未提升。下一步不能再把
-  packet queue 当主因，应继续拆 H.264 decode/display/present critical path、timeline/fence
-  和更细粒度 GPU handoff。预绑定 display descriptor set 后，5s 真实 Wayland
-  `/tmp/gilder-vulkan-h264-prebound-descriptor-4k240-perf` 达到 `1200/1200`、
-  `average_present_fps=233.90643962520952`、`avg_descriptor_update_us=0`，说明该项只压掉
-  CPU descriptor 写入，剩余瓶颈仍在 H.264 decode/copy/present overlap。
+- [x] 继续攻克 H.264 4K/240 稳帧和 display-copy 成本：2026-06-23
+  `GILDER_H264_DISPLAY_HANDOFF=direct-sampled-dpb-output` 已切到 direct-DPB
+  persistent present worker，默认 2 帧 present preroll，并在硬件允许时默认请求 2 条
+  present queue。真实 Wayland `/tmp/gilder-h264-direct-sampled-dpb-default-q2-preroll-4k240-2400-a`
+  为 `decoded/presented=2400/2400`、`average_present_fps=239.12677751832481`、
+  `average_present_result_drop_first_60_fps=239.39705921336318`、
+  `h264_display_copy_count=0`、`h264_display_ring_memory_bytes=0`、
+  `descriptor_update_sum=0`、`h264_packet_queue_retained_payload_bytes=0`。
+  手动双 present queue 对照
+  `/tmp/gilder-h264-direct-sampled-dpb-present-worker-preroll-presentq2-4k240-2400-a`
+  达到 `average_present_fps=239.7187247637892` 且仍为零 display-copy。旧的
+  display-ring/per-frame-fence 负证据保留为历史，不再代表 H.264 direct-DPB 默认路径。
 - [ ] 将 visible direct H.265 ready-prefix 从受控窗口循环推进到完整播放循环：补持续 AU
   demux/parser、timeline semaphore 或更完整的 pacing/scheduling、loop/seek、音频/时钟接入和更长时间
-  240Hz frame pacing telemetry。
+  240Hz frame pacing telemetry。2026-06-23 已把 H.264 direct-DPB present
+  worker/preroll/descriptor-prebind 模式迁到 H.265 Main8/Main10：Main8
+  `/tmp/gilder-h265-main8-present-worker-preroll-q2-4k240-2400-a` 为
+  `2400/2400`、`average_present_fps=240.1206840555046`、`descriptor_update_sum=0`、
+  `h265_present_queue_count=2`、`h265_packet_queue_retained_payload_bytes=0`；Main10
+  `/tmp/gilder-h265-main10-present-worker-preroll-q2-4k240-2400-a` 为
+  `2400/2400`、`average_present_fps=240.07289114727573`、P010、
+  `descriptor_update_sum=0`、`h265_present_queue_count=2`。剩余 H.265 工作转为更多真实码流、
+  更长 process sampling 和 audio/clock，而不是当前 ready-prefix present critical path。
 - [ ] 接入 shader-first 路径：fullscreen triangle、time/resolution/property uniform、Wayland smoke
   和 GPU/resource telemetry。
 - [ ] 接入 scene-lite runtime 输出：Vulkan 后端消费同一 deterministic scene graph/timeline

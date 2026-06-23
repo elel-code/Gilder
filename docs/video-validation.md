@@ -201,6 +201,57 @@ reported `presented_frame_count=2400`, `displayed_handoff_frame_count=1091`,
 previous 2400-frame AV1 matrix, these runs keep 4K/240 pacing while avoiding
 1091 display-copy operations per 2400 presented frames on this stream.
 
+Follow-up H.264 copy-cost work on 2026-06-23 made the
+`GILDER_H264_DISPLAY_HANDOFF=direct-sampled-dpb-output` path use a persistent
+direct-DPB present worker instead of doing acquire/record/submit/present on the
+decode loop. The direct path now prebinds one sampled descriptor set per decoded
+DPB layer, keeps descriptor updates at zero during playback, uses a 2-frame clear
+present preroll to remove FIFO startup cost from measured decode/present
+throughput, and requests two present queues by default when the selected present
+queue family exposes them. Real Wayland 4K/240 gates passed with no display ring:
+`/tmp/gilder-h264-direct-sampled-dpb-default-q2-preroll-4k240-2400-a` reported
+`decoded_frame_count=2400`, `presented_frame_count=2400`,
+`h264_present_frame_preroll_count=2`, `h264_present_queue_count=2`,
+`h264_async_present_depth=2`,
+`h264_display_handoff_strategy=direct-sampled-dpb-output`,
+`h264_display_ring_slot_count=0`, `h264_display_ring_memory_bytes=0`,
+`h264_display_copy_count=0`, `h264_packet_queue_retained_payload_bytes=0`,
+`descriptor_update_sum=0`, `average_present_fps=239.12677751832481`,
+`average_present_result_fps=239.15832221115875`, and
+`average_present_result_drop_first_60_fps=239.39705921336318`. A manual
+comparison with `GILDER_H264_PRESENT_QUEUE_COUNT=2` before making that the direct
+default, `/tmp/gilder-h264-direct-sampled-dpb-present-worker-preroll-presentq2-4k240-2400-a`,
+reported `average_present_fps=239.7187247637892`,
+`average_present_result_drop_first_60_fps=239.9289342600875`,
+`h264_display_copy_count=0`, and `h264_display_ring_memory_bytes=0`. The older
+no-preroll direct worker gate
+`/tmp/gilder-h264-direct-sampled-dpb-present-worker-4k240-2400-a` was already
+correct and zero-copy (`h264_display_copy_count=0`) but only averaged
+`237.71277173477333fps` because the first FIFO frames were slow; after warmup it
+was `239.5859741310655fps`. The new default turns that observation into the
+direct-DPB presentation contract instead of loosening the gate.
+
+The same 2026-06-23 present-worker/default-preroll/descriptor-prebind pattern was
+then moved to H.265 Main8/Main10. H.265 already sampled the decoded resource
+directly; the follow-up removed per-frame descriptor updates, moved
+acquire/record/submit/present to a persistent worker, defaulted to two present
+queues when available, and added H.265 present telemetry. Real Wayland 4K/240
+gates passed:
+H.265 Main8 `/tmp/gilder-h265-main8-present-worker-preroll-q2-4k240-2400-a`
+reported `decoded_frame_count=2400`, `presented_frame_count=2400`,
+`picture_format=G8_B8R8_2PLANE_420_UNORM`,
+`h265_present_frame_preroll_count=2`, `h265_present_queue_count=2`,
+`h265_async_present_depth=2`, `h265_acquire_not_ready_count=0`,
+`h265_packet_queue_retained_payload_bytes=0`, `bitstream_ring_wrap_count=253`,
+`descriptor_update_sum=0`, and `average_present_fps=240.1206840555046`.
+H.265 Main10 `/tmp/gilder-h265-main10-present-worker-preroll-q2-4k240-2400-a`
+reported `decoded_frame_count=2400`, `presented_frame_count=2400`,
+`picture_format=G10X6_B10X6R10X6_2PLANE_420_UNORM_3PACK16`,
+`h265_present_frame_preroll_count=2`, `h265_present_queue_count=2`,
+`h265_async_present_depth=2`, `h265_acquire_not_ready_count=0`,
+`h265_packet_queue_retained_payload_bytes=0`, `bitstream_ring_wrap_count=245`,
+`descriptor_update_sum=0`, and `average_present_fps=240.07289114727573`.
+
 Latest 2026-06-22 retained real Wayland arbitrary-entry direct gates on
 `WAYLAND_DISPLAY=wayland-1`, `HDMI-A-1`, 3840x2160@240:
 H.264 `/tmp/gilder-vulkan-h264-barrier-tightened-final` passed
@@ -278,9 +329,9 @@ Two deeper present experiments should remain negative evidence: with
 fell to `219.4879316010344fps` because single-queue present blocking moved into
 `avg_submit_us=4175.98`; with `GILDER_H264_PRESENT_QUEUE_COUNT=2`,
 `/tmp/gilder-vulkan-h264-per-frame-fence-dual-present-4k240-short-seq` timed out
-after 20s and produced empty runtime/stderr. Keep H.264 default at single present
-queue/depth 1 until the binary-semaphore path is replaced by a real timeline
-frame-pool scheduler.
+after 20s and produced empty runtime/stderr. These are historical negative
+results for the old per-frame fence/display-ring branch; the 2026-06-23
+direct-DPB present worker supersedes them for zero-copy H.264 validation.
 
 H.265 Main10 remains the stable control after these H.264-only changes:
 `/tmp/gilder-vulkan-h265-main10-after-h264-framepool-fence-4k240` reports
