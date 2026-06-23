@@ -179,6 +179,74 @@ passed `presented_frame_count=2400`, `processed_temporal_unit_count=3574`,
 `average_present_result_fps=239.91641028246332`, and
 `average_present_result_drop_first_60_fps=239.99865379121943`.
 
+2026-06-24 tightened the arbitrary-entry definition to match the FFmpeg seek
+contract more closely: after a decoder reset, the first visible H.264/H.265 AU
+must be a recovery point (currently IDR), and AV1 must start from a shown key
+frame. A real H.264 Main + AAC MP4 shifted by `--arbitrary-entry-offset 0.35`
+previously exposed the bug: the queue accepted a non-IDR P frame because the
+reset DPB was empty. The fixed gate
+`/tmp/gilder-h264-real-kamen-2-arbitrary-entry-loop-1440p60-900-b` now passes
+with `decoded_frame_count=900`, `presented_frame_count=900`,
+`h264_packet_queue_bootstrap_discarded_access_units=9`,
+`h264_packet_queue_loop_skip_access_units=9`, first visible AU `9` as IDR,
+loop replay first AU `850` as IDR, `loop_first_non_idr_count=0`,
+`first_frame_recovery=true`, `runtime_elapsed_ms=14991`, and
+`average_present_result_drop_first_60_fps=59.9793482310882`. The same stricter
+bootstrap was regression-tested on generated 4K/240 arbitrary sources:
+H.265 Main8 `/tmp/gilder-h265-main8-arbitrary-recovery-bootstrap-4k240-480-b`
+passed `decoded/presented=480/480`, `bootstrap_discarded=156`, `loop_skip=156`,
+`first_frame_idr=true`, `loop_first_non_idr_count=0`, and
+`average_present_fps=239.4167640037135`; H.265 Main10
+`/tmp/gilder-h265-main10-arbitrary-recovery-bootstrap-4k240-2400-b` passed
+`decoded/presented=2400/2400`, `playback_loop_count=8`,
+`loop_boundary_reset_count=7`, `bootstrap_discarded=156`, `loop_skip=156`,
+`first_frame_idr=true`, `loop_first_non_idr_count=0`, and
+`average_present_fps=238.9120674801146`, so correctness is stable but Main10
+4K/240 pacing still needs scheduler work. AV1 Main8
+`/tmp/gilder-av1-main8-arbitrary-recovery-bootstrap-4k240-480-b` and Main10
+`/tmp/gilder-av1-main10-arbitrary-recovery-bootstrap-4k240-480-b` both passed
+with `presented_frame_count=480`, `processed_temporal_unit_count=718`,
+`decoded_frame_count=260`, `hidden_decoded_frame_count=238`,
+`displayed_handoff_frame_count=220`, `first_frame_key=true`,
+`loop_first_non_key_count=0`, `arbitrary_entry_demux_dropped_prefix=yes`, and
+warmup-dropped present-result FPS of `239.93820016572343` and
+`239.96829440387066`.
+
+Audio/clock work started after the arbitrary-entry gates were fixed. The first
+probe is intentionally audio-only rather than mixed into the Vulkan present loop:
+`scripts/native-vulkan-audio-clock-probe.sh` records ffprobe stream/packet timing
+and runs an explicit GStreamer AAC chain (`qtdemux.audio_0 ! aacparse !
+avdec_aac ! fakesink`) so the evidence is not polluted by video decode. Real
+source `/tmp/gilder-audio-clock-probe-kamen-2-aac-10s-c` reports AAC LC stereo
+at 48 kHz, `audio_packet_count=469`, `audio_first_pts=0.000000`,
+`audio_last_pts=9.984000`, packet PTS delta `0.021333..0.021334`, one
+GStreamer clock, one stream-start message, and playing-state messages from the
+audio-only chain. This establishes the first measurable audio-clock frontend
+before making audio the playback master clock.
+
+The next step moved that audio-only frontend into the native Vulkan H.264
+visible runtime behind `--audio-clock-probe`. Following the ffplay clock model,
+the runtime no longer lets the audio pipeline free-run during video setup:
+playback starts on the first video sample, loop reset advances an audio clock
+serial, stale positions/samples from the old serial are ignored, and telemetry
+reports a monotonic audio-master estimate. Real Wayland evidence
+`/tmp/gilder-h264-real-kamen-2-audio-clock-ffplay-serial-1440p60-900-f` passes
+from the same shifted Main + AAC MP4 with `decoded/presented=900/900`,
+`bootstrap_discarded=9`, `loop_skip=9`, `first_frame_recovery=true`,
+`loop_first_unrecovered_count=0`, and
+`average_present_result_drop_first_60_fps=59.9944410395156`. The parallel audio
+pipeline is explicit AAC only: `audio_decoders=["avdec_aac"]`,
+`audio_video_decoders=[]`, `audio_sample_rate=48000`, `audio_channels=2`,
+`audio_buffer_count=701`, `audio_position_query_count=900`,
+`audio_position_query_hit_count=897`, `audio_clock_serial=2`,
+`audio_loop_restart_count=1`, `audio_position_stale_count=0`,
+`audio_sample_stale_count=0`, and `audio_reached_clocked_playback=true`.
+The old loop-reset drift issue is no longer present in this gate:
+`audio_video_master_clock_drift_latest_ns=-61777` and
+`audio_video_master_clock_drift_abs_max_ns=856739`. The remaining work is to
+turn this probe clock into the optional video pacer master and then wire real
+audio output/mute policy.
+
 Follow-up AV1 copy-cost work on 2026-06-23 made `show_existing_frame` presentation
 sample the decoded DPB image directly by default instead of copying those handoff
 frames into the display ring again. `GILDER_VULKAN_AV1_SHOW_EXISTING_DIRECT_DPB=0`
