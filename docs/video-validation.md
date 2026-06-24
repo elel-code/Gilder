@@ -991,6 +991,14 @@ view creation.
   route signals) and the `NativeVulkanVideoFrontend` provider wrapper. Future
   FFmpeg/libav, web or native decoded
   frame frontends can be added without making render/present own `gst::Sample`.
+- Web wallpaper support should follow the same provider boundary: no `gtk-rs`
+  or WebKitGTK dependency should enter native Vulkan core. A web provider may
+  be an external process, WPE/CEF/headless engine, or native Wayland surface
+  producer as long as Gilder receives a bounded render handoff.
+- High-performance web wallpaper requires GPU handoff (`DMABuf`, `EGLImage`,
+  Vulkan external image, or an independently composited Wayland surface).
+  CPU screenshot/RGBA frames are only an explicit fallback path because they
+  reintroduce the same copy cost that the video path is removing.
 - `src/renderer/native_vulkan/video_frontend_gst.rs` owns the current raw
   decoded GStreamer video appsink provider and pipeline policy. This keeps
   `gst::Pipeline` lifecycle and appsink polling out of the Vulkan session while

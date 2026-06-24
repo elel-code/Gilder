@@ -508,9 +508,9 @@
 - [x] 扩展 `scene-lite` 2D layer：支持 SVG path data、fill/stroke 和安全 SVG attribute 转义，并合成到受控 SVG snapshot。
 - [ ] 扩展 `scene-lite`：补齐常见 2D scene 图层、transform、opacity、动画曲线、时间轴和属性映射。
 - [ ] 设计完整 `scene` runtime：保留可高效渲染的 scene graph，不把复杂场景长期降级为静态 fallback。
-- [ ] 增强 `web` 壁纸 runtime：WebKitGTK sandbox、输入策略、音频策略、资源权限、暂停/恢复和低功耗模式。
-- [ ] 将 Web runtime 设计为独立 helper：WebKitGTK/浏览器进程只作为 helper 内部实现，
-  daemon/core 只接收属性、权限、生命周期和 frame/texture handoff，避免阻碍未来 Vulkan 后端。
+- [ ] 增强 `web` 壁纸 runtime：采用可替换 provider/helper 边界，补输入策略、音频策略、资源权限、暂停/恢复和低功耗模式；`gtk-rs`/WebKitGTK 不能成为 daemon 或 native Vulkan core 依赖。
+- [ ] 将 Web runtime 设计为独立 helper：WPE/CEF/WebKitGTK/浏览器进程只作为 helper 内部实现，
+  daemon/core 只接收属性、权限、生命周期和 DMABuf/EGLImage/Vulkan external image/Wayland surface handoff；CPU RGBA screenshot 只能作为降级 fallback，避免阻碍未来 Vulkan 后端。
 - [x] 添加一等 `shader` manifest entry，记录 GLSL/WGSL 风格的时间、分辨率、鼠标和用户属性 uniform schema；runtime 完成前使用 fallback render plan，并按动态壁纸参与 `pause-dynamic` 释放策略。
 - [x] Wallpaper Engine 转换器支持明确 Shader 项目和 playlist shader 子项，生成 `shader` fallback manifest、标准 time/resolution/mouse uniform 和用户属性 uniform。
 - [ ] 实现原生 shader runtime：编译/执行 GLSL/WGSL、注入 uniform、接入 GPU memory telemetry 和 Wayland surface smoke。
