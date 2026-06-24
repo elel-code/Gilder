@@ -1012,6 +1012,10 @@ view creation.
   `NativeVulkanRenderItem` mapping. It is the thin integration boundary for
   wallpaper/control sources and must not accumulate decode, render or present
   state.
+- `src/renderer/native_vulkan/render_plan.rs` owns render-item to native Vulkan
+  session setup decisions such as static upload source selection and scene-lite
+  color clear fallback. Scene-lite wallpaper work should extend this planning
+  boundary instead of adding scene-specific branches to the Vulkan session.
 - GStreamer may provide demux/parser/appsink/audio/clock.
 - GStreamer display sinks must not own the visible surface.
 - Native Wayland owns layer-shell surface/output/scale/viewport/dmabuf feedback.
