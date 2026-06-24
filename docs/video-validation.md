@@ -1032,6 +1032,10 @@ view creation.
   telemetry and DMABuf contract snapshots. CUDA/VA/DMAbuf Vulkan import
   implementations may still live beside low-level Vulkan code, but runtime JSON
   and smoke tests should consume this stable import-status boundary.
+- `src/renderer/native_vulkan/interop.rs` owns the stable external interop
+  policy surface for decoded video and future Web/helper texture handoff:
+  target memory flow, ash binding policy, accepted frame sources and designs
+  that must not enter the native Vulkan core.
 - `src/renderer/native_vulkan/video_memory_gst.rs` owns GStreamer decoded sample
   memory classification (`CUDAMemory`, `DMABuf`, `VAMemory`, system memory).
   This keeps provider-specific memory naming out of the renderer core while

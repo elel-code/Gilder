@@ -852,6 +852,9 @@
 - [x] 固化 `ash` 绑定策略：`ash` 主分支的价值是更快获得 Vulkan Video/external-memory
   绑定并减少 raw FFI/生成代码漂移；它不是 zero-copy 证据本身，zero-copy 仍必须由同设备
   extension/capability/import telemetry 证明。
+- [x] 拆分外部 interop 策略边界：`native_vulkan/interop.rs` 负责 video decoded-frame
+  memory handoff、`ash` 绑定策略和 Web/helper texture handoff contract，主
+  `native_vulkan.rs` 不再内联这些可替换接入层策略。
 - [ ] 接入 scene-lite 原生 Vulkan draw pass：消费 draw-plan 中的 image/color/shape/text/path ops，
   建立 GPU/resource telemetry 和 Wayland smoke。
 - [ ] 设计 Web helper frame/texture handoff：WebKitGTK/浏览器 helper 只作为隔离实现，native Vulkan
