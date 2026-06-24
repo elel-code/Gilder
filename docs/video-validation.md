@@ -124,6 +124,7 @@ download is not guaranteed to work.
 ```sh
 scripts/wallpaper-engine-workshop-download.sh \
   --item-id 123456789 \
+  --install-steamcmd \
   --probe-after-download \
   -- --duration 10
 ```
@@ -131,11 +132,20 @@ scripts/wallpaper-engine-workshop-download.sh \
 For a real Wayland run, pass matrix arguments after `--`:
 
 ```sh
-scripts/wallpaper-engine-workshop-download.sh \
+GILDER_STEAM_USER=<steam-user> scripts/wallpaper-engine-workshop-download.sh \
   --item-list /path/to/workshop-ids.txt \
-  --steam-user "$USER" \
+  --install-steamcmd \
   --probe-after-download \
   -- --run-video --output-name HDMI-A-1 --audio-clock-probe --duration 10
+```
+
+`--install-steamcmd` installs Valve's SteamCMD into
+`artifacts/tools/steamcmd/`, which is ignored by git and survives restarts.
+Omit it when a system `steamcmd` is already available or pass `--steamcmd` for a
+custom executable. To install the tool without downloading any Workshop item:
+
+```sh
+scripts/wallpaper-engine-workshop-download.sh --install-steamcmd-only
 ```
 
 Do not commit downloaded Workshop media or generated matrix reports. The
