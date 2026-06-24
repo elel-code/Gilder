@@ -1013,6 +1013,10 @@ view creation.
   GStreamer provider lives in `src/renderer/native_vulkan/demux_gst.rs`;
   future libav/FFmpeg or native demux providers should implement the same
   packet frontend boundary.
+- `src/renderer/native_vulkan/timeline.rs` owns codec-neutral timeline checks
+  derived from ffplay's queue-serial model: loop-boundary detection and stale
+  frame serial rejection must be shared by H.264/H.265/AV1 instead of repeated
+  as ad hoc `source_loop_index` comparisons inside codec loops.
 - `src/renderer/native_vulkan/video_frontend.rs` owns provider-neutral decoded
   video frontend telemetry (`provider`, caps reports, sample timing and memory
   route signals) and the `NativeVulkanVideoFrontend` provider wrapper. Future

@@ -868,6 +868,9 @@
 - [x] 拆分 direct runtime summary：`native_vulkan/direct_runtime.rs` 统一 H.264/H.265/AV1
   ready-prefix runtime 的 elapsed、average present FPS 和 decoded-frame zero-copy
   classification，codec adapter 继续只负责 parser/reference/DPB 差异。
+- [x] 收敛 ffplay-style timeline serial 判定：`native_vulkan/timeline.rs` 现在统一
+  loop-boundary 和 stale frame serial helper，H.264/H.265/AV1 direct loop 不再散落
+  ad hoc `source_loop_index` 比较。
 - [ ] 接入 scene-lite 原生 Vulkan draw pass：消费 draw-plan 中的 image/color/shape/text/path ops，
   建立 GPU/resource telemetry 和 Wayland smoke。
 - [ ] 设计 Web helper frame/texture handoff：WebKitGTK/浏览器 helper 只作为隔离实现，native Vulkan
