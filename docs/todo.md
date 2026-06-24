@@ -266,6 +266,10 @@
   plan 也会启动同一 `audio_worker`，以 clock-only pipeline 采集 ffplay-style clock telemetry，
   不接 audible sink。snapshot 状态从 `disabled-by-muted-plan` 改为
   `clock-only-output-ready-for-audio-clock-runtime`，provider 保持 `gstreamer`。
+- [x] 将 plan audio worker 命令推进到 ffplay-style serial 模型：`audio_runtime.rs`
+  维护 video clock serial，loop/seek 时递增；`audio_worker.rs` 的 video clock sample 和 loop
+  seek 命令都携带 serial，worker 只接受当前 serial 的 sample，从命令层丢弃 loop 前 stale clock。
+  这补上了 PacketQueue/Clock serial 语义在 audio runtime worker 边界上的缺口。
 - [x] 增强 FFmpeg PacketQueue/serial 对齐证据：`demux.rs` 现在区分 loop 边界的配置跳过窗口
   `loop_skip_packets` 和实际累计跳过数 `loop_skipped_packets`，H.264/H.265/AV1 顶层 runtime
   snapshot 也分别输出实际跳过 AU/TU 计数。这样任意入口 loop replay 时不只知道“应该跳过多少
