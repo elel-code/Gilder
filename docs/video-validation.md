@@ -981,6 +981,12 @@ view creation.
 - GStreamer is the second reference and current frontend implementation, but it
   is replaceable. The stable contract is packet/audio/clock output into Gilder,
   not `gst::Pipeline` ownership inside decode/render/present.
+- Route 1 is the bitstream-native-decode route: GStreamer/libav may provide
+  demux/parser access units, but H.264/H.265/AV1 picture decode is owned by
+  Gilder's native Vulkan Video path.
+- Route 2 is the decoded-frame-frontend route: the provider decodes frames and
+  Gilder imports provider-neutral decoded samples for render/present. `gst-dma`
+  belongs here as the DMABuf/VA memory route, not as a display-sink bypass.
 - `src/renderer/native_vulkan/demux.rs` owns the frontend-agnostic packet queue,
   access-unit timeline, loop serial and bootstrap window. The current
   GStreamer provider lives in `src/renderer/native_vulkan/demux_gst.rs`;

@@ -120,6 +120,11 @@ native-wgpu 和 native-wayland `playbin/waylandsink` 路径只保留历史证据
 - 当前主线是 `native-vulkan-gst-video`：GStreamer 做 demux/parser/appsink/audio/clock
   前端，native Vulkan 负责 GPU import/decode/render/present，GStreamer sink 不接管
   Wayland surface。
+- 视频有两条仍有效的路线。第一条是 bitstream-native-decode：GStreamer/libav 只到
+  demux/parser/encoded access-unit，H.264/H.265/AV1 解码由 Gilder native Vulkan Video
+  负责。第二条是 decoded-frame-frontend：GStreamer 或未来其他 provider 负责解码，Gilder
+  只接收 decoded sample 并导入/render/present；`gst-dma` 属于第二条路线的 DMABuf/VA
+  内存交付，不是绕过分层的显示 sink。
 - daemon 会为 video entry 生成 `render_sync.video_plans`，包含 source、poster、
   loop、muted、fit、start offset 和性能策略合成后的目标 FPS。
 - 如果 video entry 提供 poster，或 manifest 的 `preview.poster` 可用，daemon 会保留
