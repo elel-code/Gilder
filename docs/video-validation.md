@@ -1009,6 +1009,10 @@ view creation.
   decoded GStreamer video appsink provider and pipeline policy. This keeps
   `gst::Pipeline` lifecycle and appsink polling out of the Vulkan session while
   preserving the same provider-neutral sample handoff.
+- `src/renderer/native_vulkan/video_import.rs` owns decoded-frame import
+  telemetry and DMABuf contract snapshots. CUDA/VA/DMAbuf Vulkan import
+  implementations may still live beside low-level Vulkan code, but runtime JSON
+  and smoke tests should consume this stable import-status boundary.
 - `src/renderer/native_vulkan/audio_frontend.rs` owns the provider-neutral
   audio clock runtime wrapper and reports `audio_runtime_provider` into video
   runtime telemetry. The current implementation is still the GStreamer AAC
