@@ -903,6 +903,11 @@
 - [x] 补齐 scene-lite native draw payload：`NativeVulkanSceneLiteDrawOp` 现在携带
   source/color/stroke/尺寸/text/path/fit/transform 等绘制输入，runtime snapshot 可验证
   image、shape、text 的 native draw payload；缺 text color 或 path paint 不再误报 native-ready。
+- [x] 推进 scene-lite solid quad 后端计划：纯色 rectangle 层现在生成
+  `solid-quad-alpha-blend` recording step、vertex/index buffer byte range 和 runtime
+  `draw_pass_quad_recording_*` telemetry；单个矩形 quad 从
+  `vulkan-quad-recording-not-implemented` 推进到 `solid-quad-recording-ready`，圆角、
+  text、path、image 等仍明确停在对应资源/recording backend。
 - [x] 收敛 direct present timing 写回：`direct_runtime.rs` 现在提供
   `NativeVulkanDirectPresentTiming` 和统一 apply helper，H.264 direct-DPB、H.264 display-ring
   与 H.265 present worker 不再各自复制 frame timing 写回和 acquire-not-ready 累计逻辑。
