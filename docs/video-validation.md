@@ -344,7 +344,10 @@ audio boundary (`NativeVulkanAudioOutputPolicy`) rather than the CLI wrapper.
 Manifest-backed `VideoWallpaperPlan` runtime snapshots report
 `audio_output_policy=plan` and resolve the same effective muted state, so the
 native Vulkan renderer now starts the actual plan-following audio runtime from
-the same policy path. A 2026-06-24 real Wayland `--run-video --unmuted` check on
+the same policy path. Muted plans start the same worker in `clock-only` mode for
+ffplay-style clock telemetry without an audible sink; unmuted plans start it in
+`auto` mode and tee to `autoaudiosink`. A 2026-06-24 real Wayland
+`--run-video --unmuted` check on
 `artifacts/video-sources/h264/audio-loop/kamen-h264-aac-2s-loop.mp4` rendered
 `60` frames in one second and reported
 `audio_runtime_status=clocked-playback-active`,
