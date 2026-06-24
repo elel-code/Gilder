@@ -1005,8 +1005,8 @@ Main10 3840x2160@240 source reported `samples=4`,
 `h265_decode_ready_prefix_count=4`, `stream_format=byte-stream`,
 `alignment=au`, `mapped_write_source=extracted-encoded-video-unit`, and
 `picture_format=G10X6_B10X6R10X6_2PLANE_420_UNORM_3PACK16`. This verifies that
-GStreamer provider lifecycle moved out of the frontend-agnostic queue without
-breaking H.265 Main10 bitstream extraction.
+GStreamer provider lifecycle and bitstream pipeline construction moved out of
+the frontend-agnostic queue without breaking H.265 Main10 bitstream extraction.
 
 ## Runtime Packages
 
