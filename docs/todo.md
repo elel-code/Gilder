@@ -899,6 +899,9 @@
   H.265 和 AV1 的 present-result wait count/elapsed/max 现在共用
   `NativeVulkanDirectPresentWaitStats`，保持现有 runtime 字段但让后续 pacer/backpressure
   调整基于同一套 codec-neutral 证据。
+- [x] 收敛 direct present worker 阻塞接收：H.264 direct-DPB、H.264 display-ring 和
+  H.265 的 present-result recv/断线错误映射/等待耗时记录现在走
+  `native_vulkan_direct_recv_present_result`，codec 路径只保留 result 应用和私有状态。
 - [ ] 接入 scene-lite 原生 Vulkan draw pass：消费 draw-plan 中的 image/color/shape/text/path ops，
   建立 GPU/resource telemetry 和 Wayland smoke。
 - [ ] 设计 Web helper frame/texture handoff：WebKitGTK/浏览器 helper 只作为隔离实现，native Vulkan
