@@ -1037,6 +1037,11 @@ view creation.
   `NativeVulkanRenderItem` mapping. It is the thin integration boundary for
   wallpaper/control sources and must not accumulate decode, render or present
   state.
+- `src/renderer/scene_lite_display.rs` owns scene-lite display fallback
+  decisions such as direct color clear eligibility, snapshot renderability and
+  fallback background selection. This keeps scene display policy out of the
+  render sync coordinator while preserving backend-neutral `SceneLiteDisplayPlan`
+  output for native Vulkan and future backends.
 - `src/renderer/native_vulkan/render_plan.rs` owns render-item to native Vulkan
   session setup and draw planning decisions such as static upload source
   selection, scene-lite color clear fallback and native scene-lite draw-op
