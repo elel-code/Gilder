@@ -1042,6 +1042,9 @@ view creation.
   selection, scene-lite color clear fallback and native scene-lite draw-op
   classification. Scene-lite wallpaper work should extend this planning
   boundary instead of adding scene-specific branches to the Vulkan session.
+- Pure scene-lite color snapshots are planned as `SceneLiteDisplayPlan::Color`
+  instead of generated SVG snapshots, so native Vulkan can clear the swapchain
+  directly and avoid an unnecessary snapshot file, image decode and upload.
 - `src/renderer/native_vulkan/scene_lite_runtime.rs` owns scene-lite native draw
   plan telemetry. It reports whether the current deterministic scene snapshot
   can be taken over by native Vulkan draw passes, plus fallback availability and
