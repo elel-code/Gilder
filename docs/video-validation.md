@@ -300,7 +300,9 @@ the same policy path. A 2026-06-24 real Wayland `--run-video --unmuted` check on
 (`audio_runtime_*`), including audio clock serial, master-clock estimate and
 latest audio/video drift fields. This is the boundary to keep while splitting
 video demux, decode, render and present code, and it is the evidence surface
-needed before making audio clock the default pacing master.
+used by the audio-clock default pacing master when the audio clock probe is
+enabled. `GILDER_VIDEO_PACING_MASTER=target` remains the explicit fallback for
+target-fps pacing comparisons.
 
 Follow-up AV1 copy-cost work on 2026-06-23 made `show_existing_frame` presentation
 sample the decoded DPB image directly by default instead of copying those handoff

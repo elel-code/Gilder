@@ -1191,8 +1191,9 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   `h265_packet_queue_loop_skip_access_units=156`、`h265_packet_queue_retained_payload_bytes=0`。
   当前 AV1 正确性优先使用逻辑 reference-name slot 规划；物理 DPB slot compaction、长时段
   process sampling 和更多真实 AV1 码流仍是后续工作。AAC audio-clock probe 已覆盖
-  H.264/H.265/AV1 loop serial/reset gate；2026-06-24 已加入 opt-in audio-clock master
-  pacing，`GILDER_VIDEO_PACING_MASTER=audio`/smoke `--pacing-master audio` 在 H.264
+  H.264/H.265/AV1 loop serial/reset gate；2026-06-24 已加入 audio-clock master
+  pacing，当前 `--audio-clock-probe` 默认使用 audio master，`GILDER_VIDEO_PACING_MASTER=target`
+  可强制回到 target-fps；smoke `--pacing-master audio` 在 H.264
   `/tmp/gilder-h264-audio-master-pacing-segment-clock-240` 与 H.265 Main8
   `/tmp/gilder-h265-main8-audio-master-pacing-segment-clock-620` 通过连续呈现和 audio loop gate。
   AV1 也已修正空 PTS fallback 的 segment clock 问题：

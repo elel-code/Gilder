@@ -788,11 +788,12 @@
   `average_present_result_drop_first_60_fps=240.0756582168383`、`missed_frame_pacing_count=9`。
   H.265 Main8/Main10 为 `240.1629163155045`/`240.10727993267392fps`；AV1 Main8/Main10
   warmup 后为 `239.95496406116047`/`240.01269375010384fps` 且 `av1_display_copy_count=0`。
-- [x] 参考 FFmpeg/ffplay audio master 思路补 opt-in video pacing master：`pacing.rs` 增加
-  `NativeVulkanVideoPacingMaster::{TargetFps, AudioClock}`，默认路径不变；只有
-  `GILDER_VIDEO_PACING_MASTER=audio`/`GILDER_PACING_MASTER=audio` 且 `--audio-clock-probe`
-  启用时，视频帧 sleep 才按下一帧 video clock 与 audio master clock 的 delta 计算。
-  三条 smoke 脚本新增 `--pacing-master audio` 并 gate 新 pacing label。2026-06-24
+- [x] 参考 FFmpeg/ffplay audio master 思路补 video pacing master：`pacing.rs` 增加
+  `NativeVulkanVideoPacingMaster::{TargetFps, AudioClock}`。`--audio-clock-probe`
+  启用时默认使用 audio master，视频帧 sleep 按下一帧 video clock 与 audio master clock
+  的 delta 计算；`GILDER_VIDEO_PACING_MASTER=target`/`GILDER_PACING_MASTER=target`
+  可强制回到 target-fps。三条 smoke 脚本显式设置 target/audio env 并 gate pacing label。
+  2026-06-24
   H.264 `/tmp/gilder-h264-audio-master-pacing-segment-clock-240`、H.265 Main8
   `/tmp/gilder-h265-main8-audio-master-pacing-segment-clock-620` 和 AV1 Main8
   `/tmp/gilder-av1-main8-audio-master-pacing-segment-clock-120` 分别为
