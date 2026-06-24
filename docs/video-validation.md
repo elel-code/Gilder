@@ -977,6 +977,14 @@ view creation.
 
 ## Current Architecture Gates
 
+- FFmpeg is the first behavioral reference for packet/frame/clock semantics.
+- GStreamer is the second reference and current frontend implementation, but it
+  is replaceable. The stable contract is packet/audio/clock output into Gilder,
+  not `gst::Pipeline` ownership inside decode/render/present.
+- `src/renderer/native_vulkan/render_item.rs` owns render-sync-plan to
+  `NativeVulkanRenderItem` mapping. It is the thin integration boundary for
+  wallpaper/control sources and must not accumulate decode, render or present
+  state.
 - GStreamer may provide demux/parser/appsink/audio/clock.
 - GStreamer display sinks must not own the visible surface.
 - Native Wayland owns layer-shell surface/output/scale/viewport/dmabuf feedback.
