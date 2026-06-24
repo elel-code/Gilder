@@ -1034,6 +1034,11 @@
   `cmd_draw_indexed_per_quad`、vertex/index buffer bytes 和 `queue_submit2` present 顺序；
   sampled image quad 仍明确停在 descriptor/upload 接线 pending，fast-clear 继续委托
   Vulkanalia clear-present 路线。
+- [x] 为 scene-lite solid quad 接入真实 Vulkanalia pipeline/command recording helper：
+  后端现在可创建 `PipelineRenderingCreateInfo` dynamic-rendering graphics pipeline、scene-space
+  pixel extent push constant、solid-quad vertex/color attributes 和 alpha blend；命令录制函数
+  绑定 vertex/index buffer，执行 `cmd_begin_rendering`、`cmd_draw_indexed` 和
+  sync2 present layout barrier。下一步仍需要把 helper 接到 Wayland scene-lite runtime smoke。
 - [ ] 接入 scene-lite 原生 Vulkan draw pass：消费 draw-plan 中的 image/color/shape/text/path ops，
   建立 GPU/resource telemetry 和 Wayland smoke。
 - [ ] 设计 Web helper frame/texture handoff：WebKitGTK/浏览器 helper 只作为隔离实现，native Vulkan
