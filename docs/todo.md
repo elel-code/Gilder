@@ -890,6 +890,9 @@
 - [x] 补齐 scene-lite native draw payload：`NativeVulkanSceneLiteDrawOp` 现在携带
   source/color/stroke/尺寸/text/path/fit/transform 等绘制输入，runtime snapshot 可验证
   image、shape、text 的 native draw payload；缺 text color 或 path paint 不再误报 native-ready。
+- [x] 收敛 direct present timing 写回：`direct_runtime.rs` 现在提供
+  `NativeVulkanDirectPresentTiming` 和统一 apply helper，H.264 direct-DPB、H.264 display-ring
+  与 H.265 present worker 不再各自复制 frame timing 写回和 acquire-not-ready 累计逻辑。
 - [ ] 接入 scene-lite 原生 Vulkan draw pass：消费 draw-plan 中的 image/color/shape/text/path ops，
   建立 GPU/resource telemetry 和 Wayland smoke。
 - [ ] 设计 Web helper frame/texture handoff：WebKitGTK/浏览器 helper 只作为隔离实现，native Vulkan
