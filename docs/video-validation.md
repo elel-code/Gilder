@@ -998,6 +998,11 @@ view creation.
   This route may claim zero-copy only after caps, memory type and importer
   telemetry confirm a DMABuf/DRM-PRIME Vulkan import contract; hardware decode,
   GPU caps or `CUDAMemory`/`VAMemory` labels alone are not sufficient.
+- The native Vulkan path uses `ash` as the binding layer. Moving from the
+  crates.io release to `ash` mainline can be useful when newer Vulkan Video or
+  external-memory structs land there before a release, because it reduces raw
+  FFI and binding drift. It is not itself zero-copy evidence; zero-copy still
+  requires extension/capability/import telemetry on the selected Vulkan device.
 - `src/renderer/native_vulkan/demux.rs` owns the frontend-agnostic packet queue,
   access-unit timeline, loop serial and bootstrap window. The current
   GStreamer provider lives in `src/renderer/native_vulkan/demux_gst.rs`;
