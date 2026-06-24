@@ -908,6 +908,9 @@
   `draw_pass_quad_recording_*` telemetry；单个矩形 quad 从
   `vulkan-quad-recording-not-implemented` 推进到 `solid-quad-recording-ready`，圆角、
   text、path、image 等仍明确停在对应资源/recording backend。
+- [x] 补 scene-lite solid quad 可录制 geometry payload：runtime 现在输出 scene-space quad
+  vertices 和 u32 index list，后续 Vulkan command recording 可直接消费 resident vertex/index
+  buffer；这条 scene 路线天然不经过 video 的压缩码流、DPB、色彩格式转换和每帧像素拷贝。
 - [x] 收敛 direct present timing 写回：`direct_runtime.rs` 现在提供
   `NativeVulkanDirectPresentTiming` 和统一 apply helper，H.264 direct-DPB、H.264 display-ring
   与 H.265 present worker 不再各自复制 frame timing 写回和 acquire-not-ready 累计逻辑。
