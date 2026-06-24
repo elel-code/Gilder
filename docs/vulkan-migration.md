@@ -1193,10 +1193,11 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   process sampling 和更多真实 AV1 码流仍是后续工作。AAC audio-clock probe 已覆盖
   H.264/H.265/AV1 loop serial/reset gate；2026-06-24 已加入 opt-in audio-clock master
   pacing，`GILDER_VIDEO_PACING_MASTER=audio`/smoke `--pacing-master audio` 在 H.264
-  `/tmp/gilder-h264-audio-master-pacing-240` 与 H.265 Main8
-  `/tmp/gilder-h265-main8-audio-master-pacing-620` 通过连续呈现和 audio loop gate。AV1
-  `/tmp/gilder-av1-main8-audio-master-pacing-120` 通过功能 gate 但 present FPS 偏低，不能作为
-  性能结论。下一步是修 AV1 audio-master pacing，并接实际音频输出/静音策略。
+  `/tmp/gilder-h264-audio-master-pacing-segment-clock-240` 与 H.265 Main8
+  `/tmp/gilder-h265-main8-audio-master-pacing-segment-clock-620` 通过连续呈现和 audio loop gate。
+  AV1 也已修正空 PTS fallback 的 segment clock 问题：
+  `/tmp/gilder-av1-main8-audio-master-pacing-segment-clock-120` 为 `presented=120`、
+  `runtime_elapsed_ms=2004`、warmup 后约 `59.93fps`。下一步接实际音频输出/静音策略。
 - 2026-06-22 继续修正 AV1 repeated-frame 假阳性：严格 readback diversity gate 曾显示
   present/FPS counter 正常但 inter 内容重复，根因是 native parser 的 frame-header bit order
   和 GStreamer/FFmpeg 不一致。`allow_warped_motion` 需要在 `skip_mode_present` 之后、
