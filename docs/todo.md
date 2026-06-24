@@ -916,6 +916,9 @@
 - [x] 将 AV1 present result apply/清 pending context 接入 direct runtime：
   `NativeVulkanDirectPresentPendingContext` 和 indexed pending-context apply helper 统一
   context index 校验、result apply 后清 pending、apply 失败不清 pending 的语义。
+- [x] 接入 scene-lite Vulkan draw-pass 规划层：`scene_lite_draw_pass.rs` 消费
+  draw-plan ops，输出 pass ready/backend ready/status/blocker、image/shape/text/path
+  资源 bucket、text atlas/path tessellation 需求，并识别单 color op 的 fast-clear backend path。
 - [ ] 接入 scene-lite 原生 Vulkan draw pass：消费 draw-plan 中的 image/color/shape/text/path ops，
   建立 GPU/resource telemetry 和 Wayland smoke。
 - [ ] 设计 Web helper frame/texture handoff：WebKitGTK/浏览器 helper 只作为隔离实现，native Vulkan
