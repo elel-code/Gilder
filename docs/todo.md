@@ -865,6 +865,9 @@
   同级报告 `h265_display_copy_count=0`、`h265_display_ring_memory_bytes=0` 和
   `h265_displayed_direct_dpb_count=presented_frame_count`，zero-copy status 可直接归类为
   confirmed direct-DPB no-display-copy。
+- [x] 拆出 H.265 direct runtime snapshot 类型：`direct_h265_runtime.rs` 承载
+  H.265 first-frame/ready-prefix runtime 和 frame snapshot，以及 present timing apply impl；
+  `native_vulkan.rs` 只保留行为调用并 re-export 原 public 类型名。
 - [x] 拆分 direct runtime summary：`native_vulkan/direct_runtime.rs` 统一 H.264/H.265/AV1
   ready-prefix runtime 的 elapsed、average present FPS 和 decoded-frame zero-copy
   classification，codec adapter 继续只负责 parser/reference/DPB 差异。
@@ -884,6 +887,12 @@
 - [x] 收敛 GStreamer bitstream frontend builder：H.264/H.265/AV1 仍保留各自入口，
   但 `demux_gst.rs` 现在通过 codec spec 统一 filesrc/demux/queue/parser/caps/appsink
   pipeline 创建，codec adapter 只声明 parser、caps、sink name 和 pad media type。
+- [x] 将 demux->decode packet queue 边界做成可验证 runtime contract：`demux.rs`
+  现在输出 `NativeVulkanStreamingPacketQueueRuntimeSnapshot`，按 FFmpeg/ffplay
+  `PacketQueue` 的 bounded packet ownership、serial/loop、PTS 和 retained payload
+  语义报告状态；H.264/H.265/AV1 direct runtime 分别暴露
+  `h264_demux_queue`、`h265_demux_queue`、`av1_demux_queue`，为后续用 libav/FFmpeg
+  或替换 GST demux frontend 提供同一组接口证据。
 - [x] 将 video/audio clock fallback 计算迁入 `native_vulkan/pacing.rs`：loop segment
   frame index、audio probe video clock 和 next pacing clock 现在由 codec-neutral pacing
   模块提供，H.264/H.265/AV1 direct loop 不再依赖 `native_vulkan.rs` 内部私有时钟函数。
