@@ -871,6 +871,9 @@
 - [x] 收敛 ffplay-style timeline serial 判定：`native_vulkan/timeline.rs` 现在统一
   loop-boundary 和 stale frame serial helper，H.264/H.265/AV1 direct loop 不再散落
   ad hoc `source_loop_index` 比较。
+- [x] 补齐 H.265 present-result 性能证据：H.265 direct runtime 现在输出
+  `average_present_result_fps`、drop-first、over-budget/missed-vblank 计数，并通过
+  `GILDER_H265_ASYNC_PRESENT_DEPTH` 控制 bounded present-worker backpressure。
 - [ ] 接入 scene-lite 原生 Vulkan draw pass：消费 draw-plan 中的 image/color/shape/text/path ops，
   建立 GPU/resource telemetry 和 Wayland smoke。
 - [ ] 设计 Web helper frame/texture handoff：WebKitGTK/浏览器 helper 只作为隔离实现，native Vulkan

@@ -1078,6 +1078,11 @@ view creation.
   codec-specific parser, reference and DPB state, but common display-handoff
   evidence should flow through this helper so performance comparisons do not
   drift across codecs.
+- H.265 direct runtime now reports the same present-result interval family used
+  by H.264/AV1 (`average_present_result_fps`, drop-first variants, over-budget
+  and missed-vblank counters) and exposes `GILDER_H265_ASYNC_PRESENT_DEPTH` for
+  bounded present-worker backpressure tuning. This makes H.265 performance
+  diagnosis attributable before deeper decode-ahead changes.
 - `src/renderer/native_vulkan/render_item.rs` owns render-sync-plan to
   `NativeVulkanRenderItem` mapping. It is the thin integration boundary for
   wallpaper/control sources and must not accumulate decode, render or present
