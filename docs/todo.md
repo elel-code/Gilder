@@ -855,6 +855,9 @@
 - [x] 拆分外部 interop 策略边界：`native_vulkan/interop.rs` 负责 video decoded-frame
   memory handoff、`ash` 绑定策略和 Web/helper texture handoff contract，主
   `native_vulkan.rs` 不再内联这些可替换接入层策略。
+- [x] 推进通用 audio runtime loop 同步：decoded video frontend 的 segment-done 现在会
+  触发 audio runtime `seek_for_video_loop(0)`，worker coalescing 保证 loop seek 优先于普通
+  video-clock sample，向 FFmpeg/ffplay 的 clock serial 语义靠拢。
 - [ ] 接入 scene-lite 原生 Vulkan draw pass：消费 draw-plan 中的 image/color/shape/text/path ops，
   建立 GPU/resource telemetry 和 Wayland smoke。
 - [ ] 设计 Web helper frame/texture handoff：WebKitGTK/浏览器 helper 只作为隔离实现，native Vulkan

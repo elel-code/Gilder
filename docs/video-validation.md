@@ -1049,6 +1049,12 @@ view creation.
   runtime telemetry. The current implementation is still the GStreamer AAC
   clock probe in `audio_clock.rs`, but pacing/render code should depend on the
   wrapper contract, not directly on the GStreamer probe type.
+- The generic video session forwards decoded-frontend loop/segment boundaries
+  into the audio runtime. Segment-done growth triggers `seek_for_video_loop(0)`
+  on the audio frontend, and the audio worker keeps loop seek commands ahead of
+  ordinary video-clock samples when coalescing queued work. This follows the
+  FFmpeg/ffplay clock-serial rule: loop/seek boundaries must reset audio clock
+  state instead of letting stale samples drift across segments.
 - `src/renderer/native_vulkan/render_item.rs` owns render-sync-plan to
   `NativeVulkanRenderItem` mapping. It is the thin integration boundary for
   wallpaper/control sources and must not accumulate decode, render or present
