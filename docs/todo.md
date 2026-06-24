@@ -868,6 +868,10 @@
 - [x] 拆出 H.265 direct runtime snapshot 类型：`direct_h265_runtime.rs` 承载
   H.265 first-frame/ready-prefix runtime 和 frame snapshot，以及 present timing apply impl；
   `native_vulkan.rs` 只保留行为调用并 re-export 原 public 类型名。
+- [x] 继续拆出 direct codec runtime snapshot 类型：`direct_h264_runtime.rs` 承载
+  H.264 ready-prefix runtime/frame snapshot，`direct_av1_runtime.rs` 承载 AV1
+  ready-prefix runtime/frame snapshot 和 optional present timing apply impl；三类 direct
+  runtime 的大块 JSON 类型不再继续堆在 `native_vulkan.rs`。
 - [x] 拆分 direct runtime summary：`native_vulkan/direct_runtime.rs` 统一 H.264/H.265/AV1
   ready-prefix runtime 的 elapsed、average present FPS 和 decoded-frame zero-copy
   classification，codec adapter 继续只负责 parser/reference/DPB 差异。
