@@ -281,8 +281,17 @@ passes with `audio_output=plan`, `audio_plan_muted=false`,
 audio boundary (`NativeVulkanAudioOutputPolicy`) rather than the CLI wrapper.
 Manifest-backed `VideoWallpaperPlan` runtime snapshots report
 `audio_output_policy=plan` and resolve the same effective muted state, so the
-remaining work is to make the native Vulkan renderer start/stop the actual audio
-runtime through this policy path.
+native Vulkan renderer now starts the actual plan-following audio runtime from
+the same policy path. A 2026-06-24 real Wayland `--run-video --unmuted` check on
+`artifacts/video-sources/h264/audio-loop/kamen-h264-aac-2s-loop.mp4` rendered
+`60` frames in one second and reported
+`audio_runtime_status=clocked-playback-active`,
+`audio_runtime_buffer_count=42`, `audio_runtime_output_sink_count=2`,
+`audio_runtime_position_query_hit_count=60`, and
+`audio_runtime_last_error=null`. The snapshot now separates policy
+(`audio_output_policy/mode/status`) from actual runtime telemetry
+(`audio_runtime_*`), which is the boundary to keep while splitting video demux,
+decode, render and present code.
 
 Follow-up AV1 copy-cost work on 2026-06-23 made `show_existing_frame` presentation
 sample the decoded DPB image directly by default instead of copying those handoff
