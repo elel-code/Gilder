@@ -913,6 +913,9 @@
   acquire-before-present wait、acquire NOT_READY helper drain、final drain 和 disconnected
   pending 判定现在共用 `native_vulkan_direct_*pending_flags*` helper，AV1 只保留 context
   置位/清位和选择策略。
+- [x] 将 AV1 present result apply/清 pending context 接入 direct runtime：
+  `NativeVulkanDirectPresentPendingContext` 和 indexed pending-context apply helper 统一
+  context index 校验、result apply 后清 pending、apply 失败不清 pending 的语义。
 - [ ] 接入 scene-lite 原生 Vulkan draw pass：消费 draw-plan 中的 image/color/shape/text/path ops，
   建立 GPU/resource telemetry 和 Wayland smoke。
 - [ ] 设计 Web helper frame/texture handoff：WebKitGTK/浏览器 helper 只作为隔离实现，native Vulkan
