@@ -1003,6 +1003,11 @@ view creation.
   decoded GStreamer video appsink provider and pipeline policy. This keeps
   `gst::Pipeline` lifecycle and appsink polling out of the Vulkan session while
   preserving the same provider-neutral sample handoff.
+- `src/renderer/native_vulkan/audio_frontend.rs` owns the provider-neutral
+  audio clock runtime wrapper and reports `audio_runtime_provider` into video
+  runtime telemetry. The current implementation is still the GStreamer AAC
+  clock probe in `audio_clock.rs`, but pacing/render code should depend on the
+  wrapper contract, not directly on the GStreamer probe type.
 - `src/renderer/native_vulkan/render_item.rs` owns render-sync-plan to
   `NativeVulkanRenderItem` mapping. It is the thin integration boundary for
   wallpaper/control sources and must not accumulate decode, render or present
