@@ -1055,6 +1055,13 @@ view creation.
   ordinary video-clock samples when coalescing queued work. This follows the
   FFmpeg/ffplay clock-serial rule: loop/seek boundaries must reset audio clock
   state instead of letting stale samples drift across segments.
+- H.264/H.265/AV1 direct Vulkan Video runtime JSON now reports unified
+  `decoded_frame_zero_copy_scope` and `decoded_frame_zero_copy_status` fields.
+  The scope is explicitly decoded-frame display handoff; bitstream-ring upload
+  remains a separate copy scope. H.264/AV1 can classify confirmed direct-DPB
+  no-display-copy paths from display-copy/direct-DPB counters; H.265 currently
+  reports its direct sampled output path without an independent display-copy
+  counter.
 - `src/renderer/native_vulkan/render_item.rs` owns render-sync-plan to
   `NativeVulkanRenderItem` mapping. It is the thin integration boundary for
   wallpaper/control sources and must not accumulate decode, render or present
