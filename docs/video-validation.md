@@ -262,13 +262,17 @@ The native Vulkan runtime now also has an opt-in output branch. By default it
 stays `clock-only`; `--audio-output auto` tees the explicit AAC chain into both
 the telemetry appsink and `autoaudiosink`, preserving the ffplay-style clock
 probe while allowing audible output when the system has an audio sink. Short
-Wayland evidence `/tmp/gilder-h264-audio-output-auto-60.json` reports
+Wayland script evidence `/tmp/gilder-h264-audio-output-auto-script-60` reports
 `decoded/presented=60/60`, pipeline
 `qtdemux-aacparse-avdec_aac-tee-appsink-autoaudiosink`,
 `audio_output_mode=auto`, `audio_output_sinks=["autoaudiosink","jackaudiosink"]`,
-`audio_decoders=["avdec_aac"]`, `audio_video_decoders=[]`, and
-`audio_reached_clocked_playback=true`. The remaining work is to connect this
-opt-in output to manifest `runtime.allow_audio` / `muted` policy.
+`audio_output_sink_count=2`, `audio_decoders=["avdec_aac"]`,
+`audio_video_decoders=[]`, and `audio_reached_clocked_playback=true`. The
+H.264/H.265/AV1 ready-prefix smokes now expose `--audio-output` and fail the
+audio gate when an `auto` run does not report an output sink. Runtime snapshot
+policy also distinguishes muted plans (`clock-only`) from unmuted plans
+(`auto`). The remaining work is to connect this opt-in output to manifest
+`runtime.allow_audio` / `muted` runtime selection.
 
 Follow-up AV1 copy-cost work on 2026-06-23 made `show_existing_frame` presentation
 sample the decoded DPB image directly by default instead of copying those handoff
