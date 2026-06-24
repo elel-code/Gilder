@@ -1197,7 +1197,12 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   `/tmp/gilder-h265-main8-audio-master-pacing-segment-clock-620` 通过连续呈现和 audio loop gate。
   AV1 也已修正空 PTS fallback 的 segment clock 问题：
   `/tmp/gilder-av1-main8-audio-master-pacing-segment-clock-120` 为 `presented=120`、
-  `runtime_elapsed_ms=2004`、warmup 后约 `59.93fps`。下一步接实际音频输出/静音策略。
+  `runtime_elapsed_ms=2004`、warmup 后约 `59.93fps`。实际音频输出第一阶段也已接入：
+  `--audio-output auto` 保持 appsink telemetry，同时 tee 到 `autoaudiosink`；短 H.264 gate
+  `/tmp/gilder-h264-audio-output-auto-60.json` 为 `decoded/presented=60/60`、
+  `audio_output_mode=auto`、`audio_output_sinks=["autoaudiosink","jackaudiosink"]`、
+  `audio_decoders=["avdec_aac"]`、`video_decoders=[]`。下一步把它接进 manifest
+  `runtime.allow_audio`/`muted` 策略。
 - 2026-06-22 继续修正 AV1 repeated-frame 假阳性：严格 readback diversity gate 曾显示
   present/FPS counter 正常但 inter 内容重复，根因是 native parser 的 frame-header bit order
   和 GStreamer/FFmpeg 不一致。`allow_warped_motion` 需要在 `skip_mode_present` 之后、

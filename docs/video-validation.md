@@ -256,9 +256,19 @@ pipeline is explicit AAC only: `audio_decoders=["avdec_aac"]`,
 `audio_sample_stale_count=0`, and `audio_reached_clocked_playback=true`.
 The old loop-reset drift issue is no longer present in this gate:
 `audio_video_master_clock_drift_latest_ns=-61777` and
-`audio_video_master_clock_drift_abs_max_ns=856739`. The remaining work is to
-turn this probe clock into the optional video pacer master and then wire real
-audio output/mute policy.
+`audio_video_master_clock_drift_abs_max_ns=856739`.
+
+The native Vulkan runtime now also has an opt-in output branch. By default it
+stays `clock-only`; `--audio-output auto` tees the explicit AAC chain into both
+the telemetry appsink and `autoaudiosink`, preserving the ffplay-style clock
+probe while allowing audible output when the system has an audio sink. Short
+Wayland evidence `/tmp/gilder-h264-audio-output-auto-60.json` reports
+`decoded/presented=60/60`, pipeline
+`qtdemux-aacparse-avdec_aac-tee-appsink-autoaudiosink`,
+`audio_output_mode=auto`, `audio_output_sinks=["autoaudiosink","jackaudiosink"]`,
+`audio_decoders=["avdec_aac"]`, `audio_video_decoders=[]`, and
+`audio_reached_clocked_playback=true`. The remaining work is to connect this
+opt-in output to manifest `runtime.allow_audio` / `muted` policy.
 
 Follow-up AV1 copy-cost work on 2026-06-23 made `show_existing_frame` presentation
 sample the decoded DPB image directly by default instead of copying those handoff
