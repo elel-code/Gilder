@@ -896,6 +896,10 @@
   优先级和 shared telemetry/error state；`audio_runtime.rs` 保留 plan 启动、muted
   policy、telemetry/error facade。这继续贴近 ffplay 的 queue/clock serial 边界，为后续
   audio sink 和 video/audio 主线程同步保留清晰接口。
+- [x] 将 direct codec 热循环里的 audio clock frame sample 抽成 `native_vulkan/audio_sync.rs`：
+  H.264 direct-DPB、H.264 display-ring、H.265 和 AV1 现在统一调用
+  `native_vulkan_sample_audio_clock_for_video_frame`，由 audio 边界负责 loop seek 和 video clock
+  sample，codec loop 只保留 frame/PTS/loop reset 输入。
 - [x] 补齐 H.265 present-result 性能证据：H.265 direct runtime 现在输出
   `average_present_result_fps`、drop-first、over-budget/missed-vblank 计数，并通过
   `GILDER_H265_ASYNC_PRESENT_DEPTH` 控制 bounded present-worker backpressure。
