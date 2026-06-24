@@ -297,8 +297,10 @@ the same policy path. A 2026-06-24 real Wayland `--run-video --unmuted` check on
 `audio_runtime_position_query_hit_count=60`, and
 `audio_runtime_last_error=null`. The snapshot now separates policy
 (`audio_output_policy/mode/status`) from actual runtime telemetry
-(`audio_runtime_*`), which is the boundary to keep while splitting video demux,
-decode, render and present code.
+(`audio_runtime_*`), including audio clock serial, master-clock estimate and
+latest audio/video drift fields. This is the boundary to keep while splitting
+video demux, decode, render and present code, and it is the evidence surface
+needed before making audio clock the default pacing master.
 
 Follow-up AV1 copy-cost work on 2026-06-23 made `show_existing_frame` presentation
 sample the decoded DPB image directly by default instead of copying those handoff
