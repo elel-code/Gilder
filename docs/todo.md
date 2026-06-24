@@ -909,6 +909,10 @@
 - [x] 收敛 direct present backpressure 状态：H.264 direct-DPB、H.264 display-ring 和
   H.265 不再散落裸 `pending_present_results` 加减和 `>= depth` 判断，改用
   `NativeVulkanDirectPresentBackpressure` 表达 max depth、pending、饱和等待和尾部 drain。
+- [x] 将 AV1 frame-context present pending 判定接入 direct runtime：async-depth wait、
+  acquire-before-present wait、acquire NOT_READY helper drain、final drain 和 disconnected
+  pending 判定现在共用 `native_vulkan_direct_*pending_flags*` helper，AV1 只保留 context
+  置位/清位和选择策略。
 - [ ] 接入 scene-lite 原生 Vulkan draw pass：消费 draw-plan 中的 image/color/shape/text/path ops，
   建立 GPU/resource telemetry 和 Wayland smoke。
 - [ ] 设计 Web helper frame/texture handoff：WebKitGTK/浏览器 helper 只作为隔离实现，native Vulkan
