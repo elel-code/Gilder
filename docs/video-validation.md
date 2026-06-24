@@ -44,7 +44,9 @@ boundary; GStreamer is the second reference and active demux/parser/audio
 frontend. This is the implementation split target: demux/parser code may remain
 GStreamer-backed, but decode, render, present and audio-clock telemetry must stay
 independently attributable and compressed payload retention must remain bounded
-by the packet queue and bitstream ring.
+by the packet queue and bitstream ring. The first concrete code split is
+`src/renderer/native_vulkan/video_runtime.rs`, which now owns the video runtime
+snapshot, memory-route classification and audio-runtime telemetry boundary.
 
 ## Validation Layers
 
