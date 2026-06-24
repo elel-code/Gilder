@@ -245,7 +245,7 @@
   `audio_output_sinks=["autoaudiosink","jackaudiosink"]`、`audio_decoders=["avdec_aac"]`、
   `video_decoders=[]`、`audio_reached_clocked_playback=true`。runtime snapshot 已按
   manifest `muted` 规划输出策略。2026-06-24 继续补 plan-following gate：
-  `/tmp/gilder-h264-audio-output-plan-unmuted-script-60` 使用 `--audio-output plan --unmuted`
+  `/tmp/gilder-h264-audio-output-policy-helper-plan-unmuted-60` 使用 `--audio-output plan --unmuted`
   通过，`decoded/presented=60/60`、`audio_output_expected_mode=auto`、
   `audio_plan_muted=false`、`audio_output_mode=auto`、`audio_output_sink_count=2`。下一步是把
   native Vulkan renderer 的 manifest 加载/计划消费接到同一 plan-following audio 输出路径，
