@@ -981,7 +981,12 @@ view creation.
 
 ## Current Architecture Gates
 
-- FFmpeg is the first behavioral reference for packet/frame/clock semantics.
+- FFmpeg is the first behavioral reference for packet/frame/clock semantics. A
+  shallow local FFmpeg checkout is kept at `references/ffmpeg/` (ignored from
+  Git; current reference commit `dc953a1`). Primary files for direct-video
+  alignment are `fftools/ffplay.c` (`PacketQueue`, `FrameQueue`, `Clock`,
+  serial invalidation, audio/video refresh) plus codec parser/decoder state
+  under `libavcodec/`.
 - GStreamer is the second reference and current frontend implementation, but it
   is replaceable. The stable contract is packet/audio/clock output into Gilder,
   not `gst::Pipeline` ownership inside decode/render/present.
@@ -1063,6 +1068,12 @@ view creation.
   no-display-copy paths from display-copy/direct-DPB counters; H.265 now reports
   the same display-copy count, display-ring memory and displayed direct-DPB
   count from its direct sampled output path.
+- `src/renderer/native_vulkan/direct_runtime.rs` owns codec-neutral direct
+  runtime summary calculations: elapsed time, average present FPS and
+  decoded-frame zero-copy classification. H.264/H.265/AV1 adapters still own
+  codec-specific parser, reference and DPB state, but common display-handoff
+  evidence should flow through this helper so performance comparisons do not
+  drift across codecs.
 - `src/renderer/native_vulkan/render_item.rs` owns render-sync-plan to
   `NativeVulkanRenderItem` mapping. It is the thin integration boundary for
   wallpaper/control sources and must not accumulate decode, render or present

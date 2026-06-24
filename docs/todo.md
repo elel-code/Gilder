@@ -865,6 +865,9 @@
   同级报告 `h265_display_copy_count=0`、`h265_display_ring_memory_bytes=0` 和
   `h265_displayed_direct_dpb_count=presented_frame_count`，zero-copy status 可直接归类为
   confirmed direct-DPB no-display-copy。
+- [x] 拆分 direct runtime summary：`native_vulkan/direct_runtime.rs` 统一 H.264/H.265/AV1
+  ready-prefix runtime 的 elapsed、average present FPS 和 decoded-frame zero-copy
+  classification，codec adapter 继续只负责 parser/reference/DPB 差异。
 - [ ] 接入 scene-lite 原生 Vulkan draw pass：消费 draw-plan 中的 image/color/shape/text/path ops，
   建立 GPU/resource telemetry 和 Wayland smoke。
 - [ ] 设计 Web helper frame/texture handoff：WebKitGTK/浏览器 helper 只作为隔离实现，native Vulkan
