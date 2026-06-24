@@ -919,6 +919,9 @@
 - [x] 接入 scene-lite Vulkan draw-pass 规划层：`scene_lite_draw_pass.rs` 消费
   draw-plan ops，输出 pass ready/backend ready/status/blocker、image/shape/text/path
   资源 bucket、text atlas/path tessellation 需求，并识别单 color op 的 fast-clear backend path。
+- [x] 为 scene-lite draw-pass 补 command-recording 前的 quad payload：color-quad 和无
+  stroke/corner radius 的 filled rectangle 现在输出 layer id、kind、RGBA、尺寸和 transform，
+  runtime snapshot 报告 `draw_pass_recordable_quads`，为后续 Vulkan quad recording 提供稳定输入。
 - [ ] 接入 scene-lite 原生 Vulkan draw pass：消费 draw-plan 中的 image/color/shape/text/path ops，
   建立 GPU/resource telemetry 和 Wayland smoke。
 - [ ] 设计 Web helper frame/texture handoff：WebKitGTK/浏览器 helper 只作为隔离实现，native Vulkan
