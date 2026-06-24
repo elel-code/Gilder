@@ -889,6 +889,14 @@
   AV1 main8/main10 均已通过 retained resource gate，队列模型为 dedicated video decode
   family `[3]` + graphics/present family `[0]`，下一步是把 ready-prefix decode submit
   直接接入这组 retained image/session 并用 graphics pass 采样到 swapchain。
+- [x] 将 H.265 Main8/Main10 ready-prefix decode submit 接到 Vulkanalia retained
+  video-present session/image：`run_vulkanalia_ready_prefix_video` 对 H.265 现在额外运行
+  `h265_retained_video_present_decode`，在同一个 video+present logical device 的 video
+  queue family `3` 上把 240 帧提交到 retained coincident DPB/output sampled image，资源
+  queue family 为 `[3,0]`。真实 Wayland `background` 证据：Main8
+  `retained_submitted=240`、NV12；Main10 `retained_submitted=240`、P010。该项仍保持
+  `decoded_image_zero_copy_presented=false`，因为下一步才是 graphics present pass 采样
+  retained decoded image 到 swapchain。
 - [x] 拆分外部 interop 策略边界：`native_vulkan/interop.rs` 负责 video decoded-frame
   memory handoff、Vulkan 绑定替换策略和 Web/helper texture handoff contract，主
   `native_vulkan.rs` 不再内联这些可替换接入层策略。

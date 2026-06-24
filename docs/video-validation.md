@@ -1082,6 +1082,16 @@ view creation.
   session memory and coincident sampled DPB/output image until the probe drops
   the runtime; H.264 high8, H.265 main8/main10 and AV1 main8/main10 have all
   passed this retained resource gate on `background`/`bottom`.
+- H.265 has moved one gate beyond retained resource creation:
+  `--run-vulkanalia-ready-prefix-video` now emits
+  `h265_retained_video_present_decode` for Main8/Main10. This submits the
+  ready-prefix decode commands to the retained video-present session and writes
+  into the retained coincident DPB/output sampled image on queue family `3`,
+  with the image created for queue families `[3,0]`. Current evidence covers
+  240 submitted frames for Main8/NV12 and Main10/P010 on `background`. This is
+  still not the final presented zero-copy gate; `decoded_image_zero_copy_presented`
+  remains false until the graphics present pass samples that retained decoded
+  image into the swapchain.
 - `src/renderer/native_vulkan/demux.rs` owns the frontend-agnostic packet queue,
   access-unit timeline, loop serial and bootstrap window. The current
   GStreamer provider lives in `src/renderer/native_vulkan/demux_gst.rs`;
