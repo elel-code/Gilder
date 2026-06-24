@@ -835,8 +835,9 @@
   deterministic scene graph/timeline snapshot layer 结果，不新增 scene 专用 manifest 分支。
 - [x] 接入 scene-lite image/color display 到 native Vulkan session：image display 复用 static upload
   path，color display 覆盖 Vulkan clear color；这保证当前 snapshot/fallback display 不再退回默认清屏。
-- [x] 纯色 scene-lite 直达 color display：不再生成 SVG snapshot，也不再走 static image decode/upload，
-  native Vulkan 可直接 clear swapchain，减少一次文件、解码和上传成本。
+- [x] 纯色 scene-lite 直达 color display：单个 color layer 或无 stroke/corner/transform 的全屏
+  rectangle 不再生成 SVG snapshot，也不再走 static image decode/upload，native Vulkan 可直接
+  clear swapchain，减少一次文件、解码和上传成本。
 - [x] 接入 scene-lite 原生 draw-plan/runtime telemetry：render_plan 将 image/color/shape/text/path
   layers 分类为 native draw ops，scene_lite_runtime 输出 native_draw_ready、fallback 可用性和
   unsupported layer 原因。
