@@ -1092,6 +1092,17 @@ view creation.
   still not the final presented zero-copy gate; `decoded_image_zero_copy_presented`
   remains false until the graphics present pass samples that retained decoded
   image into the swapchain.
+- The retained H.265 image now also has Vulkanalia graphics sampling resources.
+  `src/renderer/native_vulkan/vulkanalia_backend/render_present.rs` creates a
+  `VkSamplerYcbcrConversion`, immutable YCbCr sampler, converted 2D image view
+  and combined-image-sampler descriptor set for the retained decoded image after
+  the video+present device enables `samplerYcbcrConversion`. Real Wayland
+  `background` smoke confirms this for Main8/NV12 and Main10/P010 with
+  `retained_submitted=240`, `decoded_image_present_sampler.route=
+  decoded-image-ycbcr-sampler-present-resource` and no sampler error. The next
+  validation gate is recording the dynamic-rendering fullscreen draw and
+  presenting that sampled decoded image, so `decoded_image_zero_copy_presented`
+  remains false for this step.
 - `src/renderer/native_vulkan/demux.rs` owns the frontend-agnostic packet queue,
   access-unit timeline, loop serial and bootstrap window. The current
   GStreamer provider lives in `src/renderer/native_vulkan/demux_gst.rs`;
