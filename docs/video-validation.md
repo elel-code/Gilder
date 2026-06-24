@@ -988,8 +988,8 @@ view creation.
   packet frontend boundary.
 - `src/renderer/native_vulkan/video_frontend.rs` owns provider-neutral decoded
   video frontend telemetry (`provider`, caps reports, sample timing and memory
-  route signals). The runtime session wraps the current GStreamer appsink path
-  behind `NativeVulkanVideoFrontend`, so future FFmpeg/libav or native decoded
+  route signals) and the `NativeVulkanVideoFrontend` provider wrapper. Future
+  FFmpeg/libav, web or native decoded
   frame frontends can be added without making render/present own `gst::Sample`.
 - `src/renderer/native_vulkan/video_frontend_gst.rs` owns the current raw
   decoded GStreamer video appsink provider and pipeline policy. This keeps
