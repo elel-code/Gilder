@@ -874,6 +874,9 @@
 - [x] 补齐 H.265 present-result 性能证据：H.265 direct runtime 现在输出
   `average_present_result_fps`、drop-first、over-budget/missed-vblank 计数，并通过
   `GILDER_H265_ASYNC_PRESENT_DEPTH` 控制 bounded present-worker backpressure。
+- [x] 统一 direct present-result summary：H.264 direct-DPB、H.264 display-ring、H.265
+  和 AV1 现在都走 `native_vulkan_direct_present_result_summary`，跨 codec 性能指标不再
+  各自复制实现。
 - [ ] 接入 scene-lite 原生 Vulkan draw pass：消费 draw-plan 中的 image/color/shape/text/path ops，
   建立 GPU/resource telemetry 和 Wayland smoke。
 - [ ] 设计 Web helper frame/texture handoff：WebKitGTK/浏览器 helper 只作为隔离实现，native Vulkan

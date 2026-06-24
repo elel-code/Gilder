@@ -1083,6 +1083,10 @@ view creation.
   and missed-vblank counters) and exposes `GILDER_H265_ASYNC_PRESENT_DEPTH` for
   bounded present-worker backpressure tuning. This makes H.265 performance
   diagnosis attributable before deeper decode-ahead changes.
+- The H.264, H.265 and AV1 direct runtimes now all use the shared
+  `native_vulkan_direct_present_result_summary` helper for present-result FPS
+  and missed-vblank classification, keeping cross-codec performance telemetry
+  on one calculation path.
 - `src/renderer/native_vulkan/render_item.rs` owns render-sync-plan to
   `NativeVulkanRenderItem` mapping. It is the thin integration boundary for
   wallpaper/control sources and must not accumulate decode, render or present
