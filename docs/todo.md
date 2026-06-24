@@ -866,8 +866,8 @@
   `h265_displayed_direct_dpb_count=presented_frame_count`，zero-copy status 可直接归类为
   confirmed direct-DPB no-display-copy。
 - [x] 拆出 H.265 direct runtime snapshot 类型：`direct_h265_runtime.rs` 承载
-  H.265 first-frame/ready-prefix runtime 和 frame snapshot，以及 present timing apply impl；
-  `native_vulkan.rs` 只保留行为调用并 re-export 原 public 类型名。
+  H.265 first-frame decode/runtime、ready-prefix runtime 和 frame snapshot，以及 present
+  timing apply impl；`native_vulkan.rs` 只保留行为调用并 re-export 原 public 类型名。
 - [x] 继续拆出 direct codec runtime snapshot 类型：`direct_h264_runtime.rs` 承载
   H.264 ready-prefix runtime/frame snapshot，`direct_av1_runtime.rs` 承载 AV1
   ready-prefix runtime/frame snapshot 和 optional present timing apply impl；三类 direct
