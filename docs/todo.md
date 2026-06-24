@@ -895,6 +895,10 @@
   与 H.265 present worker 不再各自复制 frame timing 写回和 acquire-not-ready 累计逻辑。
 - [x] 将 AV1 present worker 也接入 direct runtime timing helper 的 optional 变体：
   预取 acquire/record timing 可以保持可选，frame-index 校验和 present timing 写回仍走共享路径。
+- [x] 收敛 direct present wait/backpressure 统计：H.264 direct-DPB、H.264 display-ring、
+  H.265 和 AV1 的 present-result wait count/elapsed/max 现在共用
+  `NativeVulkanDirectPresentWaitStats`，保持现有 runtime 字段但让后续 pacer/backpressure
+  调整基于同一套 codec-neutral 证据。
 - [ ] 接入 scene-lite 原生 Vulkan draw pass：消费 draw-plan 中的 image/color/shape/text/path ops，
   建立 GPU/resource telemetry 和 Wayland smoke。
 - [ ] 设计 Web helper frame/texture handoff：WebKitGTK/浏览器 helper 只作为隔离实现，native Vulkan
