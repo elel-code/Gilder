@@ -835,8 +835,11 @@
   deterministic scene graph/timeline snapshot layer 结果，不新增 scene 专用 manifest 分支。
 - [x] 接入 scene-lite image/color display 到 native Vulkan session：image display 复用 static upload
   path，color display 覆盖 Vulkan clear color；这保证当前 snapshot/fallback display 不再退回默认清屏。
-- [ ] 接入 scene-lite 原生 Vulkan draw pass：消费 render item 中的 image/color/shape/text/path
-  layers，建立 GPU/resource telemetry 和 Wayland smoke。
+- [x] 接入 scene-lite 原生 draw-plan/runtime telemetry：render_plan 将 image/color/shape/text/path
+  layers 分类为 native draw ops，scene_lite_runtime 输出 native_draw_ready、fallback 可用性和
+  unsupported layer 原因。
+- [ ] 接入 scene-lite 原生 Vulkan draw pass：消费 draw-plan 中的 image/color/shape/text/path ops，
+  建立 GPU/resource telemetry 和 Wayland smoke。
 - [ ] 设计 Web helper frame/texture handoff：WebKitGTK/浏览器 helper 只作为隔离实现，native Vulkan
   后端通过稳定 helper 协议接收 frame stream 或可导入 texture。
 - [ ] 继续 video interop：删除 `gpu-video` 与 native-wgpu 依赖路线后，以 GStreamer 作为 video/audio

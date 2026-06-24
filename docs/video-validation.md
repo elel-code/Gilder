@@ -1038,9 +1038,14 @@ view creation.
   wallpaper/control sources and must not accumulate decode, render or present
   state.
 - `src/renderer/native_vulkan/render_plan.rs` owns render-item to native Vulkan
-  session setup decisions such as static upload source selection and scene-lite
-  color clear fallback. Scene-lite wallpaper work should extend this planning
+  session setup and draw planning decisions such as static upload source
+  selection, scene-lite color clear fallback and native scene-lite draw-op
+  classification. Scene-lite wallpaper work should extend this planning
   boundary instead of adding scene-specific branches to the Vulkan session.
+- `src/renderer/native_vulkan/scene_lite_runtime.rs` owns scene-lite native draw
+  plan telemetry. It reports whether the current deterministic scene snapshot
+  can be taken over by native Vulkan draw passes, plus fallback availability and
+  unsupported layer reasons, without making the session parse scene manifests.
 - GStreamer may provide demux/parser/appsink/audio/clock.
 - GStreamer display sinks must not own the visible surface.
 - Native Wayland owns layer-shell surface/output/scale/viewport/dmabuf feedback.
