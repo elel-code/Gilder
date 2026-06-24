@@ -986,6 +986,11 @@ view creation.
   GStreamer provider lives in `src/renderer/native_vulkan/demux_gst.rs`;
   future libav/FFmpeg or native demux providers should implement the same
   packet frontend boundary.
+- `src/renderer/native_vulkan/video_frontend.rs` owns provider-neutral decoded
+  video frontend telemetry (`provider`, caps reports, sample timing and memory
+  route signals). The runtime session wraps the current GStreamer appsink path
+  behind `NativeVulkanVideoFrontend`, so future FFmpeg/libav or native decoded
+  frame frontends can be added without making render/present own `gst::Sample`.
 - `src/renderer/native_vulkan/render_item.rs` owns render-sync-plan to
   `NativeVulkanRenderItem` mapping. It is the thin integration boundary for
   wallpaper/control sources and must not accumulate decode, render or present
