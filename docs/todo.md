@@ -891,6 +891,11 @@
   现在报告 loop seek/restart/error、last loop seek position、segment start/elapsed、
   stale position/sample、sampled video frame、position query/hit 和 clock serial，使
   audio/video 同步状态不再只藏在 audio clock 专用 snapshot 内。
+- [x] 拆分 native Vulkan plan audio worker：`native_vulkan/audio_worker.rs` 独立承载
+  audio runtime worker 线程、command channel、latest video clock coalescing、loop seek
+  优先级和 shared telemetry/error state；`audio_runtime.rs` 保留 plan 启动、muted
+  policy、telemetry/error facade。这继续贴近 ffplay 的 queue/clock serial 边界，为后续
+  audio sink 和 video/audio 主线程同步保留清晰接口。
 - [x] 补齐 H.265 present-result 性能证据：H.265 direct runtime 现在输出
   `average_present_result_fps`、drop-first、over-budget/missed-vblank 计数，并通过
   `GILDER_H265_ASYNC_PRESENT_DEPTH` 控制 bounded present-worker backpressure。
