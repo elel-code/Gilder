@@ -845,6 +845,10 @@
 - [x] 接入 scene-lite 原生 draw-plan/runtime telemetry：render_plan 将 image/color/shape/text/path
   layers 分类为 native draw ops，scene_lite_runtime 输出 native_draw_ready、fallback 可用性和
   unsupported layer 原因。
+- [x] 固化 video route 类型和 zero-copy 边界：`pipeline.rs` 将 direct 路线定义为
+  `BitstreamNativeDecode`，将 `gst-dma`/provider 解码路线定义为
+  `DecodedFrameFrontend`，并要求 zero-copy 声明必须标注 bitstream upload、decoded-frame
+  handoff、import、render 或 compositor present 的具体作用域。
 - [ ] 接入 scene-lite 原生 Vulkan draw pass：消费 draw-plan 中的 image/color/shape/text/path ops，
   建立 GPU/resource telemetry 和 Wayland smoke。
 - [ ] 设计 Web helper frame/texture handoff：WebKitGTK/浏览器 helper 只作为隔离实现，native Vulkan

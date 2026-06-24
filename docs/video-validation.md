@@ -987,10 +987,17 @@ view creation.
   not `gst::Pipeline` ownership inside decode/render/present.
 - Route 1 is the bitstream-native-decode route: GStreamer/libav may provide
   demux/parser access units, but H.264/H.265/AV1 picture decode is owned by
-  Gilder's native Vulkan Video path.
+  Gilder's native Vulkan Video path. This is not a full-pipeline zero-copy
+  route: compressed AU/TU payloads are still copied from the frontend packet
+  buffer into Gilder's Vulkan Video bitstream ring. Its zero-copy claim is
+  scoped to decoded-frame display handoff when direct-DPB/display telemetry
+  proves zero display copies.
 - Route 2 is the decoded-frame-frontend route: the provider decodes frames and
   Gilder imports provider-neutral decoded samples for render/present. `gst-dma`
   belongs here as the DMABuf/VA memory route, not as a display-sink bypass.
+  This route may claim zero-copy only after caps, memory type and importer
+  telemetry confirm a DMABuf/DRM-PRIME Vulkan import contract; hardware decode,
+  GPU caps or `CUDAMemory`/`VAMemory` labels alone are not sufficient.
 - `src/renderer/native_vulkan/demux.rs` owns the frontend-agnostic packet queue,
   access-unit timeline, loop serial and bootstrap window. The current
   GStreamer provider lives in `src/renderer/native_vulkan/demux_gst.rs`;
