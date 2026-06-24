@@ -916,6 +916,23 @@
 - [x] 将 AV1 present result apply/清 pending context 接入 direct runtime：
   `NativeVulkanDirectPresentPendingContext` 和 indexed pending-context apply helper 统一
   context index 校验、result apply 后清 pending、apply 失败不清 pending 的语义。
+- [x] 重新采集拆分后的 4K/240 direct 10 秒性能证据：2026-06-24 当前 `ad5b647`
+  release build 在真实 Wayland `HDMI-A-1` 上复测，三类 codec 仍为 239+。H.264
+  `/tmp/gilder-current-h264-postsplit-4k240-2400` 为 `decoded/presented=2400/2400`、
+  `average_present_fps=239.71420993822684`、drop-first-60
+  `239.9106740453986`、`h264_display_copy_count=0`。H.265 Main8
+  `/tmp/gilder-current-h265-main8-postsplit-4k240-2400` 为
+  `average_present_fps=239.975940348187`、drop-first-60 `239.95519742034313`、
+  `h265_displayed_direct_dpb_count=2400`、`h265_display_copy_count=0`；Main10/P010
+  `/tmp/gilder-current-h265-main10-postsplit-4k240-2400` 为
+  `average_present_fps=240.00243067261715`、drop-first-60 `239.9808507798249`、
+  `h265_displayed_direct_dpb_count=2400`、`h265_display_copy_count=0`。AV1 Main8
+  `/tmp/gilder-current-av1-main8-postsplit-4k240-2400` 为
+  `average_present_fps=239.8182153226578`、drop-first-60 `240.01192774112042`、
+  `av1_displayed_direct_dpb_count=2400`、`av1_display_copy_count=0`；Main10/P010
+  `/tmp/gilder-current-av1-main10-postsplit-4k240-2400` 为
+  `average_present_fps=239.763593576261`、drop-first-60 `239.90602330278284`、
+  `av1_displayed_direct_dpb_count=2400`、`av1_display_copy_count=0`。
 - [x] 接入 scene-lite Vulkan draw-pass 规划层：`scene_lite_draw_pass.rs` 消费
   draw-plan ops，输出 pass ready/backend ready/status/blocker、image/shape/text/path
   资源 bucket、text atlas/path tessellation 需求，并识别单 color op 的 fast-clear backend path。
