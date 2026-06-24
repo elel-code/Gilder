@@ -297,12 +297,16 @@ the same policy path. A 2026-06-24 real Wayland `--run-video --unmuted` check on
 `audio_runtime_position_query_hit_count=60`, and
 `audio_runtime_last_error=null`. The snapshot now separates policy
 (`audio_output_policy/mode/status`) from actual runtime telemetry
-(`audio_runtime_*`), including audio clock serial, master-clock estimate and
-latest audio/video drift fields. This is the boundary to keep while splitting
-video demux, decode, render and present code, and it is the evidence surface
-used by the audio-clock default pacing master when the audio clock probe is
-enabled. `GILDER_VIDEO_PACING_MASTER=target` remains the explicit fallback for
-target-fps pacing comparisons.
+(`audio_runtime_*`), including audio clock serial, segment start/elapsed,
+loop seek/restart counts, stale sample/position counts, sampled video frame
+count, position query hit ratio, master-clock estimate and latest audio/video
+drift fields. This follows ffplay's packet-queue serial model: obsolete segment
+positions and samples are counted at the generic video runtime boundary instead
+of remaining hidden inside the audio frontend. This is the boundary to keep
+while splitting video demux, decode, render and present code, and it is the
+evidence surface used by the audio-clock default pacing master when the audio
+clock probe is enabled. `GILDER_VIDEO_PACING_MASTER=target` remains the explicit
+fallback for target-fps pacing comparisons.
 
 Follow-up AV1 copy-cost work on 2026-06-23 made `show_existing_frame` presentation
 sample the decoded DPB image directly by default instead of copying those handoff

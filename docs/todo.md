@@ -871,6 +871,10 @@
 - [x] 收敛 ffplay-style timeline serial 判定：`native_vulkan/timeline.rs` 现在统一
   loop-boundary 和 stale frame serial helper，H.264/H.265/AV1 direct loop 不再散落
   ad hoc `source_loop_index` 比较。
+- [x] 将 ffplay-style audio serial/stale 证据上提到通用 video runtime：`audio_runtime_*`
+  现在报告 loop seek/restart/error、last loop seek position、segment start/elapsed、
+  stale position/sample、sampled video frame、position query/hit 和 clock serial，使
+  audio/video 同步状态不再只藏在 audio clock 专用 snapshot 内。
 - [x] 补齐 H.265 present-result 性能证据：H.265 direct runtime 现在输出
   `average_present_result_fps`、drop-first、over-budget/missed-vblank 计数，并通过
   `GILDER_H265_ASYNC_PRESENT_DEPTH` 控制 bounded present-worker backpressure。
