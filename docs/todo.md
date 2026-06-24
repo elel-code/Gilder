@@ -887,6 +887,9 @@
 - [x] 将 video/audio clock fallback 计算迁入 `native_vulkan/pacing.rs`：loop segment
   frame index、audio probe video clock 和 next pacing clock 现在由 codec-neutral pacing
   模块提供，H.264/H.265/AV1 direct loop 不再依赖 `native_vulkan.rs` 内部私有时钟函数。
+- [x] 补齐 scene-lite native draw payload：`NativeVulkanSceneLiteDrawOp` 现在携带
+  source/color/stroke/尺寸/text/path/fit/transform 等绘制输入，runtime snapshot 可验证
+  image、shape、text 的 native draw payload；缺 text color 或 path paint 不再误报 native-ready。
 - [ ] 接入 scene-lite 原生 Vulkan draw pass：消费 draw-plan 中的 image/color/shape/text/path ops，
   建立 GPU/resource telemetry 和 Wayland smoke。
 - [ ] 设计 Web helper frame/texture handoff：WebKitGTK/浏览器 helper 只作为隔离实现，native Vulkan
