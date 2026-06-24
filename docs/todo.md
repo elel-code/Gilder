@@ -218,8 +218,20 @@
   与 Main10 `/tmp/gilder-av1-main10-audio-loop-120` 均为 `presented=120`、
   `playback_loop_count=2`、`loop_boundary_reset_count=1`、`audio_clock_serial=2`、
   `audio_loop_seek/restart/error=1/1/0`、stale sample/position 均为 0，master drift abs max
-  为 `272170ns`/`354300ns`。下一步把现有 target-fps pacer 切成 video-clock/audio-clock
-  可选 master，最后接实际音频输出/静音策略。
+  为 `272170ns`/`354300ns`。2026-06-24 已把 `GILDER_VIDEO_PACING_MASTER=audio` 和 smoke
+  `--pacing-master audio` 接入 H.264/H.265/AV1 ready-prefix runtime：默认仍保持 target-fps
+  master，opt-in 时用 audio master clock 计算下一帧 sleep，缺 clock sample 时回退 target-fps。
+  真实 gate：H.264 `/tmp/gilder-h264-audio-master-pacing-240` 为
+  `decoded/presented=240/240`、`pacing_strategy=audio-clock-master-with-target-fps-fallback-and-fifo-present`、
+  `frame_sleep_count=238`、`missed_frame_pacing_count=1`、warmup 后
+  `average_present_result_drop_first_60_fps=60.00748920284241`、
+  `audio_loop_seek/restart/error=1/1/0`、master drift abs max `16588320ns`；H.265 Main8
+  `/tmp/gilder-h265-main8-audio-master-pacing-620` 为 `decoded/presented=620/620`、
+  `frame_sleep_count=618`、`missed_frame_pacing_count=1`、master drift abs max
+  `16062271ns`；AV1 Main8 `/tmp/gilder-av1-main8-audio-master-pacing-120` 为
+  `presented=120`、`pacing_strategy` 同上、audio probe gate 全过，但本次 audio-master
+  pacing 下 average present 只有约 `2fps`，因此只作为功能接通证据，不作为 AV1 性能结论。
+  下一步是实际音频输出/静音策略，并修正 AV1 audio-master pacing 的 loop clock 选择。
 - [x] 将 H.265 direct decode + sampled texture 从离屏 smoke 接到连续 display/swapchain，并补 frame pacing/queue 同步/释放 telemetry 和安全可见 smoke。2026-06-22 真实 Wayland `WAYLAND_DISPLAY=wayland-1`、`HDMI-A-1`、3840x2160@240 任意非 IDR 入口回归 `/tmp/gilder-vulkan-h265-after-h264-barrier-tightened` 为 `decoded/presented=2400/2400`、`playback_loop_count=9`、`loop_boundary_reset_count=8`、`h265_packet_queue_retained_payload_bytes=0`、`average_present_fps=239.82864245894595`；8 个性能 samples 为 `RSS/PSS/USS/Private_Dirty max=102456/88200/83636/24684 KiB`、平均 CPU `11.35%`、NVIDIA 进程 GPU memory `152 MiB`。
 - [ ] 实现完整 native Vulkan Video decode path：H.265 main-8/H.264 high-8 已有 demux/parser streaming queue、codec parameters、Vulkan Video `vkCmdDecodeVideoKHR`、visible swapchain present 和任意入口 loop replay gate；H.264 复杂 4K/240 仍未稳定到 240fps，剩余重点是更深 decode/present decoupling、固定帧槽/descriptor/present ring、timeline/fence range 回收、audio/clock、AV1 连续 decode，以及 Main10 direct path。2026-06-22 H.264 present-overlap + persistent present worker 真实 `HDMI-A-1` evidence `/tmp/gilder-vulkan-h264-present-worker` 为 `decoded/presented=2400/2400`、`average_present_fps=234.53720838404902`、average `queue_present_us=3975`、`RSS/PSS/USS/Private_Dirty max=104972/76817/60048/28580 KiB`、平均 CPU `14.77%`、NVIDIA GPU memory `128 MiB`；相比 `/tmp/gilder-vulkan-h264-barrier-tightened-final` 的 `207.34187751641383fps` 是实质提升，但仍未达到 H.265 的 240fps 稳定形态。同日继续把 H.264 display ring 改为每槽位预绑定 descriptor set，热循环不再每帧 `vkUpdateDescriptorSets`/构造临时 display texture；真实 `HDMI-A-1` 4K/240 ref=1 evidence `/tmp/gilder-vulkan-h264-prebound-descriptor-4k240-ref1` 为 `decoded/presented=480/480`、`average_present_fps=232.68396113217636`、`avg_descriptor_update_us=0`，5s performance `/tmp/gilder-vulkan-h264-prebound-descriptor-4k240-perf` 为 `decoded/presented=1200/1200`、`average_present_fps=233.90643962520952`、`RSS/PSS/USS/Private_Dirty max=106000/91369/86404/27424 KiB`、平均 CPU `15.60%`。这是 CPU 侧提交开销优化，不是 H.264 240fps 完成。后续参考 Sunshine/FFmpeg/GStreamer/mpv 的顶层思路时，只借调度模型：固定 hardware frame/surface pool、slot ownership、timeline semaphore、descriptor 只在 source/target 变化时更新、命令 ring 和延迟销毁；不照搬具体编码器/捕获实现。2026-06-22 又补 H.264 resource layout 实验：`GILDER_H264_RESOURCE_LAYOUT=general` 让 decode resource/display-copy 保持 `GENERAL`，runtime/summary 增加 `h264_resource_image_layout`；真实 `HDMI-A-1` 4K/240 ref=1 evidence `/tmp/gilder-vulkan-h264-resource-general-4k240-ref1` 为 `average_present_fps=233.11475907497862`、`decode avg=11.79us`，但重跑 `/tmp/gilder-vulkan-h264-resource-general-layout-field-4k240-ref1` 为 `232.52402677308388fps`，说明它是可用的小幅同步优化，不能作为 H.264 稳 240 完成项。
 - [ ] 将 H.264 display-ring 同步从 binary semaphore + 全局 fence 推进到完整 frame-pool ownership：2026-06-22 已把 H.264 display-ring 路径改为 per-frame acquire semaphore/fence，并为 display slot 复用增加 fence guard，避免 GPU 仍在采样旧 slot 时提前 copy 新帧。真实 Wayland `HDMI-A-1` evidence `/tmp/gilder-vulkan-h264-display-slot-fence-4k240-ref1` 为 `decoded/presented=480/480`、`average_present_fps=230.31172461134605`、`h264_present_result_wait_count=479`、`h264_present_result_wait_elapsed_us=1929885`、`avg_fence_wait_us=0.89`、`avg_present_us=310.68`；1200 帧 performance evidence `/tmp/gilder-vulkan-h264-display-slot-fence-4k240-perf` 为 `decoded/presented=1200/1200`、`average_present_fps=232.89863472099296`、`RSS/PSS/USS/Private_Dirty max=106000/90291/84616/27544 KiB`、NVIDIA GPU memory `116 MiB`，CPU raw avg `36.84%` 受第一个 0s sample=`100%` 影响，后续 1-4s samples 为 `28.6/20.9/18.0/16.7%`。该改动偏稳定性/所有权正确性，单独不是 240fps 或内存突破。负面 evidence：`GILDER_H264_ASYNC_PRESENT_DEPTH=2` 在 `/tmp/gilder-vulkan-h264-per-frame-fence-depth2-4k240-short-seq` 可跑完但降到 `219.4879316010344fps`，因为单 present queue 的 mutex 把 FIFO 等待转移到 `avg_submit_us=4175.98`；`GILDER_H264_PRESENT_QUEUE_COUNT=2` 在 `/tmp/gilder-vulkan-h264-per-frame-fence-dual-present-4k240-short-seq` 20s 超时且 runtime 为空，不能作为默认路径。下一步应迁 timeline semaphore/range 回收和更明确的 bounded decode/display/present 队列，而不是继续加深当前 present worker。
@@ -747,6 +759,17 @@
   `average_present_result_drop_first_60_fps=240.0756582168383`、`missed_frame_pacing_count=9`。
   H.265 Main8/Main10 为 `240.1629163155045`/`240.10727993267392fps`；AV1 Main8/Main10
   warmup 后为 `239.95496406116047`/`240.01269375010384fps` 且 `av1_display_copy_count=0`。
+- [x] 参考 FFmpeg/ffplay audio master 思路补 opt-in video pacing master：`pacing.rs` 增加
+  `NativeVulkanVideoPacingMaster::{TargetFps, AudioClock}`，默认路径不变；只有
+  `GILDER_VIDEO_PACING_MASTER=audio`/`GILDER_PACING_MASTER=audio` 且 `--audio-clock-probe`
+  启用时，视频帧 sleep 才按下一帧 video clock 与 audio master clock 的 delta 计算。
+  三条 smoke 脚本新增 `--pacing-master audio` 并 gate 新 pacing label。2026-06-24
+  H.264 `/tmp/gilder-h264-audio-master-pacing-240` 与 H.265 Main8
+  `/tmp/gilder-h265-main8-audio-master-pacing-620` 分别为 `decoded/presented=240/240`、
+  `620/620`，pacing label 均为
+  `audio-clock-master-with-target-fps-fallback-and-fifo-present`，audio serial/loop gate 均通过；
+  AV1 Main8 `/tmp/gilder-av1-main8-audio-master-pacing-120` 也通过功能 gate，但 present FPS
+  明显偏低，后续要优先修 AV1 audio-master pacing 再接真实 audio sink。
 - [x] 继续攻克 AV1 display-copy 成本和 present 直采路径：2026-06-23 已从
   show-existing-only direct-DPB 推进到 displayed-frame direct-DPB 默认路径。默认不再创建 AV1
   display ring，4K Main8 display resource 从旧 display-ring+DPB 降为 DPB-only
