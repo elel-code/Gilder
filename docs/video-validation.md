@@ -981,6 +981,11 @@ view creation.
 - GStreamer is the second reference and current frontend implementation, but it
   is replaceable. The stable contract is packet/audio/clock output into Gilder,
   not `gst::Pipeline` ownership inside decode/render/present.
+- `src/renderer/native_vulkan/demux.rs` owns the frontend-agnostic packet queue,
+  access-unit timeline, loop serial and bootstrap window. The current
+  GStreamer provider lives in `src/renderer/native_vulkan/demux_gst.rs`;
+  future libav/FFmpeg or native demux providers should implement the same
+  packet frontend boundary.
 - `src/renderer/native_vulkan/render_item.rs` owns render-sync-plan to
   `NativeVulkanRenderItem` mapping. It is the thin integration boundary for
   wallpaper/control sources and must not accumulate decode, render or present
