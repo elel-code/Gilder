@@ -838,6 +838,8 @@
 - [x] 纯色 scene-lite 直达 color display：单个 color layer 或无 stroke/corner/transform 的全屏
   rectangle 不再生成 SVG snapshot，也不再走 static image decode/upload，native Vulkan 可直接
   clear swapchain，减少一次文件、解码和上传成本。
+- [x] 单 image layer scene-lite 直达 image display：不透明、无 transform 的单图层场景不再生成
+  中间 SVG snapshot，display source 与 layer source 资源计数去重，减少 cache 文件和重复资源统计。
 - [x] 拆分 scene-lite display 规划边界：`renderer/scene_lite_display.rs` 负责 direct color clear
   eligibility、snapshot renderability 和 fallback background 选择，主 render sync 不再内联这些策略。
 - [x] 接入 scene-lite 原生 draw-plan/runtime telemetry：render_plan 将 image/color/shape/text/path

@@ -1052,6 +1052,10 @@ view creation.
   `SceneLiteDisplayPlan::Color` instead of generated SVG snapshots. Native
   Vulkan can clear the swapchain directly and avoid an unnecessary snapshot
   file, image decode and upload.
+- A single opaque, untransformed scene-lite image layer is planned as a direct
+  `SceneLiteDisplayPlan::Image` source instead of a generated SVG snapshot.
+  Scene-lite image resource accounting de-duplicates that display source from
+  the layer source so cache telemetry matches the actual resource set.
 - `src/renderer/native_vulkan/scene_lite_runtime.rs` owns scene-lite native draw
   plan telemetry. It reports whether the current deterministic scene snapshot
   can be taken over by native Vulkan draw passes, plus fallback availability and
