@@ -856,8 +856,8 @@
   memory handoff、`ash` 绑定策略和 Web/helper texture handoff contract，主
   `native_vulkan.rs` 不再内联这些可替换接入层策略。
 - [x] 推进通用 audio runtime loop 同步：decoded video frontend 的 segment-done 现在会
-  触发 audio runtime `seek_for_video_loop(0)`，worker coalescing 保证 loop seek 优先于普通
-  video-clock sample，向 FFmpeg/ffplay 的 clock serial 语义靠拢。
+  触发 audio runtime `seek_for_video_loop(loop_start_position_ms)`，worker coalescing 保证
+  loop seek 优先于普通 video-clock sample，向 FFmpeg/ffplay 的 clock serial 语义靠拢。
 - [x] 统一 direct 路线 decoded-frame zero-copy evidence：H.264/H.265/AV1 ready-prefix
   runtime 输出 `decoded_frame_zero_copy_scope/status`，把 direct-DPB/display-copy 证据和
   bitstream-ring upload copy 作用域明确分开。
