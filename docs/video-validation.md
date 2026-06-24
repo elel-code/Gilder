@@ -258,9 +258,11 @@ The old loop-reset drift issue is no longer present in this gate:
 `audio_video_master_clock_drift_latest_ns=-61777` and
 `audio_video_master_clock_drift_abs_max_ns=856739`.
 
-The native Vulkan runtime now also has an opt-in output branch. By default it
-stays `clock-only`; `--audio-output auto` tees the explicit AAC chain into both
-the telemetry appsink and `autoaudiosink`, preserving the ffplay-style clock
+The native Vulkan runtime now also has an output policy branch. `--audio-output
+plan` follows the effective video plan muted state produced from
+`entry.muted || !runtime.allow_audio`: muted resolves to `clock-only`, unmuted
+resolves to `auto`. Explicit `--audio-output auto` still tees the AAC chain into
+both the telemetry appsink and `autoaudiosink`, preserving the ffplay-style clock
 probe while allowing audible output when the system has an audio sink. Short
 Wayland script evidence `/tmp/gilder-h264-audio-output-auto-script-60` reports
 `decoded/presented=60/60`, pipeline
@@ -268,11 +270,15 @@ Wayland script evidence `/tmp/gilder-h264-audio-output-auto-script-60` reports
 `audio_output_mode=auto`, `audio_output_sinks=["autoaudiosink","jackaudiosink"]`,
 `audio_output_sink_count=2`, `audio_decoders=["avdec_aac"]`,
 `audio_video_decoders=[]`, and `audio_reached_clocked_playback=true`. The
-H.264/H.265/AV1 ready-prefix smokes now expose `--audio-output` and fail the
-audio gate when an `auto` run does not report an output sink. Runtime snapshot
-policy also distinguishes muted plans (`clock-only`) from unmuted plans
-(`auto`). The remaining work is to connect this opt-in output to manifest
-`runtime.allow_audio` / `muted` runtime selection.
+H.264/H.265/AV1 ready-prefix smokes now expose `--muted/--unmuted` and
+`--audio-output`, record `audio_output_expected_mode`, and fail the audio gate
+when an `auto` run does not report an output sink. Runtime snapshot policy also
+distinguishes muted plans (`clock-only`) from unmuted plans (`auto`). The
+plan-following smoke `/tmp/gilder-h264-audio-output-plan-unmuted-script-60`
+passes with `audio_output=plan`, `audio_plan_muted=false`,
+`audio_output_expected_mode=auto`, `audio_output_mode=auto`, and
+`audio_output_sink_count=2`. The remaining work is to make the native Vulkan
+renderer consume manifest-backed video plans directly through this policy path.
 
 Follow-up AV1 copy-cost work on 2026-06-23 made `show_existing_frame` presentation
 sample the decoded DPB image directly by default instead of copying those handoff

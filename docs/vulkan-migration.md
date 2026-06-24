@@ -1202,9 +1202,15 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   `/tmp/gilder-h264-audio-output-auto-script-60` 为 `decoded/presented=60/60`、
   `audio_output=auto`、`audio_output_mode=auto`、`audio_output_sink_count=2`、
   `audio_output_sinks=["autoaudiosink","jackaudiosink"]`、`audio_decoders=["avdec_aac"]`、
-  `video_decoders=[]`。H.264/H.265/AV1 ready-prefix smoke 已把 `--audio-output auto`
-  纳入 audio gate；runtime snapshot 也开始按 manifest `muted` 规划 `clock-only`/`auto`
-  输出策略。下一步把它接进真实 manifest `runtime.allow_audio`/`muted` 运行时选择。
+  `video_decoders=[]`。H.264/H.265/AV1 ready-prefix smoke 已把 `--audio-output plan`
+  和 `--muted/--unmuted` 纳入 audio gate：plan 使用上层
+  `entry.muted || !runtime.allow_audio` 的有效 muted 结果，muted -> `clock-only`、
+  unmuted -> `auto`；runtime snapshot 也开始按 manifest `muted` 规划 `clock-only`/`auto`
+  输出策略。真实 plan-following smoke
+  `/tmp/gilder-h264-audio-output-plan-unmuted-script-60` 为 `decoded/presented=60/60`、
+  `audio_output=plan`、`audio_plan_muted=false`、`audio_output_expected_mode=auto`、
+  `audio_output_mode=auto`、`audio_output_sink_count=2`。下一步把 native Vulkan renderer 的
+  manifest-backed video plan 消费接到该路径。
 - 2026-06-22 继续修正 AV1 repeated-frame 假阳性：严格 readback diversity gate 曾显示
   present/FPS counter 正常但 inter 内容重复，根因是 native parser 的 frame-header bit order
   和 GStreamer/FFmpeg 不一致。`allow_warped_motion` 需要在 `skip_mode_present` 之后、
