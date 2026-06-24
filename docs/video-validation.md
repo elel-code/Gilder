@@ -274,13 +274,15 @@ H.264/H.265/AV1 ready-prefix smokes now expose `--muted/--unmuted` and
 `--audio-output`, record `audio_output_expected_mode`, and fail the audio gate
 when an `auto` run does not report an output sink. Runtime snapshot policy also
 distinguishes muted plans (`clock-only`) from unmuted plans (`auto`). The
-plan-following smoke `/tmp/gilder-h264-audio-output-policy-helper-plan-unmuted-60`
+plan-following smoke `/tmp/gilder-h264-audio-output-policy-module-plan-unmuted-60`
 passes with `audio_output=plan`, `audio_plan_muted=false`,
 `audio_output_expected_mode=auto`, `audio_output_mode=auto`, and
 `audio_output_sink_count=2`. The shared policy now lives in the native Vulkan
-audio boundary (`NativeVulkanAudioOutputPolicy`) rather than the CLI wrapper, so
-the remaining work is to make the native Vulkan renderer consume manifest-backed
-video plans directly through this policy path.
+audio boundary (`NativeVulkanAudioOutputPolicy`) rather than the CLI wrapper.
+Manifest-backed `VideoWallpaperPlan` runtime snapshots report
+`audio_output_policy=plan` and resolve the same effective muted state, so the
+remaining work is to make the native Vulkan renderer start/stop the actual audio
+runtime through this policy path.
 
 Follow-up AV1 copy-cost work on 2026-06-23 made `show_existing_frame` presentation
 sample the decoded DPB image directly by default instead of copying those handoff
