@@ -881,6 +881,9 @@
 - [x] 统一 direct present-result summary：H.264 direct-DPB、H.264 display-ring、H.265
   和 AV1 现在都走 `native_vulkan_direct_present_result_summary`，跨 codec 性能指标不再
   各自复制实现。
+- [x] 收敛 GStreamer bitstream frontend builder：H.264/H.265/AV1 仍保留各自入口，
+  但 `demux_gst.rs` 现在通过 codec spec 统一 filesrc/demux/queue/parser/caps/appsink
+  pipeline 创建，codec adapter 只声明 parser、caps、sink name 和 pad media type。
 - [ ] 接入 scene-lite 原生 Vulkan draw pass：消费 draw-plan 中的 image/color/shape/text/path ops，
   建立 GPU/resource telemetry 和 Wayland smoke。
 - [ ] 设计 Web helper frame/texture handoff：WebKitGTK/浏览器 helper 只作为隔离实现，native Vulkan
