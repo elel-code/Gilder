@@ -1065,11 +1065,13 @@ view creation.
   This route may claim zero-copy only after caps, memory type and importer
   telemetry confirm a DMABuf/DRM-PRIME Vulkan import contract; hardware decode,
   GPU caps or `CUDAMemory`/`VAMemory` labels alone are not sufficient.
-- The native Vulkan path uses `ash` as the binding layer. Moving from the
-  crates.io release to `ash` mainline can be useful when newer Vulkan Video or
-  external-memory structs land there before a release, because it reduces raw
-  FFI and binding drift. It is not itself zero-copy evidence; zero-copy still
-  requires extension/capability/import telemetry on the selected Vulkan device.
+- The current native Vulkan runtime uses `ash`, but `vulkanalia` is now the
+  prioritized replacement path and should be advanced early behind
+  `native-vulkan-vulkanalia`. The first gate is not a full renderer rewrite:
+  it is Vulkan 1.4 instance/device capability probing, Wayland/swapchain parity,
+  Vulkan Video H.264/H.265/AV1 profile parity, and one direct H.265 submit path.
+  Binding choice is not itself zero-copy evidence; zero-copy still requires
+  extension/capability/import telemetry on the selected Vulkan device.
 - `src/renderer/native_vulkan/demux.rs` owns the frontend-agnostic packet queue,
   access-unit timeline, loop serial and bootstrap window. The current
   GStreamer provider lives in `src/renderer/native_vulkan/demux_gst.rs`;
@@ -1105,7 +1107,7 @@ view creation.
   and smoke tests should consume this stable import-status boundary.
 - `src/renderer/native_vulkan/interop.rs` owns the stable external interop
   policy surface for decoded video and future Web/helper texture handoff:
-  target memory flow, ash binding policy, accepted frame sources and designs
+  target memory flow, Vulkan binding migration policy, accepted frame sources and designs
   that must not enter the native Vulkan core.
 - `src/renderer/native_vulkan/video_memory_gst.rs` owns GStreamer decoded sample
   memory classification (`CUDAMemory`, `DMABuf`, `VAMemory`, system memory).

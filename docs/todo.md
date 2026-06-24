@@ -875,11 +875,12 @@
   `BitstreamNativeDecode`，将 `gst-dma`/provider 解码路线定义为
   `DecodedFrameFrontend`，并要求 zero-copy 声明必须标注 bitstream upload、decoded-frame
   handoff、import、render 或 compositor present 的具体作用域。
-- [x] 固化 `ash` 绑定策略：`ash` 主分支的价值是更快获得 Vulkan Video/external-memory
-  绑定并减少 raw FFI/生成代码漂移；它不是 zero-copy 证据本身，zero-copy 仍必须由同设备
-  extension/capability/import telemetry 证明。
+- [x] 提前启动 `vulkanalia` 替换策略：`ash` 保留为当前可工作的稳定 baseline，
+  但后续优先推进 `native-vulkan-vulkanalia` 并验证 Vulkan 1.4、Vulkan Video、
+  Wayland WSI、swapchain/present 和 external-memory parity；绑定选择本身不是 zero-copy
+  证据，zero-copy 仍必须由同设备 extension/capability/import telemetry 证明。
 - [x] 拆分外部 interop 策略边界：`native_vulkan/interop.rs` 负责 video decoded-frame
-  memory handoff、`ash` 绑定策略和 Web/helper texture handoff contract，主
+  memory handoff、Vulkan 绑定替换策略和 Web/helper texture handoff contract，主
   `native_vulkan.rs` 不再内联这些可替换接入层策略。
 - [x] 推进通用 audio runtime loop 同步：decoded video frontend 的 segment-done 现在会
   触发 audio runtime `seek_for_video_loop(loop_start_position_ms)`，worker coalescing 保证
