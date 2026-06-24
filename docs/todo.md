@@ -884,6 +884,9 @@
 - [x] 收敛 GStreamer bitstream frontend builder：H.264/H.265/AV1 仍保留各自入口，
   但 `demux_gst.rs` 现在通过 codec spec 统一 filesrc/demux/queue/parser/caps/appsink
   pipeline 创建，codec adapter 只声明 parser、caps、sink name 和 pad media type。
+- [x] 将 video/audio clock fallback 计算迁入 `native_vulkan/pacing.rs`：loop segment
+  frame index、audio probe video clock 和 next pacing clock 现在由 codec-neutral pacing
+  模块提供，H.264/H.265/AV1 direct loop 不再依赖 `native_vulkan.rs` 内部私有时钟函数。
 - [ ] 接入 scene-lite 原生 Vulkan draw pass：消费 draw-plan 中的 image/color/shape/text/path ops，
   建立 GPU/resource telemetry 和 Wayland smoke。
 - [ ] 设计 Web helper frame/texture handoff：WebKitGTK/浏览器 helper 只作为隔离实现，native Vulkan
