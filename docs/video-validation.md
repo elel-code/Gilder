@@ -1008,7 +1008,10 @@ view creation.
 - `src/renderer/native_vulkan/video_frontend_gst.rs` owns the current raw
   decoded GStreamer video appsink provider and pipeline policy. This keeps
   `gst::Pipeline` lifecycle and appsink polling out of the Vulkan session while
-  preserving the same provider-neutral sample handoff.
+  preserving the same provider-neutral sample handoff. The decoded appsink
+  defaults to a one-buffer keep-last policy, so transient importer/present delay
+  drops stale decoded samples instead of backpressuring the decoder; set
+  `GILDER_VULKAN_GST_SAMPLE_QUEUE_POLICY=backpressure` only for diagnostics.
 - `src/renderer/native_vulkan/video_import.rs` owns decoded-frame import
   telemetry and DMABuf contract snapshots. CUDA/VA/DMAbuf Vulkan import
   implementations may still live beside low-level Vulkan code, but runtime JSON
