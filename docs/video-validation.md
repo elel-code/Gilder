@@ -991,6 +991,10 @@ view creation.
   route signals). The runtime session wraps the current GStreamer appsink path
   behind `NativeVulkanVideoFrontend`, so future FFmpeg/libav or native decoded
   frame frontends can be added without making render/present own `gst::Sample`.
+- `src/renderer/native_vulkan/video_frontend_gst.rs` owns the current raw
+  decoded GStreamer video appsink provider and pipeline policy. This keeps
+  `gst::Pipeline` lifecycle and appsink polling out of the Vulkan session while
+  preserving the same provider-neutral sample handoff.
 - `src/renderer/native_vulkan/render_item.rs` owns render-sync-plan to
   `NativeVulkanRenderItem` mapping. It is the thin integration boundary for
   wallpaper/control sources and must not accumulate decode, render or present
