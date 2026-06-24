@@ -867,6 +867,10 @@
 - [x] 接入 scene-lite 原生 draw-plan/runtime telemetry：render_plan 将 image/color/shape/text/path
   layers 分类为 native draw ops，scene_lite_runtime 输出 native_draw_ready、fallback 可用性和
   unsupported layer 原因。
+- [x] 推进 scene-lite sampled-image 原生 draw-pass 输入：显式 `width/height` 的 image layer
+  现在生成 sampled-image quad payload，runtime snapshot 输出 source/fit/opacity、UV、顶点/索引
+  buffer 大小和 `sampled-image-alpha-blend` recording step；实际 Vulkan sampled-image pipeline
+  仍标记为 pending，但资源和几何输入已经不再藏在 fallback SVG 路径里。
 - [x] 固化 video route 类型和 zero-copy 边界：`pipeline.rs` 将 direct 路线定义为
   `BitstreamNativeDecode`，将 `gst-dma`/provider 解码路线定义为
   `DecodedFrameFrontend`，并要求 zero-copy 声明必须标注 bitstream upload、decoded-frame
