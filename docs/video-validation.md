@@ -1059,9 +1059,9 @@ view creation.
   `decoded_frame_zero_copy_scope` and `decoded_frame_zero_copy_status` fields.
   The scope is explicitly decoded-frame display handoff; bitstream-ring upload
   remains a separate copy scope. H.264/AV1 can classify confirmed direct-DPB
-  no-display-copy paths from display-copy/direct-DPB counters; H.265 currently
-  reports its direct sampled output path without an independent display-copy
-  counter.
+  no-display-copy paths from display-copy/direct-DPB counters; H.265 now reports
+  the same display-copy count, display-ring memory and displayed direct-DPB
+  count from its direct sampled output path.
 - `src/renderer/native_vulkan/render_item.rs` owns render-sync-plan to
   `NativeVulkanRenderItem` mapping. It is the thin integration boundary for
   wallpaper/control sources and must not accumulate decode, render or present

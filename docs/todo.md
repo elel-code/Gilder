@@ -861,6 +861,10 @@
 - [x] 统一 direct 路线 decoded-frame zero-copy evidence：H.264/H.265/AV1 ready-prefix
   runtime 输出 `decoded_frame_zero_copy_scope/status`，把 direct-DPB/display-copy 证据和
   bitstream-ring upload copy 作用域明确分开。
+- [x] 强化 H.265 direct-DPB evidence：H.265 ready-prefix runtime 现在与 H.264/AV1
+  同级报告 `h265_display_copy_count=0`、`h265_display_ring_memory_bytes=0` 和
+  `h265_displayed_direct_dpb_count=presented_frame_count`，zero-copy status 可直接归类为
+  confirmed direct-DPB no-display-copy。
 - [ ] 接入 scene-lite 原生 Vulkan draw pass：消费 draw-plan 中的 image/color/shape/text/path ops，
   建立 GPU/resource telemetry 和 Wayland smoke。
 - [ ] 设计 Web helper frame/texture handoff：WebKitGTK/浏览器 helper 只作为隔离实现，native Vulkan
