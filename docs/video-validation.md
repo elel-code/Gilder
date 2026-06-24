@@ -1073,6 +1073,15 @@ view creation.
   H.265 submit path, then present/import parity. Binding choice is not itself
   zero-copy evidence; zero-copy still requires extension/capability/import
   telemetry on the selected Vulkan device.
+- Native wallpaper-visible Vulkanalia validation must use `background` or
+  `bottom` layer-shell surfaces. `top`/`overlay` remain foreground debug only and
+  should not be cited as wallpaper smoke evidence. The current
+  `--probe-vulkanalia-video-present-session` gate creates a retained runtime
+  boundary (`video-present-session-retained-resource`) that owns the Wayland
+  surface, Vulkan 1.4 instance, video+present device, swapchain, video session,
+  session memory and coincident sampled DPB/output image until the probe drops
+  the runtime; H.264 high8, H.265 main8/main10 and AV1 main8/main10 have all
+  passed this retained resource gate on `background`/`bottom`.
 - `src/renderer/native_vulkan/demux.rs` owns the frontend-agnostic packet queue,
   access-unit timeline, loop serial and bootstrap window. The current
   GStreamer provider lives in `src/renderer/native_vulkan/demux_gst.rs`;

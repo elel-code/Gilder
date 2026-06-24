@@ -880,6 +880,15 @@
   instance/device、Wayland WSI、swapchain/present、Vulkan Video format/session/submit
   和 external-memory 边界逐步迁移。绑定选择本身不是 zero-copy 证据，zero-copy 仍必须由
   同设备 extension/capability/import telemetry 证明。
+- [x] 将 Vulkanalia video-present session gate 从一次性 probe 推进到 retained runtime
+  资源所有权：`video_present_runtime.rs` 持有 Wayland host、Vulkan 1.4 instance、surface、
+  单一 video+present logical device、swapchain、`VkVideoSessionKHR`、session memory 和
+  coincident sampled DPB/output image，`--probe-vulkanalia-video-present-session` 现在输出
+  `video-present-session-retained-resource`。真实 Wayland 证据限定使用 `background`/`bottom`
+  layer，不再把 `top` 作为 wallpaper smoke 依据；H.264 high8、H.265 main8/main10、
+  AV1 main8/main10 均已通过 retained resource gate，队列模型为 dedicated video decode
+  family `[3]` + graphics/present family `[0]`，下一步是把 ready-prefix decode submit
+  直接接入这组 retained image/session 并用 graphics pass 采样到 swapchain。
 - [x] 拆分外部 interop 策略边界：`native_vulkan/interop.rs` 负责 video decoded-frame
   memory handoff、Vulkan 绑定替换策略和 Web/helper texture handoff contract，主
   `native_vulkan.rs` 不再内联这些可替换接入层策略。
