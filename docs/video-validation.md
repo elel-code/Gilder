@@ -48,8 +48,10 @@ by the packet queue and bitstream ring. The first concrete code split is
 `src/renderer/native_vulkan/video_runtime.rs`, which now owns the video runtime
 snapshot, memory-route classification and audio-runtime telemetry boundary.
 `src/renderer/native_vulkan/audio_runtime.rs` now owns plan-driven audio runtime
-startup, polling and error retention, so the renderer session only samples a
-narrow audio boundary before the next worker/channel split.
+startup, worker ownership and error retention. The renderer session sends video
+clock samples over a command channel and reads shared telemetry; the audio worker
+owns the GStreamer probe and coalesces queued clock samples so only the latest
+video clock is processed.
 
 ## Validation Layers
 

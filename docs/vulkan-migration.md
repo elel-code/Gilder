@@ -1212,11 +1212,13 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   `audio_output_mode=auto`、`audio_output_sink_count=2`。`NativeVulkanAudioOutputPolicy`
   已拆到无 GStreamer 依赖的 native Vulkan audio policy 边界，CLI/smoke 只解析和传入策略；
   manifest-backed video runtime snapshot 也报告 `audio_output_policy=plan` 并复用同一 resolve
-  语义。2026-06-24 已把 native Vulkan renderer 的实际 audio runtime 启停接到该路径：
-  `--run-video --unmuted` 会按 plan resolve 到 `auto`，启动独立 AAC audio runtime，并在视频
-  主循环每帧采样一次 FFmpeg/ffplay-style audio master clock。真实 Wayland 1s 检查
+  语义。2026-06-24 已把 native Vulkan renderer 的实际 audio runtime 启停接到该路径，并
+  继续拆成 worker/channel 边界：`--run-video --unmuted` 会按 plan resolve 到 `auto`，
+  启动独立 AAC audio runtime worker；video 主循环只发送 video clock sample，worker 持有
+  GStreamer audio probe 并合并积压 sample，保留 FFmpeg/ffplay-style audio master clock
+  语义。真实 Wayland 1s 检查
   `artifacts/video-sources/h264/audio-loop/kamen-h264-aac-2s-loop.mp4` 为
-  `frames_rendered=60`、`average_render_fps=59.99665170686155`、
+  `frames_rendered=60`、`average_render_fps=59.99649182513351`、
   `audio_runtime_status=clocked-playback-active`、`audio_runtime_buffer_count=42`、
   `audio_runtime_output_sink_count=2`、`audio_runtime_position_query_hit_count=60`、
   `audio_runtime_last_error=null`。该 runtime 以 best-effort 方式接入，音频启动/采样错误进入

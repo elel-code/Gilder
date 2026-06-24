@@ -251,10 +251,12 @@
   `NativeVulkanAudioOutputMode/Policy` 拆到无 GStreamer 依赖的 `audio_policy.rs`，并让
   manifest-backed `VideoWallpaperPlan` runtime snapshot 输出 `audio_output_policy=plan` 后再
   resolve muted -> `clock-only`、unmuted -> `auto`。2026-06-24 已把 native Vulkan renderer 的
-  实际 audio runtime 启停接到该 plan-following 输出路径：`--run-video --unmuted` 按 plan
-  resolve 到 `auto` 后启动独立 AAC runtime，并在视频主循环每帧采样一次 audio master clock。
+  实际 audio runtime 启停接到该 plan-following 输出路径，并继续推进成 worker/channel
+  边界：`--run-video --unmuted` 按 plan resolve 到 `auto` 后启动独立 AAC runtime worker，
+  video 主循环只发送 video clock sample，GStreamer audio probe 由 worker 持有并合并积压
+  sample。
   真实 Wayland 1s 检查 `artifacts/video-sources/h264/audio-loop/kamen-h264-aac-2s-loop.mp4`
-  为 `frames_rendered=60`、`average_render_fps=59.99665170686155`、
+  为 `frames_rendered=60`、`average_render_fps=59.99649182513351`、
   `audio_runtime_status=clocked-playback-active`、`audio_runtime_buffer_count=42`、
   `audio_runtime_output_sink_count=2`、`audio_runtime_position_query_hit_count=60`、
   `audio_runtime_last_error=null`。snapshot 已把 `audio_output_*` 策略层和
