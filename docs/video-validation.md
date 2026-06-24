@@ -999,6 +999,15 @@ view creation.
 - Historical native-wgpu and GTK numbers may be used as comparison baselines,
   but those backends are no longer buildable paths.
 
+After the 2026-06-24 `demux_gst.rs` provider split, a real
+`--probe-video-session --extract-bitstream` check on the repo-local H.265
+Main10 3840x2160@240 source reported `samples=4`,
+`h265_decode_ready_prefix_count=4`, `stream_format=byte-stream`,
+`alignment=au`, `mapped_write_source=extracted-encoded-video-unit`, and
+`picture_format=G10X6_B10X6R10X6_2PLANE_420_UNORM_3PACK16`. This verifies that
+GStreamer provider lifecycle moved out of the frontend-agnostic queue without
+breaking H.265 Main10 bitstream extraction.
+
 ## Runtime Packages
 
 Ubuntu-like codec smoke packages:
