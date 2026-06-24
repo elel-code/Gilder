@@ -1013,6 +1013,10 @@ view creation.
   telemetry and DMABuf contract snapshots. CUDA/VA/DMAbuf Vulkan import
   implementations may still live beside low-level Vulkan code, but runtime JSON
   and smoke tests should consume this stable import-status boundary.
+- `src/renderer/native_vulkan/video_memory_gst.rs` owns GStreamer decoded sample
+  memory classification (`CUDAMemory`, `DMABuf`, `VAMemory`, system memory).
+  This keeps provider-specific memory naming out of the renderer core while
+  giving both the GStreamer frontend and Vulkan importer the same route signal.
 - `src/renderer/native_vulkan/audio_frontend.rs` owns the provider-neutral
   audio clock runtime wrapper and reports `audio_runtime_provider` into video
   runtime telemetry. The current implementation is still the GStreamer AAC
