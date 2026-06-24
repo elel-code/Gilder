@@ -47,6 +47,9 @@ independently attributable and compressed payload retention must remain bounded
 by the packet queue and bitstream ring. The first concrete code split is
 `src/renderer/native_vulkan/video_runtime.rs`, which now owns the video runtime
 snapshot, memory-route classification and audio-runtime telemetry boundary.
+`src/renderer/native_vulkan/audio_runtime.rs` now owns plan-driven audio runtime
+startup, polling and error retention, so the renderer session only samples a
+narrow audio boundary before the next worker/channel split.
 
 ## Validation Layers
 
