@@ -1065,13 +1065,14 @@ view creation.
   This route may claim zero-copy only after caps, memory type and importer
   telemetry confirm a DMABuf/DRM-PRIME Vulkan import contract; hardware decode,
   GPU caps or `CUDAMemory`/`VAMemory` labels alone are not sufficient.
-- The current native Vulkan runtime uses `ash`, but `vulkanalia` is now the
-  prioritized replacement path and should be advanced early behind
-  `native-vulkan-vulkanalia`. The first gate is not a full renderer rewrite:
-  it is Vulkan 1.4 instance/device capability probing, Wayland/swapchain parity,
-  Vulkan Video H.264/H.265/AV1 profile parity, and one direct H.265 submit path.
-  Binding choice is not itself zero-copy evidence; zero-copy still requires
-  extension/capability/import telemetry on the selected Vulkan device.
+- The current native Vulkan runtime still has `ash` compatibility code, but
+  `vulkanalia` is now the primary migration surface inside
+  `native-vulkan-renderer`. The gates are still incremental: Vulkan 1.4
+  instance/device capability probing, Wayland/swapchain parity, Vulkan Video
+  H.264/H.265/AV1 profile+format parity, session/resource migration, one direct
+  H.265 submit path, then present/import parity. Binding choice is not itself
+  zero-copy evidence; zero-copy still requires extension/capability/import
+  telemetry on the selected Vulkan device.
 - `src/renderer/native_vulkan/demux.rs` owns the frontend-agnostic packet queue,
   access-unit timeline, loop serial and bootstrap window. The current
   GStreamer provider lives in `src/renderer/native_vulkan/demux_gst.rs`;
