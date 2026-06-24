@@ -99,6 +99,51 @@ Run inside a real niri, Hyprland or other Wayland session:
 scripts/native-vulkan-h265-ready-prefix-video-smoke.sh --output-name HDMI-A-1 --playback-frames 4800 --target-fps 240
 ```
 
+## Real Source Corpus
+
+Local real-source coverage should use scripts instead of hand-written one-off
+commands. `scripts/native-vulkan-real-source-matrix.sh` scans a user-owned media
+directory or a local Wallpaper Engine Workshop directory, records `ffprobe`
+codec/profile/extent/fps/audio metadata, and can run the matching H.264/H.265/AV1
+direct Vulkan Video smoke for each supported source. Probe-only mode is the
+default and does not require a Wayland session:
+
+```sh
+scripts/native-vulkan-real-source-matrix.sh \
+  --source-dir /path/to/videos \
+  --report-dir /tmp/gilder-real-source-matrix \
+  --duration 10
+```
+
+Wallpaper Engine Workshop items can be downloaded into an ignored local corpus
+with SteamCMD. The downloader keeps third-party assets under
+`artifacts/wallpaper-engine-workshop/` and never adds them to the tracked repo.
+Many Workshop items require a Steam account that owns Wallpaper Engine; anonymous
+download is not guaranteed to work.
+
+```sh
+scripts/wallpaper-engine-workshop-download.sh \
+  --item-id 123456789 \
+  --probe-after-download \
+  -- --duration 10
+```
+
+For a real Wayland run, pass matrix arguments after `--`:
+
+```sh
+scripts/wallpaper-engine-workshop-download.sh \
+  --item-list /path/to/workshop-ids.txt \
+  --steam-user "$USER" \
+  --probe-after-download \
+  -- --run-video --output-name HDMI-A-1 --audio-clock-probe --duration 10
+```
+
+Do not commit downloaded Workshop media or generated matrix reports. The
+expected long-term flow is: download or subscribe locally, probe/classify the
+corpus, then run direct-video smokes for supported codecs. Unsupported codecs
+such as VP8/VP9 should remain classified evidence until a corresponding runtime
+path exists.
+
 Useful variants:
 
 ```sh

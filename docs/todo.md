@@ -776,6 +776,15 @@
   `average_present_result_drop_first_60_fps=239.96389660133235`、`av1_display_copy_count=0`；
   Main10 `/tmp/gilder-av1-main10-pacing-plan-4k240-480-a` 为
   `average_present_result_drop_first_60_fps=239.9814887787176`、`av1_display_copy_count=0`。
+- [x] 增加真实源/Wallpaper Engine corpus 入口：`scripts/native-vulkan-real-source-matrix.sh`
+  现在可扫描普通目录或本地 Wallpaper Engine Workshop content，先用 `ffprobe` 固定
+  codec/profile/extent/fps/audio，再按 H.264/H.265/AV1 选择 direct Vulkan Video smoke；
+  默认只 probe，不要求 Wayland。`scripts/wallpaper-engine-workshop-download.sh` 通过 SteamCMD
+  将用户有权限访问的 Workshop item 下载到被 `.gitignore` 排除的
+  `artifacts/wallpaper-engine-workshop/`，并可在下载后直接调用真实源矩阵。2026-06-24
+  probe-only 验证 `/tmp/gilder-real-source-matrix-probe` 覆盖
+  `/home/yk/Documents/mpv/动态视频MP4-假面骑士/` 8 个 MP4，全部识别为
+  H.264 Main/2560x1440/60fps/yuv420p/AAC，生成 10s/600-frame H.264 direct smoke 命令。
 - [x] 参考 FFmpeg/ffplay frame timer，把重复的固定 `next_frame += interval` sleep
   推进成 `src/renderer/native_vulkan/pacing.rs` 里的 `NativeVulkanVideoClockPacer`：
   target deadline 用整数纳秒累计，短 late 先追赶，超过 resync threshold 才重锚定 timer；
