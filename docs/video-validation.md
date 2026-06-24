@@ -1017,6 +1017,10 @@ view creation.
   memory classification (`CUDAMemory`, `DMABuf`, `VAMemory`, system memory).
   This keeps provider-specific memory naming out of the renderer core while
   giving both the GStreamer frontend and Vulkan importer the same route signal.
+- `src/renderer/native_vulkan/video_sample_gst.rs` owns GStreamer decoded sample
+  shape extraction for NV12/P010 caps and `GstVideoMeta`. CUDA, VA/DMABuf and
+  system-memory importers should consume this shared frame-shape contract
+  instead of parsing provider caps independently.
 - `src/renderer/native_vulkan/audio_frontend.rs` owns the provider-neutral
   audio clock runtime wrapper and reports `audio_runtime_provider` into video
   runtime telemetry. The current implementation is still the GStreamer AAC
