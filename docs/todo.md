@@ -1068,8 +1068,13 @@
   usage、`transfer-dst -> shader-read-only` layout flow、staging upload、combined-image-sampler
   descriptor set 数量、sampled-image alpha-blend pipeline label、`cmd_copy_buffer_to_image`/
   `cmd_bind_sampled_image_descriptor_set`/`cmd_draw_indexed_per_image_quad` 顺序，并保留
-  Vulkan 1.4 `push_descriptor` fast path 策略；当前标记为
-  `sampled-image-command-recording-not-yet-wired`，不误报已经可见渲染。
+  Vulkan 1.4 `push_descriptor` fast path 策略。2026-06-25 继续把 sampled-image draw-pass
+  从 pending 推进到 Vulkanalia dynamic-rendering recordable contract：新增
+  `NativeVulkanVulkanaliaSceneLiteSampledImagePipelineSnapshot` 和 command snapshot，内联
+  sampled-image vertex/fragment SPIR-V，实际 pipeline 资源函数会创建 combined-image-sampler
+  descriptor set layout、pipeline layout、`PipelineRenderingCreateInfo` graphics pipeline，
+  command recording 会绑定 descriptor set、vertex/index buffer 并执行 indexed image quad draw；
+  当前剩余是把 image decode/upload resource lifetime 和 outer scene present loop 接起来。
 - [x] 验证 Vulkanalia direct video 第一阶段 zero-copy present 思路可行：
   `--run-vulkanalia-ready-prefix-video --layer background --target-fps 240` 短 smoke 已覆盖
   H.264 high8、H.265 main8、H.265 main10、AV1 main8、AV1 main10，各 16/16 帧均报告
