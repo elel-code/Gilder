@@ -179,23 +179,17 @@ source is authored to be seamless. For full playback validation, H.264/H.265
 direct smokes now use bounded demux/parser streaming queues; the next performance
 gate is decode/present decoupling plus fence/timeline-managed bitstream range
 reuse, not ready-prefix spool.
-The current visible H.265 path uses a fixed-capacity persistent-mapped bitstream
-ring, so valid evidence should report
-`bitstream_buffer_strategy=fixed-capacity-persistent-mapped-ring`,
-non-zero `bitstream_ring_capacity_bytes`, and increasing/wrapping
-`frames[].src_buffer_offset` / `frames[].bitstream_ring_wrap_count`.
-The direct H.264 ready-prefix visible path follows the same native Vulkan
-presentation contract: GStreamer only supplies parsed H.264 AU buffers, while
-Vulkan Video owns `vkCmdDecodeVideoKHR` and native Vulkan owns the Wayland
-swapchain. Valid H.264 evidence should include non-zero `presented_frame_count`,
-`max_reference_count`/`requested_reference_count` for P frames, DPB slot reuse,
-and the fixed-capacity bitstream ring telemetry. H.264/H.265 visible direct
-smokes now always use the bounded parser/appsink streaming packet queue;
-`--streaming-queue` is only a compatibility no-op and ready-prefix spool is no
-longer a maintained input mode. Valid evidence should report
-`h264_input_mode=streaming-queue`, non-zero
-`h264_packet_queue_pulled_count`, and
-`h264_packet_queue_retained_payload_bytes=0` at shutdown.
+The current visible H.264/H.265/AV1 path uses the unified Vulkanalia ready-prefix
+runtime. GStreamer supplies parsed compressed frames/TUs and audio clock samples;
+Vulkan Video owns `vkCmdDecodeVideoKHR`, native Vulkan owns sampling/render, and
+Wayland present is driven by the Vulkanalia swapchain runtime. Valid current
+evidence should report non-zero `presented_frame_count`,
+`average_present_fps`, codec-specific DPB/reference telemetry, and the owned
+upload model:
+`decode.bitstream_buffer_model=ready-prefix-owned-upload-buffer` plus
+`decode.input_payload_model=owned-frame-payloads-moved-into-aligned-bitstream-buffer`.
+`streaming-queue`, spool and bitstream-ring fields are historical 2026-06-21/22
+baselines, not current implementation requirements or CLI surface.
 
 Latest 2026-06-23 FFmpeg-aligned arbitrary-entry loop gates reused complete
 4K/240 sources and ran without an external `timeout` wrapper. In this Wayland
