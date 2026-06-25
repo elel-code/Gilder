@@ -1057,8 +1057,17 @@
   `SceneLiteWallpaperPlan -> runtime snapshot -> Vulkanalia dynamic rendering present`
   边界；默认 full-screen smoke 仍为 `frames_presented=2400`、
   `average_present_fps=239.99835565126625`，并报告 `source_label=full-extent-smoke-quad`。
+- [x] 建立 scene-lite sampled image 的 Vulkanalia upload/descriptor 规划边界：
+  新增 `vulkanalia_backend/scene_lite_sampled_image.rs`，runtime snapshot 现在输出
+  `vulkanalia_sampled_image`，覆盖 image sources、RGBA `R8G8B8A8_UNORM` sampled image
+  usage、`transfer-dst -> shader-read-only` layout flow、staging upload、combined-image-sampler
+  descriptor set 数量、sampled-image alpha-blend pipeline label、`cmd_copy_buffer_to_image`/
+  `cmd_bind_sampled_image_descriptor_set`/`cmd_draw_indexed_per_image_quad` 顺序，并保留
+  Vulkan 1.4 `push_descriptor` fast path 策略；当前标记为
+  `sampled-image-command-recording-not-yet-wired`，不误报已经可见渲染。
 - [ ] 接入 scene-lite 原生 Vulkan draw pass 剩余 ops：消费 image/ellipse/text/path ops，
-  建立 sampled image descriptor upload、text atlas/path tessellation、GPU/resource telemetry
+  完成真实 source decode、sampled image allocation/upload、descriptor update、image quad
+  dynamic-rendering command recording、text atlas/path tessellation、GPU/resource telemetry
   和 Wayland smoke。
 - [ ] 设计 Web helper frame/texture handoff：WebKitGTK/浏览器 helper 只作为隔离实现，native Vulkan
   后端通过稳定 helper 协议接收 frame stream 或可导入 texture。
