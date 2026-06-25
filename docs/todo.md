@@ -1058,7 +1058,16 @@
   sampled-image vertex/fragment SPIR-V，实际 pipeline 资源函数会创建 combined-image-sampler
   descriptor set layout、pipeline layout、`PipelineRenderingCreateInfo` graphics pipeline，
   command recording 会绑定 descriptor set、vertex/index buffer 并执行 indexed image quad draw；
-  当前剩余是把 image decode/upload resource lifetime 和 outer scene present loop 接起来。
+  2026-06-25 继续把 image decode/upload resource lifetime 和 outer scene present loop 接到
+  Vulkanalia 主线：`run_scene_lite_sampled_image` 现在可把 scene runtime 的 image geometry
+  直接传给 sampled-image present loop，多 image source 复用 retained sampled image resources，
+  并使用 Vulkan 1.4 push descriptor fast path。
+- [x] 推进 scene-lite mixed draw 到 Vulkanalia 同一 pass：draw-pass 现在识别
+  `mixed-quad-sampled-image-recording-ready`，runtime 可同时导出 solid quad geometry 和
+  sampled image geometry；Vulkanalia command recorder 在一个 dynamic rendering pass 内先绑定
+  solid-quad pipeline/draw，再绑定 sampled-image pipeline/descriptors/draw，并通过
+  `queue_submit2` present。backend contract 已改为 Vulkanalia primary policy 语义，
+  不保留 ash/compat migration 字段。
 - [x] 验证 Vulkanalia direct video 第一阶段 zero-copy present 思路可行：
   `--run-vulkanalia-ready-prefix-video --layer background --target-fps 240` 短 smoke 已覆盖
   H.264 high8、H.265 main8、H.265 main10、AV1 main8、AV1 main10，各 16/16 帧均报告
