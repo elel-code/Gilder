@@ -44,14 +44,15 @@ boundary; GStreamer is the second reference and active demux/parser/audio
 frontend. This is the implementation split target: demux/parser code may remain
 GStreamer-backed, but decode, render, present and audio-clock telemetry must stay
 independently attributable and compressed payload retention must remain bounded
-by the packet queue and bitstream ring. The first concrete code split is
-`src/renderer/native_vulkan/video_runtime.rs`, which now owns the video runtime
-snapshot, memory-route classification and audio-runtime telemetry boundary.
-`src/renderer/native_vulkan/audio_runtime.rs` now owns plan-driven audio runtime
-startup, worker ownership and error retention. The renderer session sends video
-clock samples over a command channel and reads shared telemetry; the audio worker
-owns the GStreamer probe and coalesces queued clock samples so only the latest
-video clock is processed.
+by the packet queue and bitstream ring. The active split is now centered on
+`src/renderer/native_vulkan/demux.rs`, `demux_gst.rs`, `vulkanalia_extract.rs`
+and `vulkanalia_backend/*`: GStreamer supplies parser-normalized packets, while
+Vulkanalia/native Vulkan owns video session setup, decode submission, decoded
+image handoff, render and present. `audio_runtime.rs`, `audio_worker.rs` and
+`audio_telemetry.rs` own the separate audio clock boundary. The renderer session
+sends video clock samples over a command channel and reads shared telemetry; the
+audio worker owns the GStreamer probe and coalesces queued clock samples so only
+the latest video clock is processed.
 
 ## Validation Layers
 
@@ -1112,11 +1113,10 @@ view creation.
   derived from ffplay's queue-serial model: loop-boundary detection and stale
   frame serial rejection must be shared by H.264/H.265/AV1 instead of repeated
   as ad hoc `source_loop_index` comparisons inside codec loops.
-- `src/renderer/native_vulkan/video_frontend.rs` owns provider-neutral decoded
-  video frontend telemetry (`provider`, caps reports, sample timing and memory
-  route signals) and the `NativeVulkanVideoFrontend` provider wrapper. Future
-  FFmpeg/libav, web or native decoded
-  frame frontends can be added without making render/present own `gst::Sample`.
+- The old decoded-frame appsink/importer route has been retired from the active
+  code path. Future provider work should attach at the demux/packet boundary or
+  at an explicit helper texture handoff, not by reintroducing render-owned
+  `gst::Sample` handling.
 - Web wallpaper support should follow the same provider boundary: no `gtk-rs`
   or WebKitGTK dependency should enter native Vulkan core. A web provider may
   be an external process, WPE/CEF/headless engine, or native Wayland surface
@@ -1125,29 +1125,10 @@ view creation.
   Vulkan external image, or an independently composited Wayland surface).
   CPU screenshot/RGBA frames are only an explicit fallback path because they
   reintroduce the same copy cost that the video path is removing.
-- `src/renderer/native_vulkan/video_frontend_gst.rs` owns the current raw
-  decoded GStreamer video appsink provider and pipeline policy. This keeps
-  `gst::Pipeline` lifecycle and appsink polling out of the Vulkan session while
-  preserving the same provider-neutral sample handoff. The decoded appsink
-  defaults to a one-buffer keep-last policy, so transient importer/present delay
-  drops stale decoded samples instead of backpressuring the decoder; set
-  `GILDER_VULKAN_GST_SAMPLE_QUEUE_POLICY=backpressure` only for diagnostics.
-- `src/renderer/native_vulkan/video_import.rs` owns decoded-frame import
-  telemetry and DMABuf contract snapshots. CUDA/VA/DMAbuf Vulkan import
-  implementations may still live beside low-level Vulkan code, but runtime JSON
-  and smoke tests should consume this stable import-status boundary.
 - `src/renderer/native_vulkan/interop.rs` owns the stable external interop
   policy surface for decoded video and future Web/helper texture handoff:
   target memory flow, Vulkan binding migration policy, accepted frame sources and designs
   that must not enter the native Vulkan core.
-- `src/renderer/native_vulkan/video_memory_gst.rs` owns GStreamer decoded sample
-  memory classification (`CUDAMemory`, `DMABuf`, `VAMemory`, system memory).
-  This keeps provider-specific memory naming out of the renderer core while
-  giving both the GStreamer frontend and Vulkan importer the same route signal.
-- `src/renderer/native_vulkan/video_sample_gst.rs` owns GStreamer decoded sample
-  shape extraction for NV12/P010 caps and `GstVideoMeta`. CUDA, VA/DMABuf and
-  system-memory importers should consume this shared frame-shape contract
-  instead of parsing provider caps independently.
 - `src/renderer/native_vulkan/audio_frontend.rs` owns the provider-neutral
   audio clock runtime wrapper and reports `audio_runtime_provider` into video
   runtime telemetry. The current implementation is still the GStreamer AAC

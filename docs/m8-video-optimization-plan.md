@@ -6,8 +6,8 @@ Those paths are no longer buildable or executable validation targets.
 
 Current video work lives in:
 
-- `docs/vulkan-migration.md`: native Wayland/Vulkan architecture, importer
-  direction, Vulkan Video and GStreamer appsink/DMA handoff plan.
+- `docs/vulkan-migration.md`: native Wayland/Vulkan architecture,
+  Vulkanalia/Vulkan Video direct path and replaceable provider boundaries.
 - `docs/video-validation.md`: current codec, native Vulkan Wayland and process
   sampling commands.
 - `docs/todo.md`: remaining implementation and validation checklist.

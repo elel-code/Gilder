@@ -289,7 +289,7 @@
   Vulkanalia retained H.265 路线已完成第一段 capability/resource gate：同一 video+present device 启用 `samplerYcbcrConversion`，并在真实 Wayland `background` 上为 NV12/P010 retained decoded image 创建 conversion/sampler/view/descriptor。剩余仍是实际 dynamic-rendering draw、画面对比和跨 GPU/DMABuf 覆盖，因此该总项不标完成。
 - [ ] 为 H.265/AV1 main-10 direct path 补 10-bit 2-plane 420 连续 decode/present path；当前 session/resource/bitstream gate 已确认 `G10X6_B10X6R10X6_2PLANE_420_UNORM_3PACK16` 可用于 Vulkan Video resource image，GStreamer appsink visible importer 已支持 P010 sampling 和 `P010_10LE` 可见 smoke，direct Vulkan Video Main10 已参数化 P010 plane view/readback/sampling。2026-06-22 真实 Wayland 证据：H.265 Main10 `/tmp/gilder-vulkan-h265-main10-p010-sampling.CGax7L` 与 AV1 Main10 4K `/tmp/gilder-vulkan-av1-p010-sampling-script` 均为 `first-frame-decode-output-sampled-and-readback-completed`，readback format 为 `G10X6_B10X6R10X6_2PLANE_420_UNORM_3PACK16`，RGBA sampling 非零且 unique=256。本轮 H.264 layout 改动后重新回归：H.265 Main10 visible 4K/240 `/tmp/gilder-vulkan-h265-main10-after-h264-general-layout-4k240` 为 `decoded/presented=480/480`、`average_present_fps=239.76366459616204`；AV1 Main10 4K direct first-frame `/tmp/gilder-vulkan-av1-main10-after-h264-general-layout-4k` 为 `first-frame-decode-output-sampled-and-readback-completed`、`first_frame_decode_codec=av1-main-10`、P010 readback `24883200` bytes、RGBA sampling unique `256`。2026-06-23 AV1 Main10 已推进到任意入口连续可见 correctness：`/tmp/gilder-av1-main10-arbitrary-4k240-script-gate` 为 `presented=480`、`decoded=260`、`hidden_decoded=238`、`displayed_handoff=220`、`readback_y_distinct=5`；长一点的 `/tmp/gilder-av1-main10-arbitrary-4k240-performance` 为 `presented=2400`、`average_present_fps=211.028`、`RSS/PSS/USS/Private_Dirty max=108404/74981/61104/30172 KiB`。当前判断：H.265 Main10 连续 correctness 和 4K/240 性能都基本稳定，剩余是真实码流/长时覆盖；AV1 Main10 连续 correctness 已完成，但 4K/240 稳定性能、真实码流覆盖、audio/clock 和 DPB/output 内存压缩仍未完成。H.264 High10 不作为主线目标：ash/Vulkan STD 绑定当前没有 High10 profile 常量，且主流硬件/驱动通常不提供 H.264 10-bit 硬解；后续最多保留 capability probe/日志，不投入完整 direct decode/present 实现。
   2026-06-22 AV1 show-existing 修正后复测 H.265 Main10 visible 4K/240：`/tmp/gilder-vulkan-h265-main10-after-av1-show-existing-fix-4k240` 为 `decoded/presented=480/480`、`average_present_fps=240.157162809936`、P010、`h265_packet_queue_retained_payload_bytes=0`，说明 AV1 parser/show-existing 改动没有打退 Main10 4K/240 基线。该段为历史基线；2026-06-23 后 AV1 Main10 的主缺口已转为性能和覆盖，而不是 reference planner/show-existing handoff 未接通。
-- [ ] 稳定 Intel/AMD VA/DMABuf path：显式选择 render node，解决 `decodebin -> appsink` 的 VAMemory/DMABuf negotiation，并在同 GPU Vulkan device 上验证 `vaExportSurfaceHandle` importer。
+- [ ] 重新评估 Intel/AMD VA/DMABuf 路线：该路线不再作为当前主线 importer 维护；若恢复，必须作为可替换 provider/helper 进入分层架构，并证明优于 Vulkanalia/Vulkan Video direct decode。
 
 ## M5: 合成器适配
 
@@ -569,14 +569,14 @@
   background，CPU decode/fit 后通过 Vulkan staging buffer copy 到 swapchain image；后续替换为
   sampled texture + shader pass，并补静态 idle 策略。
 - [x] 开始接入 video wallpaper type：`--run-video` 消费 `VideoWallpaperPlan` 字段，复用 native
-  Vulkan surface/swapchain 生命周期，当前渲染 poster/clear placeholder 并输出 GStreamer
-  handoff telemetry，不让 GStreamer sink 接管显示。
-- [x] 添加 `native-vulkan-gst-video` appsink 前端：`--run-video` 启动 GStreamer decodebin 到
-  appsink，记录 decoder、caps、memory feature、sample format/size 和 handoff 计数；真实 Wayland
-  已验证 `nvh264dec` + `memory:CUDAMemory` + `NV12` sample 到达 appsink。
-- [x] 将 native Vulkan appsink sample 导入 Vulkan texture 的第一条路径：当前已实现
-  `CUDAMemory -> CUDA copy -> Vulkan external image planes -> NV12 shader sampling`，
-  由 native Vulkan render pass present，不让 GStreamer sink 接管显示。
+  Vulkan surface/swapchain 生命周期；旧 decoded appsink/importer 前端已退休，当前默认进入
+  Vulkanalia ready-prefix direct decode/render/present 路线，不让 GStreamer sink 接管显示。
+- [x] 归档 `native-vulkan-gst-video` decoded appsink 前端：它曾用于验证 decoder/caps/memory
+  feature 和 keep-last handoff，但不再是当前 video 主线。GStreamer 保留为 demux/parser/audio
+  frontend，bitstream packet queue 才是 direct video 的输入边界。
+- [x] 归档 native Vulkan appsink sample importer：历史 NVIDIA CUDA-copy Vulkan importer
+  只保留为对照证据；当前 zero-copy 工作转向 Vulkan Video decoded image handoff、
+  YCbCr sampling/dynamic rendering 和 Wayland present 证据。
 - [x] 修复 4K/240 短视频在 loop 末尾卡顿：native Vulkan GStreamer frontend 改为
   `Paused -> segment seek -> Playing`，收到 `SegmentDone` 后回到 0，避免 EOS 后硬 seek。
   真实 Wayland 20s 验证：`3840x2160@240` 源、`nvh264dec`、`CUDAMemory/NV12`、
@@ -1111,9 +1111,9 @@
   和 Wayland smoke。
 - [ ] 设计 Web helper frame/texture handoff：WebKitGTK/浏览器 helper 只作为隔离实现，native Vulkan
   后端通过稳定 helper 协议接收 frame stream 或可导入 texture。
-- [ ] 继续 video interop：删除 `gpu-video` 与 native-wgpu 依赖路线后，以 GStreamer 作为 video/audio
-  前端验证 GL/EGLImage/DMABuf/CUDAMemory handoff、Vulkan Video、libavcodec + external
-  memory 等方案；GStreamer 不接管显示 sink，native Vulkan 后端负责最终 present，只有同场景
-  优于 retired native-wgpu CUDA copy evidence 才进入默认候选。
+- [ ] 继续 video interop：删除 `gpu-video` 与 native-wgpu 依赖路线后，以 FFmpeg 为第一 codec
+  参考、GStreamer 作为 demux/parser/audio frontend，优先推进 Vulkanalia/Vulkan Video direct
+  decode、decoded-image handoff、YCbCr sampling 和 present 证据；GL/EGLImage/DMABuf/CUDAMemory
+  只能作为可替换 provider/helper 重新证明收益后进入候选。
 - [ ] 将 native Vulkan 后端接入 baseline matrix，覆盖 static/video/web/scene-lite/shader/playlist
   的 active、paused、hidden、fullscreen、session release 和恢复延迟。

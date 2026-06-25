@@ -68,7 +68,9 @@ Vulkan 线的近期优先级：
 2. 统一 renderer backend contract：让 native Vulkan、Web helper 和 headless evaluator 消费同一 render plan。
 3. Shader-first path：fullscreen triangle、time/resolution/property uniform、surface smoke。
 4. Scene-lite render target：把 deterministic scene runtime 输出接入 Vulkan pass。
-5. Video interop 继续作为主攻点：把 GStreamer appsink/DMA handoff 接到 native Vulkan importer。
+5. Video direct 继续作为主攻点：以 FFmpeg 为 codec 语义第一参考，GStreamer 只保留
+   demux/parser/audio frontend，Vulkanalia/Vulkan Video 负责 decode、decoded-image handoff、
+   render 和 present；appsink/DMA importer 只作为可替换实验重新证明收益后再接入。
 
 这些工作互不阻塞。类型 runtime 可以先用 helper/headless fallback 实现，但合并前要同时写清 Vulkan-facing
 contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 manifest 或 daemon 语义。
@@ -744,20 +746,15 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   生命周期并输出 video handoff telemetry；当前只渲染 poster/clear placeholder，不启动 GStreamer
   解码，也不使用 GStreamer sink 接管显示。下一步是 GStreamer appsink/DMABuf/GPU-memory frame
   handoff。
-- `native-vulkan-gst-video` feature 已接入 GStreamer appsink 前端：`--run-video` 会启动
-  `decodebin -> appsink`，只拉取 sample 和记录 caps/memory/decoder evidence，不使用 GStreamer
-  显示 sink。真实 Wayland smoke 已观察到 `nvh264dec`、`video/x-raw(memory:CUDAMemory)`、
-  `NV12` sample 和 appsink handoff active。
-- native Vulkan video 已开始实际 texture import：当前实现了 NVIDIA 机器上的
-  `CUDAMemory -> CUDA copy -> Vulkan external image planes -> NV12 shader sampling` 路径，
-  由 native Vulkan render pass 合成到 swapchain。CUDA 只是一个 importer 实现，不是 video
-  架构边界；AMD/Intel 后续必须补同级的 `DMABuf/VAAPI -> Vulkan external memory` importer，
-  复用同一套 Vulkan Y/UV sampling 和 present。
-- native Vulkan video importer 已补 10-bit/P010 可见采样：GStreamer sample meta 现在区分
-  `NV12` 与 `P010_10LE`，P010 使用
+- `native-vulkan-gst-video` 的 decoded appsink/importer 前端已归档：它曾验证
+  decoder/caps/memory evidence 和 NVIDIA CUDA-copy importer，但不再是 `--run-video`
+  默认路线。当前 `--run-video` 默认进入 Vulkanalia ready-prefix direct decode/render/present。
+- native Vulkan video importer 的旧 CUDA/VA/DMABUF 设计只保留为历史对照。后续若恢复
+  DMABUF/VA、GL/EGLImage 或 libavcodec external-memory handoff，必须作为可替换
+  provider/helper 接入分层架构，并用同场景证据证明优于 Vulkanalia/Vulkan Video direct。
+- native Vulkan direct video 已补 10-bit/P010 可见采样：P010 使用
   `G10X6_B10X6R10X6_2PLANE_420_UNORM_3PACK16` image format，plane view 使用
-  `R16_UNORM` / `R16G16_UNORM`，CUDA external image 导入按 8-bit/16-bit channel
-  分别选择 array format。VA/DMABuf scaffold 同步保留 `DRM_FORMAT_P010`、
+  `R16_UNORM` / `R16G16_UNORM`。历史 importer scaffold 中的 `DRM_FORMAT_P010`、
   `DRM_FORMAT_R16` 和 `DRM_FORMAT_GR1616`，后续 AMD/Intel importer 可复用同一格式模型。
 - `--probe-video` 已加入 native Vulkan CLI，用 `vkGetPhysicalDeviceQueueFamilyProperties2`
   枚举 Vulkan Video decode 扩展和 queue family，不创建 surface、不解码。2026-06-21 在
@@ -1027,9 +1024,9 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   importer scaffold，作为 Intel/AMD VA/DMABuf 路径的基础。当前混合 GPU 机器上 VA decoder
   默认会先探测 NVIDIA DRM 设备并打印 `unsupported drm device by media driver: nvid`；
   指定 Intel render node `/dev/dri/renderD129` 时显式
-  `qtdemux ! h264parse ! vah264dec ! VAMemory ! fakesink` 可谈通，但项目内
-  `decodebin -> appsink` 仍会 not-negotiated。VA/DMABuf 路线后续要改成显式 codec pipeline
-  或补 allocator/render-node 协商；这不是 NVIDIA direct 的主线 blocker。Sunshine 对这里的
+  `qtdemux ! h264parse ! vah264dec ! VAMemory ! fakesink` 可谈通，但项目内历史
+  `decodebin -> appsink` 方案曾出现 not-negotiated。VA/DMABuf 路线若要重新启用，后续
+  应改成显式 codec pipeline 或补 allocator/render-node 协商；这不是 NVIDIA direct 的主线 blocker。Sunshine 对这里的
   直接启发是：不能只看 `memory:DMABuf`/`VAMemory`，还必须把 DRM PRIME descriptor/object、
   modifier plane count 和目标 Vulkan device 的 modifier 支持一起作为 importer gate。
 - 4K/240 测试使用明确的 `3840x2160@240` H.264 源，不再用低清源判断画质。当前真实
@@ -1058,16 +1055,15 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
 - 接入同一 render plan，不新增 manifest 分支。
 - 验证单输出、多输出、resize、output selection、pause/release。
 - 与类型线并行接入 shader、scene-lite 和 Web helper frame handoff。
-- Video interop 不再作为 wgpu 分支实验；GStreamer appsink/DMA handoff 的目标实现是 native
-  Vulkan importer，并用历史 native-wgpu/GStreamer CUDA copy 数值做同场景对照。
+- Video interop 不再作为 wgpu 分支实验；当前目标是 Vulkanalia/Vulkan Video direct
+  decode/render/present，并用历史 native-wgpu/GStreamer CUDA-copy 数值做同场景对照。
 
 ### Phase 4: Vulkan video/Web interop
 
-- 在 `--run-video` lifecycle/telemetry 和 `native-vulkan-gst-video` appsink evidence 基础上，
-  将 importer 明确拆成多个同级实现：NVIDIA `CUDAMemory/CUDA`、AMD/Intel
-  `DMABuf/VAAPI`、可选 `GL/EGLImage`、Vulkan Video 或 libavcodec + external memory。
-  GStreamer 可以继续负责 demux、硬解选择、音频和时钟，但最终 present 必须由 native
-  Vulkan swapchain/render pass 完成。
+- 在 `--run-video` lifecycle/telemetry 和 Vulkanalia direct evidence 基础上，优先推进
+  Vulkan Video decoded-image handoff、YCbCr sampling、dynamic rendering 和 present。GStreamer
+  可以继续负责 demux、parser、音频和时钟；DMABUF/VAAPI、GL/EGLImage 或 libavcodec
+  external memory 只作为可替换 provider/helper 重新证明收益后接入。
 - NVIDIA direct 的下一步是把已验证的 H.265/H.264 `VkVideoSessionKHR`、NV12 video resource
   image、真实 encoded AU、`VIDEO_DECODE_SRC_KHR` bitstream buffer、
   `VkVideoSessionParametersKHR` 和 visible ready-prefix decode/display 扩展成完整持续播放：
