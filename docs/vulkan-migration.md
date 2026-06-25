@@ -104,11 +104,12 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
 - 支持 static image、video、web、scene-lite、shader、playlist 选中子项的统一合成。
 - video 允许 NV12/YUV texture sampling，避免默认转 RGBA 大纹理。
 - shader 和 scene 使用同一套 property/time/uniform 输入。
-- Web runtime 至少能通过 helper 进程输出可导入 texture 或 frame stream；WebKitGTK 可以留在 helper
-  内，但不应污染 daemon/core 的后端抽象。
-- Web helper 初期可以用 GTK-rs/WebKitGTK 承载页面，但 `native-vulkan-renderer` feature 不直接依赖
-  GTK-rs；helper 和 renderer 之间只保留稳定 frame/texture handoff 协议，便于后续替换为 C
-  WebKitGTK、WPE/WebKit 或其他 web runtime。
+- Web runtime 至少能通过 helper 进程输出可导入 texture 或 frame stream；WebKitGTK/WPE/CEF
+  等浏览器实现只能留在 helper 内，不应污染 daemon/core 的后端抽象。
+- Web helper 不默认要求 GTK-rs。若短期使用 WebKitGTK/GTK-rs 承载页面，必须放在隔离
+  helper 进程内，`native-vulkan-renderer` feature 不能直接依赖 GTK-rs；helper 和 renderer
+  之间只保留稳定 frame/texture handoff 协议，便于替换为 C WebKitGTK、WPE/WebKit、
+  CEF/Ozone 或其他 web runtime。
 - 所有动态类型都支持 `pause-dynamic`、fullscreen/hidden/session release、resource telemetry 和
   baseline matrix 预算。
 
@@ -137,7 +138,8 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
 
 ### Phase 2: 类型补全
 
-- Web helper 先可用，允许 GTK/WebKitGTK 作为隔离实现，但通过 helper 协议和 daemon 交互。
+- Web helper 先可用，优先按 WPE/CEF/WebKitGTK 等可替换 provider 设计；任何 GTK/WebKitGTK
+  实现都只能作为隔离 helper，通过 helper 协议和 daemon 交互。
 - Scene-lite 先实现确定性 2D runtime，动画、属性 binding、资源释放必须可测试。
 - Shader runtime 先覆盖 fullscreen triangle / image filter / time uniform 这类高频场景。
 - 类型补全和 Vulkan spike 并行推进；类型合并不等待 Vulkan 后端完整实现，但不能破坏后端无关边界。

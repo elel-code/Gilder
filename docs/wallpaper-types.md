@@ -17,11 +17,11 @@
 | --- | --- | --- | --- | --- | --- |
 | Image | `static-image` | 完整 | 完整 | 复制源图、preview/poster、fit 意图；足够大的光栅图可生成 16:9、21:9/ultrawide 和 9:16 portrait variants；带尺寸 metadata 的超大静态图可生成输出尺寸级运行时缓存。 | 更多编码 variant、真实 Wayland USS/PSS 基线和不同 fit 模式的质量/内存阈值还需要继续优化。 |
 | Video | `video` | 完整 | 完整 | 复制可播放视频，必要时生成 poster，支持 loop、静音/音频意图、max FPS、decoder policy 和运行时证据；历史 native-wgpu 4K/240fps CUDA/Vulkan image path 保留为对照证据，当前实现重心转向 native Vulkan + GStreamer appsink/DMA handoff。 | 需要把完整播放、音频/时钟和 AMD/Intel DMABuf importer 接到 native Vulkan 后端。 |
-| Web | `web` | 部分 | fallback plan | 复制 HTML/CSS/JS 资源，注入兼容 bridge，映射用户属性；renderer 可显示 fallback poster，并按动态壁纸参与 `pause-dynamic` 资源释放。 | Web runtime 需要独立浏览器 helper；WebKitGTK/GTK 可先隔离到 helper 内，sandbox、输入/audio/FPS bridge、权限模型和后端无关 frame/texture handoff 未完成。 |
-| Scene | `scene-lite` | 部分 | first-class plan + static snapshot | 生成 Gilder scene-lite graph，支持 2D image/color/rectangle/ellipse/text/path/group layer、transform、opacity、keyframe/timeline 曲线和属性 binding；daemon 生成 `scene_lite_plans`，GTK 当前把 time=0 snapshot 合成为受控缓存 SVG surface，IPC 数值/布尔属性可影响 snapshot layer，并统计 snapshot/layer 图片资源。 | 原生动画 scene runtime、effect stack、particle system、shader node 和 audio response 未完成；新增 runtime 必须保持后端无关，避免绑定 GTK snapshot 路径。 |
+| Web | `web` | 部分 | fallback plan | 复制 HTML/CSS/JS 资源，注入兼容 bridge，映射用户属性；renderer 可显示 fallback poster，并按动态壁纸参与 `pause-dynamic` 资源释放。 | Web runtime 需要独立浏览器 helper；WPE/CEF/WebKitGTK 等 provider 必须可替换，GTK-rs 不能进入 daemon/core/native Vulkan，sandbox、输入/audio/FPS bridge、权限模型和后端无关 frame/texture handoff 未完成。 |
+| Scene | `scene-lite` | 部分 | first-class plan + native Vulkan WIP | 生成 Gilder scene-lite graph，支持 2D image/color/rectangle/ellipse/text/path/group layer、transform、opacity、keyframe/timeline 曲线和属性 binding；daemon 生成 `scene_lite_plans`，IPC 数值/布尔属性可影响 snapshot layer，并统计 snapshot/layer 图片资源；Vulkanalia 路线已具备 solid/color quad visible present，sampled image 正在接入 decode/upload/descriptor/draw。 | 完整动画 scene runtime、effect stack、particle system、shader node、text/path GPU path 和 audio response 未完成；新增 runtime 必须保持后端无关，避免绑定历史 snapshot 路径。 |
 | Shader / shader effect | `shader`（手写包或明确 WE Shader）/ `scene-lite` fallback（Scene 内 shader） | 部分 | fallback plan | Gilder 包格式可声明一等 `shader` entry，记录 GLSL/WGSL source、time/resolution/mouse/property uniform、max FPS 和 fallback poster；明确 Wallpaper Engine Shader 项目和 playlist shader 子项可转为 `shader` fallback entry；当前 renderer 显示 fallback，并按动态壁纸参与 `pause-dynamic` 资源释放。Scene 内 custom shader/effect graph 仍记录为缺失能力。 | 原生 GPU shader compile/render、uniform 注入、GPU memory telemetry 和 Wayland shader surface smoke 未完成；uniform/schema 不能绑定单一后端。 |
 | Application / executable | 无 | 阻塞 | 阻塞 | 拒绝转换并生成 conversion report。 | 为安全和可移植性，原生可执行壁纸不作为目标能力。 |
-| Playlist / collection | `playlist` / `slideshow` | 部分 | 部分 | 静态图片序列可转为 `slideshow`；Wallpaper Engine playlist/collection 中的 image/video/web/scene 子项可转为一等 `playlist` item 并保留 weight，web 子项注入 bridge，scene 子项降级为独立 `scene-lite` fallback graph；GTK renderer 支持定时切换和非 `tile` fit 的 crossfade；一等 `playlist` entry 可按 first-match 条件或稳定 weighted-random 在 static/video/slideshow/web/scene-lite/shader 子 entry 间选择，支持 item weight、输出、电源、本地时间窗口、本地星期、focused/visible/fullscreen 和 session 条件。 | 媒体/系统信息、更复杂日历选择和更完整 Wallpaper Engine playlist 策略映射仍需补。 |
+| Playlist / collection | `playlist` / `slideshow` | 部分 | 部分 | 静态图片序列可转为 `slideshow`；Wallpaper Engine playlist/collection 中的 image/video/web/scene 子项可转为一等 `playlist` item 并保留 weight，web 子项注入 bridge，scene 子项降级为独立 `scene-lite` fallback graph；一等 `playlist` entry 可按 first-match 条件或稳定 weighted-random 在 static/video/slideshow/web/scene-lite/shader 子 entry 间选择，支持 item weight、输出、电源、本地时间窗口、本地星期、focused/visible/fullscreen 和 session 条件；可见切换/crossfade 由 native Vulkan runtime 接管。 | 媒体/系统信息、更复杂日历选择和更完整 Wallpaper Engine playlist 策略映射仍需补。 |
 
 ## 能力矩阵
 
@@ -30,11 +30,11 @@
 | 静态图片显示 | `static-image` entry | 完整 | Manifest 加载测试、native Vulkan static smoke、fit-mode render plan 测试。 |
 | 视频循环播放 | `video` entry + GStreamer/native Vulkan | 完整 | Codec smoke、native Vulkan Wayland video smoke、video runtime CSV。 |
 | 视频音频意图 | `runtime.allow_audio` + `entry.muted` | 部分 | Converter 测试和 `playbin` flags 测试；PipeWire 采集/输出策略仍是后续工作。 |
-| Slideshow / 普通动态图片 | `slideshow` entry | 完整 | Render plan 测试、GTK 定时切换/crossfade、adaptive、battery、fullscreen、unfocused、hidden 和 session `pause-dynamic` 测试。 |
+| Slideshow / 普通动态图片 | `slideshow` entry | 完整 | Render plan 测试、native Vulkan 定时切换/crossfade、adaptive、battery、fullscreen、unfocused、hidden 和 session `pause-dynamic` 测试。 |
 | Playlist 条件选择 | `playlist` entry | 部分 | Manifest/schema 测试、Wallpaper Engine image/video/web/scene playlist 转换测试、power 条件 render plan 测试、本地时间/星期条件 selection 测试、稳定 weighted-random/weight 测试、battery `pause-dynamic` 静态选择测试；媒体/系统信息和复杂日历策略后续补。 |
 | Web 壁纸资源 | `web` entry | 部分 | Converter 测试、manifest 校验和 fallback render plan 测试。 |
-| Web runtime bridge | `assets/web/gilder-bridge.js` | fallback | 后续 web helper smoke、WebKitGTK/浏览器进程内存预算和属性更新测试。 |
-| Scene fallback/snapshot | `scene-lite` entry display | 部分 | Converter 测试、scene-lite render plan 测试、静态 snapshot SVG cache 测试和 fallback/首图/纯色 GTK 显示路径。 |
+| Web runtime bridge | `assets/web/gilder-bridge.js` | fallback | 后续 web helper smoke、WebKitGTK/WPE/浏览器 helper 内存预算、frame/texture handoff 和属性更新测试。 |
+| Scene fallback/snapshot | `scene-lite` entry display | 部分 | Converter 测试、scene-lite render plan 测试、静态 snapshot SVG cache 测试和 fallback/首图/纯色 native Vulkan 显示路径。 |
 | Scene layer 和 transform | `core::scene_lite` graph | 部分 | Headless scene graph 解析、shape/text/path layer、资源校验和 snapshot evaluator 测试。 |
 | Timeline 动画 | `core::scene_lite` keyframes | 部分 | 确定性 timeline 曲线求值测试；原生 scene surface 和真实 renderer frame budget telemetry 后续补。 |
 | Shader entry | `shader` entry | 部分 | Manifest/schema 测试、Wallpaper Engine Shader 转换测试、fallback render plan 测试和 `pause-dynamic` 释放测试；Shader compile、uniform 注入、GPU memory telemetry 和 Wayland surface smoke 后续补。 |
@@ -73,7 +73,8 @@
 
 - manifest、conversion report、render plan 和 headless evaluator 不引用 GTK、GDK、wgpu、
   ash、GStreamer 等后端具体类型。
-- WebKitGTK 可以作为 Web helper 的内部实现，但不能成为 daemon/core 的架构依赖。
+- WebKitGTK/WPE/CEF 等只能作为 Web helper 的内部 provider，不能成为 daemon/core/native Vulkan
+  的架构依赖。
 - scene-lite 和 shader runtime 的属性、time、resolution、mouse 和资源输入必须可被 helper
   fallback 和 native Vulkan 后端共同消费。
 - 每个动态类型都要接入 `pause-dynamic`、fullscreen/hidden/session release、resource telemetry
