@@ -1075,6 +1075,11 @@
   main10 使用 `G10X6_B10X6R10X6_2PLANE_420_UNORM_3PACK16`。这证明 decode 输出 GPU
   image 直接 YCbCr sampled 到 swapchain 的主线成立；下一步是把 ready-prefix 的每帧
   array-layer 扩展为任意连续码流的 bounded DPB/output ring 和 keep-last present handoff。
+  2026-06-25 release build 复测同一 Vulkanalia decoded-image present 路线：
+  H.264 high8、H.265 main8/main10、AV1 main8/main10 在真实 Wayland `background` 层短
+  smoke 均为 `decoded_image_zero_copy_presented=true`、`presented=4/4`，并实际通过
+  `VK_KHR_present_id2` 提交 `present_ids=[1,2,3,4]`；present-wait/present-wait2 仅作为
+  可用能力 telemetry 记录，当前不在 240fps present 热路径中做 per-frame blocking wait。
 - [x] 将 Vulkanalia decoded-image present handoff 从临时 `Vec` 升级为模块化 bounded
   keep-last queue：新增 `vulkanalia_backend/video_present_handoff.rs`，runtime decode 回调现在
   写入 `NativeVulkanVulkanaliaDecodedPresentHandoff`，flush 时按 display key + decode index
