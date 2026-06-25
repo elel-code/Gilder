@@ -16,9 +16,9 @@
 - bitstream upload 对齐 FFmpeg 的按图像生命周期:保留单个持久映射
   `VIDEO_DECODE_SRC_KHR` buffer，初始为 FFmpeg 风格单 picture 下限，payload 超过当前容量时
   才 grow；不再按 decode window 或 `bitstream_samples` 常驻分配。
-- H.265 streaming 只借用 payload 解析 slice segment offset，随后把 packet payload move 到
-  frame input 并立即上传；不再通过 owned ready-prefix helper 做多余包装。
-- descriptor 路径必须保持 `VK_EXT_descriptor_heap`。H.264/H.265/AV1 smoke 的有效 gate 是
+- H.264/H.265 streaming 从 GStreamer `Buffer` 直接持有 readable mapped payload 到 per-frame
+  decode input，上传后立即释放；不再把 parser payload 复制进 retained `Vec<u8>` window。
+- descriptor 路径必须保持 `VK_EXT_descriptor_heap`。当前 Vulkanalia smoke 的有效 gate 是
   `descriptor_model = VK_EXT_descriptor_heap` 且 `descriptor_sets = 0`。
 
 ## 绿屏根因
@@ -28,7 +28,8 @@
 
 当前处理:
 
-- AV1 retained ready-prefix 仍在 direct 层从 sequence header 修正 extent。
+- AV1 可见 runtime 当前只允许 continuous streaming runtime 方向；该 runtime 未完成前 direct
+  runtime 对 AV1 明确报错。
 - H.264/H.265 streaming 在 `video_present_runtime.rs` 中启动唯一 packet queue 后，从参数集修正
   `max_coded_extent` 和 resource image extent。
 
@@ -43,6 +44,8 @@
 
 - 不保留长 AU payload window。
 - 不为 H.264/H.265 运行额外 top-level session-bind smoke。
+- session-bind `--decode-*-ready-prefix` retained/batch decode 已删除；probe 只保留
+  session/resource/parameter 创建验证。
 - 不用 descriptor set。
 - H.264/H.265 smoke 只读取真实 runtime session 字段，不再依赖顶层 `.session` 兼容字段。
 
@@ -51,6 +54,8 @@
 - `decoded_count == presented_count == requested_playback_frames`
 - `bad_frames == 0`
 - `descriptor_sets == 0`
+- `decode.bitstream_buffer_model == "streaming-persistent-mapped-reused-upload-buffer"`
+- `decode.input_payload_model == "bounded-streaming-packet-queue-per-frame-upload"`
 - `session_h265_ready_prefix_decode == false`
 - `session_bitstream_buffer == false`
 - `frames_len` 只保留 telemetry head/tail，而不是全量帧快照

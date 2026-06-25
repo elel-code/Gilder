@@ -173,23 +173,24 @@ The ready-prefix smoke is a decode/present/resource gate. When
 `--playback-frames` is set and `--decode-prefix` is not set, it now generates and
 decodes a continuous source long enough for that playback window. This keeps the
 first Vulkan Video route comparable with the second GStreamer/appsink route's
-continuous 4K/240 source. Passing an explicit shorter `--decode-prefix` keeps
-the old loop-window diagnostic mode; loop boundaries can visibly jump unless the
-source is authored to be seamless. For full playback validation, H.264/H.265
-direct smokes now use bounded demux/parser streaming queues; the next performance
-gate is decode/present decoupling plus fence/timeline-managed bitstream range
-reuse, not ready-prefix spool.
-The current visible H.264/H.265/AV1 path uses the unified Vulkanalia ready-prefix
-runtime. GStreamer supplies parsed compressed frames/TUs and audio clock samples;
+continuous 4K/240 source. Passing an explicit shorter `--decode-prefix` only
+sets the bootstrap/sample window; full playback validation still requires
+H.264/H.265 to decode `--playback-frames` through bounded demux/parser streaming
+queues. The next performance gate is decode/present decoupling plus
+fence/timeline-managed bitstream range reuse, not retained ready-prefix spool.
+The current visible H.264/H.265 path uses the unified Vulkanalia streaming
+runtime. GStreamer supplies parsed compressed frames and audio clock samples;
 Vulkan Video owns `vkCmdDecodeVideoKHR`, native Vulkan owns sampling/render, and
 Wayland present is driven by the Vulkanalia swapchain runtime. Valid current
 evidence should report non-zero `presented_frame_count`,
-`average_present_fps`, codec-specific DPB/reference telemetry, and the owned
+`average_present_fps`, codec-specific DPB/reference telemetry, and the streaming
 upload model:
-`decode.bitstream_buffer_model=ready-prefix-owned-upload-buffer` plus
-`decode.input_payload_model=owned-frame-payloads-moved-into-aligned-bitstream-buffer`.
-`streaming-queue`, spool and bitstream-ring fields are historical 2026-06-21/22
-baselines, not current implementation requirements or CLI surface.
+`decode.bitstream_buffer_model=streaming-persistent-mapped-reused-upload-buffer`
+plus
+`decode.input_payload_model=bounded-streaming-packet-queue-per-frame-upload`.
+AV1 playback waits on the continuous streaming runtime. Spool, owned payload
+window and fixed bitstream-ring fields are historical
+2026-06-21/22 baselines, not current implementation requirements or CLI surface.
 
 Latest 2026-06-23 FFmpeg-aligned arbitrary-entry loop gates reused complete
 4K/240 sources and ran without an external `timeout` wrapper. In this Wayland
@@ -318,7 +319,7 @@ Wayland script evidence `/tmp/gilder-h264-audio-output-auto-script-60` reports
 `audio_output_mode=auto`, `audio_output_sinks=["autoaudiosink","jackaudiosink"]`,
 `audio_output_sink_count=2`, `audio_decoders=["avdec_aac"]`,
 `audio_video_decoders=[]`, and `audio_reached_clocked_playback=true`. The
-H.264/H.265/AV1 ready-prefix smokes now expose `--muted/--unmuted` and
+H.264/H.265 streaming smokes now expose `--muted/--unmuted` and
 `--audio-output`, record `audio_output_expected_mode`, and fail the audio gate
 when an `auto` run does not report an output sink. Runtime snapshot policy also
 distinguishes muted plans (`clock-only`) from unmuted plans (`auto`). The
@@ -568,8 +569,9 @@ were `239.95496406116047` and `240.01269375010384`.
 Follow-up H.264 copy-cost work on 2026-06-23 made the
 `GILDER_H264_DISPLAY_HANDOFF=direct-sampled-dpb-output` path use a persistent
 direct-DPB present worker instead of doing acquire/record/submit/present on the
-decode loop. The direct path now prebinds one sampled descriptor set per decoded
-DPB layer, keeps descriptor updates at zero during playback, uses a 2-frame clear
+decode loop. The descriptor-set prebind experiment from that stage is retired;
+current Vulkanalia present validation must report `VK_EXT_descriptor_heap` with
+`descriptor_sets=0`. The historical worker also used a 2-frame clear
 present preroll to remove FIFO startup cost from measured decode/present
 throughput, and requests two present queues by default when the selected present
 queue family exposes them. Real Wayland 4K/240 gates passed with no display ring:
@@ -1086,7 +1088,7 @@ view creation.
 - The retained H.265 image now also has Vulkanalia graphics sampling resources.
   `src/renderer/native_vulkan/vulkanalia_backend/render_present.rs` creates a
   `VkSamplerYcbcrConversion`, immutable YCbCr sampler, converted 2D image view
-  and combined-image-sampler descriptor set for the retained decoded image after
+  and descriptor-heap combined-image-sampler entries for the retained decoded image after
   the video+present device enables `samplerYcbcrConversion`. Real Wayland
   `background` smoke confirms this for Main8/NV12 and Main10/P010 with
   `retained_submitted=240`, `decoded_image_present_sampler.route=
@@ -1275,11 +1277,11 @@ Current 2026-06-22 Main10/P010 direct Vulkan evidence:
   video-wallpaper playback contract:
   long-duration process sampling, broader real-world Main10 streams, continuous
   demux/loop, audio and clock integration still need separate evidence.
-  Renderer descriptor-set expansion was regression-tested with
+  The retired renderer descriptor-set expansion experiment was regression-tested with
   `/tmp/gilder-vulkan-h265-main10-renderer-regression-4k240`: `decoded=480`,
   `presented=480`, `average_present_fps=240.2474194054933`, same P010 picture
   format.
-- AV1 visible ready-prefix:
+- Historical AV1 visible decode evidence:
   `/tmp/gilder-vulkan-av1-main10-dpb9-regression-4k240`,
   `requested_codec=av1-main-10`,
   `picture_format=G10X6_B10X6R10X6_2PLANE_420_UNORM_3PACK16`,
@@ -1289,7 +1291,8 @@ Current 2026-06-22 Main10/P010 direct Vulkan evidence:
   `av1_packet_queue_retained_payload_bytes=0`,
   `bitstream_buffer_strategy=fixed-capacity-persistent-mapped-ring`,
   `video_resource_memory_bytes=225312768`, `session_memory_bytes=14143488`.
-  Main8 was rechecked with 10 seconds of 4K/240 playback at
+  Use this only as historical evidence while implementing the AV1 continuous
+  streaming runtime. Main8 was rechecked with 10 seconds of 4K/240 playback at
   `/tmp/gilder-vulkan-av1-main8-observe-10s-dpb9-v3`: `decoded=1305`,
   `handoff=1095`, `presented=2400`, `average_present_fps=239.6313194270436`,
   `stream_dpb_slots=9`, all displayed layers `0..8`, and
@@ -1329,8 +1332,9 @@ Current 2026-06-22 Main10/P010 direct Vulkan evidence:
   Direct sampled DPB output removes the extra 25.6MB display ring but regresses
   to about 212fps on the same host, so H.264 240fps work should stay focused on
   decode/display/present scheduling rather than packet queue retention.
-  The latest H.264 display-ring optimization prebinds one descriptor set per
-  display slot. Real Wayland evidence
+  The old H.264 display-ring descriptor-set prebind optimization is retired;
+  current validation requires descriptor heap with zero descriptor sets. Historical
+  Real Wayland evidence
   `/tmp/gilder-vulkan-h264-prebound-descriptor-4k240-perf` shows
   `decoded=1200`, `presented=1200`, `average_present_fps=233.90643962520952`,
   `avg_descriptor_update_us=0`, and process sampling
