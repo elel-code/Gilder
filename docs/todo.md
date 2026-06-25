@@ -1065,6 +1065,16 @@
   `cmd_bind_sampled_image_descriptor_set`/`cmd_draw_indexed_per_image_quad` 顺序，并保留
   Vulkan 1.4 `push_descriptor` fast path 策略；当前标记为
   `sampled-image-command-recording-not-yet-wired`，不误报已经可见渲染。
+- [x] 验证 Vulkanalia direct video 第一阶段 zero-copy present 思路可行：
+  `--run-vulkanalia-ready-prefix-video --layer background --target-fps 240` 短 smoke 已覆盖
+  H.264 high8、H.265 main8、H.265 main10、AV1 main8、AV1 main10，各 16/16 帧均报告
+  `present_backend=vulkanalia-decoded-image-dynamic-rendering-present`、
+  `decoded_image_zero_copy_presented=true`、`all_zero_copy_presented=true`、
+  `wait_idle_after_present=false`、`uses_submit2=true`、`uses_dynamic_rendering=true`；
+  resource image usage 为 `sampled + video-decode-dst + video-decode-dpb`，H.265/AV1
+  main10 使用 `G10X6_B10X6R10X6_2PLANE_420_UNORM_3PACK16`。这证明 decode 输出 GPU
+  image 直接 YCbCr sampled 到 swapchain 的主线成立；下一步是把 ready-prefix 的每帧
+  array-layer 扩展为任意连续码流的 bounded DPB/output ring 和 keep-last present handoff。
 - [ ] 接入 scene-lite 原生 Vulkan draw pass 剩余 ops：消费 image/ellipse/text/path ops，
   完成真实 source decode、sampled image allocation/upload、descriptor update、image quad
   dynamic-rendering command recording、text atlas/path tessellation、GPU/resource telemetry
