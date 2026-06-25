@@ -93,8 +93,8 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
 - `RenderBackend`：消费 render plan，创建/更新/释放每个输出的 runtime。
 - `TextureSource`：静态图、video frame、Web helper frame、scene render target、shader output。
 - `DynamicRuntime`：统一 pause/resume/throttle/release/resource snapshot。
-- `GpuInterop`：后端内部能力，不向 manifest 或 daemon 泄漏；当前由 ash/native Vulkan、
-  Vulkan Video、GStreamer DMA/CUDA/VAAPI handoff 实现。
+- `GpuInterop`：后端内部能力，不向 manifest 或 daemon 泄漏；当前由 native Vulkan、
+  Vulkan Video、GStreamer DMA/CUDA/VAAPI handoff 实现；旧 ash 路线只保留为历史证据。
 
 这些名字不是立即要落地的 API，而是后续重构时的边界检查标准。
 
@@ -714,10 +714,10 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   8s 采样 `Private_Dirty max=68928 KiB`、平均 CPU `26.80%`、平均 render
   `240.09fps`。它是连续 GStreamer 解码流，不会像 ready-prefix smoke 一样每个窗口强制
   `AU239 -> AU0` reset，因此不能用 ready-prefix 的可见 loop boundary 直接对比平滑度。
-- GTK H.264 direct sink 仍作为守卫基线，但不是内存最优对照：`/tmp/gilder-wayland-video.D6hbCj`
+- GTK H.264 direct sink 只作为历史守卫基线，不再是当前实现路线：`/tmp/gilder-wayland-video.D6hbCj`
   的 active phase 为 `nvh264dec`、`NV12`、`memory:CUDAMemory`、`sink-gpu-memory-caps`，
   `Private_Dirty max=114412 KiB`、平均 CPU `35.99%`、NVIDIA 进程显存 `448 MiB`。
-  因此后续判断 native Vulkan 是否值得默认切换，应优先和 native-wgpu H.264 GPU-memory
+  因此后续判断 native Vulkan 的性能/内存，应优先和当前 Vulkanalia direct/gst-dma
   continuous path 同场景对比，而不是和 GTK sink 或 ready-prefix loop 视觉结果混在一起。
 - `--run-clear` 已接入 logical device、swapchain、command buffer、semaphore/fence 和 clear present
   loop；同场景 `--duration 3 --target-fps 240` 跑到 720 frames，平均 239.996fps，swapchain 为
@@ -778,8 +778,8 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
 - H.264/H.265/AV1 的 direct 解码主线已收敛到 Vulkanalia-owned submit helpers：
   GStreamer 只提供 demux/parser/clock/audio frontend，FFmpeg 作为 codec/DPB/submit order
   的第一参考，Vulkanalia backend 负责 `VideoBeginCodingInfoKHR`、`VideoDecodeInfoKHR`、
-  `CmdPipelineBarrier2` 和 `QueueSubmit2` 形状。旧 ash debug readback/offscreen sampling
-  脚本已经删除，避免与当前 visible/direct 路线并行维护。
+  `CmdPipelineBarrier2` 和 `QueueSubmit2` 形状。旧 ash 依赖、兼容 runtime 和 debug
+  readback/offscreen sampling 脚本已经删除，避免与当前 visible/direct 路线并行维护。
 - `native-vulkan-gst-video` 已补 `GstVAMemory -> vaExportSurfaceHandle(DRM PRIME) -> Vulkan`
   importer scaffold，作为 Intel/AMD VA/DMABuf 路径的基础。当前混合 GPU 机器上 VA decoder
   默认会先探测 NVIDIA DRM 设备并打印 `unsupported drm device by media driver: nvid`；

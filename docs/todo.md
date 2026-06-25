@@ -849,10 +849,10 @@
   `BitstreamNativeDecode`，将 `gst-dma`/provider 解码路线定义为
   `DecodedFrameFrontend`，并要求 zero-copy 声明必须标注 bitstream upload、decoded-frame
   handoff、import、render 或 compositor present 的具体作用域。
-- [x] 将 `vulkanalia` 提升为 native Vulkan 主迁移面：`native-vulkan-renderer`
-  默认编译 Vulkanalia probe/plan，`ash` 仅作为当前可工作的兼容 baseline；后续按
+- [x] 将 `vulkanalia` 提升为 native Vulkan 主线：`native-vulkan-renderer`
+  已移除 `ash` 依赖和旧兼容 runtime，Vulkanalia probe/plan/session/present 成为当前
   instance/device、Wayland WSI、swapchain/present、Vulkan Video format/session/submit
-  和 external-memory 边界逐步迁移。绑定选择本身不是 zero-copy 证据，zero-copy 仍必须由
+  和 external-memory 边界。绑定选择本身不是 zero-copy 证据，zero-copy 仍必须由
   同设备 extension/capability/import telemetry 证明。
 - [x] 将 Vulkanalia video-present session gate 从一次性 probe 推进到 retained runtime
   资源所有权：`video_present_runtime.rs` 持有 Wayland host、Vulkan 1.4 instance、surface、
@@ -1072,7 +1072,7 @@
   `decoded_image_zero_copy_presented=true`、`all_zero_copy_presented=true`、`presented=4/4`、
   `present_handoff.capacity_frames=16`、`enqueued=4`、`drained=4`、`dropped=0`、
   `keep_last_overwrite_enabled=true`。这为任意连续码流的 decode/present 线程解耦提供
-  Vulkanalia-owned handoff，不再在旧 ash direct 逻辑里扩展同类路径。
+  Vulkanalia-owned handoff，不再扩展已退役的 direct 兼容逻辑。
 - [ ] 接入 scene-lite 原生 Vulkan draw pass 剩余 ops：消费 image/ellipse/text/path ops，
   完成真实 source decode、sampled image allocation/upload、descriptor update、image quad
   dynamic-rendering command recording、text atlas/path tessellation、GPU/resource telemetry

@@ -1055,14 +1055,13 @@ view creation.
   This route may claim zero-copy only after caps, memory type and importer
   telemetry confirm a DMABuf/DRM-PRIME Vulkan import contract; hardware decode,
   GPU caps or `CUDAMemory`/`VAMemory` labels alone are not sufficient.
-- The current native Vulkan runtime still has `ash` compatibility code, but
-  `vulkanalia` is now the primary migration surface inside
-  `native-vulkan-renderer`. The gates are still incremental: Vulkan 1.4
-  instance/device capability probing, Wayland/swapchain parity, Vulkan Video
-  H.264/H.265/AV1 profile+format parity, session/resource migration, one direct
-  H.265 submit path, then present/import parity. Binding choice is not itself
-  zero-copy evidence; zero-copy still requires extension/capability/import
-  telemetry on the selected Vulkan device.
+- The native Vulkan runtime has removed the old `ash` compatibility code.
+  `vulkanalia` is now the primary path inside `native-vulkan-renderer`: Vulkan
+  1.4 instance/device capability probing, Wayland/swapchain ownership, Vulkan
+  Video H.264/H.265/AV1 profile+format/session/submit work, direct-video
+  runtime and present/import telemetry all route through the split Vulkanalia
+  backend. Binding choice is not itself zero-copy evidence; zero-copy still
+  requires extension/capability/import telemetry on the selected Vulkan device.
 - Native wallpaper-visible Vulkanalia validation must use `background` or
   `bottom` layer-shell surfaces. `top`/`overlay` remain foreground debug only and
   should not be cited as wallpaper smoke evidence. The current
