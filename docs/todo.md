@@ -1049,8 +1049,17 @@
   变为全屏覆盖。真实 Wayland `background` smoke：`--duration 30 --target-fps 240`
   为 `frames_presented=7197`、`average_present_fps=239.89657711565496`、
   `dynamic_rendering_enabled=true`、`wait_idle_after_present=false`。
-- [ ] 接入 scene-lite 原生 Vulkan draw pass：消费 draw-plan 中的 image/color/shape/text/path ops，
-  建立 GPU/resource telemetry 和 Wayland smoke。
+- [x] 将 scene-lite runtime draw-plan 的 solid/color quad payload 接到 Vulkanalia visible
+  present 输入：`scene_lite_present.rs` 现在接受 retained vertex/index geometry input，
+  `NativeVulkanSceneLiteRuntimeSnapshot::vulkanalia_solid_quad_geometry_input()` 可把
+  `draw_pass_quad_vertices`/`draw_pass_quad_indices` 直接转换为 Vulkanalia-owned geometry，
+  新增 `native_vulkan/scene_lite_present_runtime.rs::run_scene_lite` 作为外层
+  `SceneLiteWallpaperPlan -> runtime snapshot -> Vulkanalia dynamic rendering present`
+  边界；默认 full-screen smoke 仍为 `frames_presented=2400`、
+  `average_present_fps=239.99835565126625`，并报告 `source_label=full-extent-smoke-quad`。
+- [ ] 接入 scene-lite 原生 Vulkan draw pass 剩余 ops：消费 image/ellipse/text/path ops，
+  建立 sampled image descriptor upload、text atlas/path tessellation、GPU/resource telemetry
+  和 Wayland smoke。
 - [ ] 设计 Web helper frame/texture handoff：WebKitGTK/浏览器 helper 只作为隔离实现，native Vulkan
   后端通过稳定 helper 协议接收 frame stream 或可导入 texture。
 - [ ] 继续 video interop：删除 `gpu-video` 与 native-wgpu 依赖路线后，以 GStreamer 作为 video/audio
