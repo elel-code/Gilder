@@ -174,7 +174,6 @@ scripts/native-vulkan-h265-main10-bitstream-smoke.sh --no-build
 env WAYLAND_DISPLAY=wayland-1 scripts/native-vulkan-h264-visible-video-smoke.sh --no-build --output-name HDMI-A-1 --target-fps 240 --duration 2
 env WAYLAND_DISPLAY=wayland-1 scripts/native-vulkan-av1-visible-video-smoke.sh --no-build --output-name HDMI-A-1 --target-fps 60 --duration 3
 env WAYLAND_DISPLAY=wayland-1 scripts/native-vulkan-h265-main10-visible-video-smoke.sh --no-build --output-name HDMI-A-1 --target-fps 60 --duration 3
-scripts/native-vulkan-h265-first-frame-video-smoke.sh --output-name HDMI-A-1
 scripts/native-vulkan-surface-video-queue-smoke.sh --output-name HDMI-A-1
 ```
 
