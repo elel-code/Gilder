@@ -1049,6 +1049,11 @@
   变为全屏覆盖。真实 Wayland `background` smoke：`--duration 30 --target-fps 240`
   为 `frames_presented=7197`、`average_present_fps=239.89657711565496`、
   `dynamic_rendering_enabled=true`、`wait_idle_after_present=false`。
+  2026-06-25 同一路线补上共用 `VK_KHR_present_id2` timing telemetry：
+  `--duration 1 --target-fps 60` 真实 Wayland `background` smoke 为
+  `frames_presented=60`、`average_present_fps=59.996663405558024`、
+  `present_ids=[1..60]`、`uses_present_id=true`、`uses_present_id2=true`、
+  `present_wait_available=true`、`present_wait2_available=true`。
 - [x] 将 scene-lite runtime draw-plan 的 solid/color quad payload 接到 Vulkanalia visible
   present 输入：`scene_lite_present.rs` 现在接受 retained vertex/index geometry input，
   `NativeVulkanSceneLiteRuntimeSnapshot::vulkanalia_solid_quad_geometry_input()` 可把
