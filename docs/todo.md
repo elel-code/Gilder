@@ -858,6 +858,10 @@
   video device selection 和 swapchain/present selection 复用同一份
   `NativeVulkanVulkanaliaCoreFeatureSnapshot`，后续 timeline semaphore、sync2、
   dynamic rendering、push descriptor、maintenance5/6 等迁移方向不再靠旧 ash 路径定位。
+  `vkCreateDevice` 侧也已收敛：video decode device、present/swapchain device 和
+  single video+present device 不再各自拼旧式 sync2/dynamic-rendering feature struct，而是按同一份
+  Vulkan 1.2/1.3/1.4 core feature selection 启用 timeline semaphore、sync2、dynamic rendering、
+  Vulkan 1.4 push descriptor 和 maintenance5/6。
 - [x] 将 Vulkanalia video-present session gate 从一次性 probe 推进到 retained runtime
   资源所有权：`video_present_runtime.rs` 持有 Wayland host、Vulkan 1.4 instance、surface、
   单一 video+present logical device、swapchain、`VkVideoSessionKHR`、session memory 和
