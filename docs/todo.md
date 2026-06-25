@@ -1075,6 +1075,16 @@
   main10 使用 `G10X6_B10X6R10X6_2PLANE_420_UNORM_3PACK16`。这证明 decode 输出 GPU
   image 直接 YCbCr sampled 到 swapchain 的主线成立；下一步是把 ready-prefix 的每帧
   array-layer 扩展为任意连续码流的 bounded DPB/output ring 和 keep-last present handoff。
+- [x] 将 Vulkanalia decoded-image present handoff 从临时 `Vec` 升级为模块化 bounded
+  keep-last queue：新增 `vulkanalia_backend/video_present_handoff.rs`，runtime decode 回调现在
+  写入 `NativeVulkanVulkanaliaDecodedPresentHandoff`，flush 时按 display key + decode index
+  drain，sequence JSON 暴露 `present_handoff` telemetry（capacity/enqueued/drained/dropped/
+  peak_depth/drop_policy/zero_copy_scope）。H.265 main10 真实 Wayland `background` 短 smoke：
+  `--decode-h265-ready-prefix 4 --playback-frames 4 --target-fps 240` 报告
+  `decoded_image_zero_copy_presented=true`、`all_zero_copy_presented=true`、`presented=4/4`、
+  `present_handoff.capacity_frames=16`、`enqueued=4`、`drained=4`、`dropped=0`、
+  `keep_last_overwrite_enabled=true`。这为任意连续码流的 decode/present 线程解耦提供
+  Vulkanalia-owned handoff，不再在旧 ash direct 逻辑里扩展同类路径。
 - [ ] 接入 scene-lite 原生 Vulkan draw pass 剩余 ops：消费 image/ellipse/text/path ops，
   完成真实 source decode、sampled image allocation/upload、descriptor update、image quad
   dynamic-rendering command recording、text atlas/path tessellation、GPU/resource telemetry
