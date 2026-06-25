@@ -1062,6 +1062,9 @@ view creation.
   runtime and present/import telemetry all route through the split Vulkanalia
   backend. Binding choice is not itself zero-copy evidence; zero-copy still
   requires extension/capability/import telemetry on the selected Vulkan device.
+  Core feature probing is centralized in `vulkanalia_backend/features.rs`:
+  Vulkan 1.2/1.3/1.4 feature/property snapshots now drive device probe,
+  video-device feature selection and swapchain/present feature selection.
 - Native wallpaper-visible Vulkanalia validation must use `background` or
   `bottom` layer-shell surfaces. `top`/`overlay` remain foreground debug only and
   should not be cited as wallpaper smoke evidence. The current

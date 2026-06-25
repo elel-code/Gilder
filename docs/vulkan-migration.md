@@ -780,6 +780,11 @@ contract；Vulkan spike 可以先支持少量类型，但不能引入第二套 m
   的第一参考，Vulkanalia backend 负责 `VideoBeginCodingInfoKHR`、`VideoDecodeInfoKHR`、
   `CmdPipelineBarrier2` 和 `QueueSubmit2` 形状。旧 ash 依赖、兼容 runtime 和 debug
   readback/offscreen sampling 脚本已经删除，避免与当前 visible/direct 路线并行维护。
+  Vulkanalia backend 现在集中查询 Vulkan 1.2/1.3/1.4 core feature/property：
+  `timelineSemaphore`、`synchronization2`、`dynamicRendering`、`dynamicRenderingLocalRead`、
+  `pushDescriptor`、`maintenance5/6` 和 Vulkan 1.4 descriptor/property telemetry 都从
+  `features.rs` 输出，device probe、video device 和 swapchain/present 不再各自维护重复
+  feature query。
 - `native-vulkan-gst-video` 已补 `GstVAMemory -> vaExportSurfaceHandle(DRM PRIME) -> Vulkan`
   importer scaffold，作为 Intel/AMD VA/DMABuf 路径的基础。当前混合 GPU 机器上 VA decoder
   默认会先探测 NVIDIA DRM 设备并打印 `unsupported drm device by media driver: nvid`；
