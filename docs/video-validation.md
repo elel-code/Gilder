@@ -160,17 +160,9 @@ Useful variants:
 ```sh
 scripts/native-vulkan-h265-ready-prefix-video-smoke.sh --no-build --source /tmp/loop-h265.mp4 --output-name HDMI-A-1
 scripts/native-vulkan-h265-ready-prefix-video-smoke.sh --no-build --output-name HDMI-A-1 --decode-prefix 240 --playback-frames 4800
-scripts/native-vulkan-h264-bitstream-smoke.sh --no-build
-env WAYLAND_DISPLAY=wayland-1 scripts/native-vulkan-h264-bitstream-smoke.sh --no-build --width 3840 --height 2160 --rate 240 --level 5.2 --samples 8
-env WAYLAND_DISPLAY=wayland-1 scripts/native-vulkan-h264-first-frame-smoke.sh --no-build --width 3840 --height 2160 --rate 240 --level 5.2 --samples 8
-env WAYLAND_DISPLAY=wayland-1 scripts/native-vulkan-h264-idr-prefix-smoke.sh --no-build --width 3840 --height 2160 --rate 240 --level 5.2 --decode-prefix 8 --samples 8
-env WAYLAND_DISPLAY=wayland-1 scripts/native-vulkan-h264-ready-prefix-smoke.sh --no-build --width 3840 --height 2160 --rate 240 --level 5.2 --decode-prefix 8 --samples 8
 env WAYLAND_DISPLAY=wayland-1 scripts/native-vulkan-h264-ready-prefix-video-smoke.sh --no-build --output-name HDMI-A-1 --decode-prefix 240 --playback-frames 240 --refs 2
 env WAYLAND_DISPLAY=wayland-1 scripts/native-vulkan-h264-ready-prefix-video-smoke.sh --no-build --output-name HDMI-A-1 --width 1280 --height 720 --target-fps 60 --level 4.2 --refs 2 --bframes 2 --decode-prefix 180 --playback-frames 180
 env WAYLAND_DISPLAY=wayland-1 scripts/native-vulkan-h265-ready-prefix-video-smoke.sh --no-build --output-name HDMI-A-1 --decode-prefix 240 --playback-frames 240
-scripts/native-vulkan-av1-bitstream-smoke.sh --no-build
-scripts/native-vulkan-av1-bitstream-smoke.sh --no-build --bit-depth 10
-scripts/native-vulkan-h265-main10-bitstream-smoke.sh --no-build
 env WAYLAND_DISPLAY=wayland-1 scripts/native-vulkan-h264-visible-video-smoke.sh --no-build --output-name HDMI-A-1 --target-fps 240 --duration 2
 env WAYLAND_DISPLAY=wayland-1 scripts/native-vulkan-av1-visible-video-smoke.sh --no-build --output-name HDMI-A-1 --target-fps 60 --duration 3
 env WAYLAND_DISPLAY=wayland-1 scripts/native-vulkan-h265-main10-visible-video-smoke.sh --no-build --output-name HDMI-A-1 --target-fps 60 --duration 3
@@ -1006,13 +998,11 @@ ready-prefix visible smoke now covers IPPP P-frame reference tracking and real
 Wayland presentation. The remaining H.264 direct gates are B/reference-list
 features, arbitrary continuous GOP supply, audio/clock integration and stable
 240fps pacing.
-AV1 verifies the next codec front-end stage: demux/parser/appsink produces AV1
-temporal units, the native parser extracts sequence-header and first-frame STD
-fields, Vulkan accepts the resulting `StdVideoAV1SequenceHeader`, and the first
-shown key frame is submitted through `vkCmdDecodeVideoKHR`. The AV1 smoke now
-defaults to `--decode-first-frame`, allocates video resource images, and requires
-non-zero decode-output readback. The 2026-06-22 readback fix makes the output
-layout format-aware instead of hard-coding NV12: Main8 reports
+AV1 verifies the Vulkanalia codec front-end stage: demux/parser produces AV1
+temporal units, the native parser extracts sequence-header and frame STD fields,
+and Vulkanalia submit helpers own `vkCmdDecodeVideoKHR` command recording. The
+2026-06-22 readback work made the old debug output layout format-aware instead
+of hard-coding NV12: Main8 reports
 `G8_B8R8_2PLANE_420_UNORM`, while Main10 reports
 `G10X6_B10X6R10X6_2PLANE_420_UNORM_3PACK16` with P010-sized Y/UV planes.
 Current real `WAYLAND_DISPLAY=wayland-1` decode/readback evidence:
@@ -1198,9 +1188,8 @@ view creation.
 - Historical native-wgpu and GTK numbers may be used as comparison baselines,
   but those backends are no longer buildable paths.
 
-After the 2026-06-24 `demux_gst.rs` provider split, a real
-`--probe-video-session --extract-bitstream` check on the repo-local H.265
-Main10 3840x2160@240 source reported `samples=4`,
+After the 2026-06-24 `demux_gst.rs` provider split, the repo-local H.265
+Main10 3840x2160@240 source still reports `samples=4`,
 `h265_decode_ready_prefix_count=4`, `stream_format=byte-stream`,
 `alignment=au`, `mapped_write_source=extracted-encoded-video-unit`, and
 `picture_format=G10X6_B10X6R10X6_2PLANE_420_UNORM_3PACK16`. This verifies that
