@@ -1068,6 +1068,8 @@ view creation.
   Device creation now consumes the same core feature selection for Vulkan
   1.2/1.3/1.4 feature chains, so validation JSON should show both selected
   capabilities and the device path that can actually use them.
+  Scene-lite sampled-image present also reports a descriptor strategy snapshot
+  driven by the same Vulkan 1.4 push_descriptor property telemetry.
 - Native wallpaper-visible Vulkanalia validation must use `background` or
   `bottom` layer-shell surfaces. `top`/`overlay` remain foreground debug only and
   should not be cited as wallpaper smoke evidence. The current

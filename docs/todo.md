@@ -862,6 +862,9 @@
   single video+present device 不再各自拼旧式 sync2/dynamic-rendering feature struct，而是按同一份
   Vulkan 1.2/1.3/1.4 core feature selection 启用 timeline semaphore、sync2、dynamic rendering、
   Vulkan 1.4 push descriptor 和 maintenance5/6。
+  scene-lite sampled-image visible present 也开始输出 descriptor strategy telemetry，明确
+  `push_descriptor` 可用性、`max_push_descriptors` 和当前仍走 descriptor-set 稳定路径的原因，
+  为后续 scene 完整类型和 descriptor fast path 提供 Vulkan 1.4 依据。
 - [x] 将 Vulkanalia video-present session gate 从一次性 probe 推进到 retained runtime
   资源所有权：`video_present_runtime.rs` 持有 Wayland host、Vulkan 1.4 instance、surface、
   单一 video+present logical device、swapchain、`VkVideoSessionKHR`、session memory 和
