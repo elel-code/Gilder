@@ -1038,7 +1038,17 @@
   后端现在可创建 `PipelineRenderingCreateInfo` dynamic-rendering graphics pipeline、scene-space
   pixel extent push constant、solid-quad vertex/color attributes 和 alpha blend；命令录制函数
   绑定 vertex/index buffer，执行 `cmd_begin_rendering`、`cmd_draw_indexed` 和
-  sync2 present layout barrier。下一步仍需要把 helper 接到 Wayland scene-lite runtime smoke。
+  sync2 present layout barrier。
+- [x] 将 scene-lite solid quad helper 接到真实 Vulkanalia Wayland visible present 入口：
+  新增 `vulkanalia_backend/scene_lite_present.rs` 和
+  `--run-vulkanalia-scene-lite-solid-quad`，present device 现在启用 `dynamicRendering`
+  feature，创建 swapchain image views、retained vertex/index buffers、dynamic-rendering
+  solid quad pipeline，并用 frame-slot semaphore/fence + `queue_submit2` 循环 present；
+  该路径不再依赖旧 `ash` render pass，也没有增加 `native_vulkan.rs` 体积。vertex
+  shader 已修正为真正的 scene-space pixel extent -> NDC 映射，并把 solid quad
+  变为全屏覆盖。真实 Wayland `background` smoke：`--duration 30 --target-fps 240`
+  为 `frames_presented=7197`、`average_present_fps=239.89657711565496`、
+  `dynamic_rendering_enabled=true`、`wait_idle_after_present=false`。
 - [ ] 接入 scene-lite 原生 Vulkan draw pass：消费 draw-plan 中的 image/color/shape/text/path ops，
   建立 GPU/resource telemetry 和 Wayland smoke。
 - [ ] 设计 Web helper frame/texture handoff：WebKitGTK/浏览器 helper 只作为隔离实现，native Vulkan
