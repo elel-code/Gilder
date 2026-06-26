@@ -17,8 +17,8 @@
   `slices_buf` 语义的持久映射 `VIDEO_DECODE_SRC_KHR` buffer，提交后由该 slot/fence 生命周期
   保活；复用 exec slot 前才等待 fence 并复用或替换该 slot buffer。不再保留单个共享 upload
   buffer、分槽 stride 或全局 grow buffer。
-- H.264/H.265 streaming 从 GStreamer `Buffer` 直接持有 readable mapped payload 到 per-frame
-  decode input，上传后立即释放；不再把 parser payload 复制进 retained `Vec<u8>` window。
+- H.264/H.265 streaming 从 FFmpeg `AVPacket` 直接借用 payload 到 per-frame decode
+  input，上传后立即释放；不再把 parser payload 复制进 retained `Vec<u8>` window。
 - descriptor 路径必须保持 `VK_EXT_descriptor_heap`。当前 Vulkanalia smoke 的有效 gate 是
   `descriptor_model = VK_EXT_descriptor_heap` 且 `descriptor_sets = 0`。
 
@@ -90,7 +90,7 @@
 ```bash
 env VK_LOADER_LAYERS_ENABLE='*validation*' \
   VK_LAYER_KHRONOS_validation_LOG_FILENAME=stdout \
-  cargo run --features native-vulkan-gst-video --bin gilder-native-vulkan -- \
+  cargo run --features native-vulkan-video --bin gilder-native-vulkan -- \
   --run-vulkanalia-ready-prefix-video ...
 ```
 

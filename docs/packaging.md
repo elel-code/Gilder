@@ -11,15 +11,10 @@ Install these binaries into a directory visible to the user session:
 - `gilderctl`
 - `gilder-convert`
 
-The daemon is normally packaged with `native-vulkan-gst-video` while the Vulkan
-path is being brought up. Video support needs host GStreamer plugins plus the
-system Vulkan/Wayland driver stack. MP4/H.264 and WebM/VP9/AV1 smoke validation
-expects GStreamer tools, libav integration, AV1 decode support, and the base,
-good, bad, and ugly plugin sets. Ubuntu CI jobs that only need codec smoke can
-install those runtime packages with
-`scripts/install-video-codec-smoke-deps-ubuntu.sh`; Arch-like systems can use
-`scripts/install-video-codec-smoke-deps-arch.sh`. The full project CI
-dependency helper is `scripts/install-ci-deps-ubuntu.sh`.
+The daemon is normally packaged with `native-vulkan-video`. Video support needs
+the system Vulkan/Wayland driver stack and FFmpeg development/runtime libraries
+available to the native video frontend. The full project CI dependency helper is
+`scripts/install-ci-deps-ubuntu.sh`.
 Wallpaper Engine video preview extraction in `gilder-convert` can use `ffmpeg`
 from `PATH`; packages may declare it as an optional runtime dependency.
 
@@ -32,7 +27,7 @@ shell completions, the systemd user service, docs, and validation helpers:
 packaging/build-dist.sh
 ```
 
-By default it builds with `--features native-vulkan-gst-video` and writes to
+By default it builds with `--features native-vulkan-video` and writes to
 `dist/gilder-<version>-<system>-<arch>.tar.gz`.
 
 Useful options:
@@ -42,12 +37,9 @@ packaging/build-dist.sh --features native-vulkan-renderer
 packaging/build-dist.sh --profile debug --no-build --dest /tmp/gilder-dist
 ```
 
-Validation helpers are installed under
-`share/doc/gilder/scripts/video-codec-smoke.sh` and
-`share/doc/gilder/scripts/native-vulkan-h265-ready-prefix-video-smoke.sh`, with
-`share/doc/gilder/scripts/performance-snapshot.sh` for compositor-session
-resource sampling. Dependency helpers are installed alongside them for
-Ubuntu/Debian and Arch-like codec smoke environments.
+Validation helpers are installed under `share/doc/gilder/scripts/`, including
+the native Vulkan ready-prefix video smokes and `performance-snapshot.sh` for
+compositor-session resource sampling.
 
 ## systemd User Service
 

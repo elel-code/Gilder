@@ -1,38 +1,18 @@
-# M8 Video Optimization Plan
+# Video Optimization Plan
 
-This is an archived note. It records the removed GTK, native-wgpu and native
-`playbin/waylandsink` video optimization work as historical baseline evidence.
-Those paths are no longer buildable or executable validation targets.
+M8 历史路线已经归档。当前优化只按 FFmpeg + native Vulkan Video 推进。
 
-Current video work lives in:
+## Priorities
 
-- `docs/vulkan-migration.md`: native Wayland/Vulkan architecture,
-  Vulkanalia/Vulkan Video direct path and replaceable provider boundaries.
-- `docs/video-validation.md`: current codec, native Vulkan Wayland and process
-  sampling commands.
-- `docs/todo.md`: remaining implementation and validation checklist.
+1. 对齐 FFmpeg PacketQueue/FrameQueue/keep_last/serial/clock。
+2. 减少 copy：AVPacket borrow、bounded bitstream ring、decoded image GPU ownership、
+   descriptor heap sampling。
+3. 固定容量：queue=3、DPB/image pool、present ring、timeline/fence retire。
+4. 三格式 H.264/H.265/AV1 都以真 4K/240fps 连续 smoke 验证。
+5. `Private_Dirty < 25MiB` 和 `239.999+fps` 同时达标才算完成。
 
-## Retired Baselines
+## Non-goals
 
-The old measurements remain useful only as comparison points:
-
-- GTK direct sink showed a practical H.264 4K/240 baseline but retained too much
-  process/GPU memory and depended on GTK/GDK/GSK behavior outside our control.
-- Native-wgpu proved a GStreamer GPU-memory handoff could reach roughly
-  240fps with lower private dirty memory, but it is no longer maintained as a
-  separate backend.
-- Native `playbin/waylandsink` reduced some memory categories but was unstable
-  and was not the desired direct-DMA/Vulkan direction.
-
-## Current Decision
-
-The project now uses one visible native path:
-
-- native Wayland hosts layer-shell surface/output/scale/viewport/dmabuf feedback;
-- native Vulkan owns import/decode/render/present;
-- GStreamer provides demux/parser/appsink/audio/clock only;
-- display sinks such as GTK paintable sinks and `waylandsink` do not own the
-  visible wallpaper surface.
-
-The old scripts and helper binaries were intentionally removed so future video
-validation cannot accidentally fall back to the retired paths.
+- 不恢复 decoded-frame frontend。
+- 不恢复旧 daemon video runtime CSV 作为证据入口。
+- 不引回 descriptor set。
