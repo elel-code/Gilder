@@ -98,10 +98,14 @@
     `decoded_frame_count=2400`, `presented_frame_count=2400`,
     `average_present_fps=240.00856962853402`,
     `performance_max_private_dirty_kib=24828`, `descriptor_sets=0`.
-  - H.265 `/tmp/gilder-perf-h265-workspace-allocator-4k240`:
+  - H.265 Main8 `/tmp/gilder-perf-h265-workspace-allocator-4k240`:
     `decoded_frame_count=2400`, `presented_frame_count=2400`,
     `average_present_fps=240.00585273330296`,
     `performance_max_private_dirty_kib=22588`, `descriptor_sets=0`.
+  - H.265 Main10 `/tmp/gilder-perf-h265-main10-workspace-allocator-4k240`:
+    `decoded_frame_count=2400`, `presented_frame_count=2400`,
+    `average_present_fps=240.01329693274263`,
+    `performance_max_private_dirty_kib=23032`, `descriptor_sets=0`.
   - AV1 Main8 `/tmp/gilder-perf-av1-main8-workspace-allocator-4k240`:
     `displayed_frame_count=2400`, `presented_frame_count=2400`,
     `average_present_fps=240.02434924659713`,
