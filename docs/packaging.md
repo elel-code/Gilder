@@ -10,6 +10,7 @@ Install these binaries into a directory visible to the user session:
 - `gilderd`
 - `gilderctl`
 - `gilder-convert`
+- `gilder-native-vulkan`
 
 The daemon is normally packaged with `native-vulkan-video`. Video support needs
 the system Vulkan/Wayland driver stack and FFmpeg development/runtime libraries
@@ -37,9 +38,9 @@ packaging/build-dist.sh --features native-vulkan-renderer
 packaging/build-dist.sh --profile debug --no-build --dest /tmp/gilder-dist
 ```
 
-Validation helpers are installed under `share/doc/gilder/scripts/`, including
-the native Vulkan ready-prefix video smokes and `performance-snapshot.sh` for
-compositor-session resource sampling.
+Validation helpers are installed under `share/doc/gilder/scripts/`: the
+H.264/H.265/AV1 ready-prefix video smokes, the real-source matrix runner,
+`performance-snapshot.sh`, and its decision-summary helper.
 
 ## systemd User Service
 

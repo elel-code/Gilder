@@ -151,3 +151,21 @@ and pass `--performance-snapshot --performance-duration <sec>
 --performance-interval <sec>`. The result summary must retain CPU, GPU memory,
 RSS/PSS/USS, `Private_Dirty`, FPS, frame counts, descriptor heap, and zero-copy
 fields together with the report directory.
+
+## Next Plan
+
+1. Audio integration: follow FFmpeg's demux, packet queue, clock serial, loop,
+   and frame-timer semantics. The first accepted path is muted clock-only audio
+   for synchronization; audible output comes after clock behavior is stable.
+2. Full scene wallpaper support: route native Vulkan video through the normal
+   daemon wallpaper lifecycle, including output selection, scene transforms,
+   static-image/video composition, properties, pause/resume policy, and package
+   state persistence.
+3. Bitstream coverage: expand H.264, H.265, and AV1 matrices across real
+   sources and generated sources, including Main/Main10, reference counts,
+   B-frame patterns, arbitrary entry points, loop boundaries, long-run resource
+   stability, and validation-layer correctness runs.
+4. Script hygiene: keep the active codec smokes, real-source matrix,
+   performance sampler, CI dependency/policy scripts, packaging scripts, and
+   workshop downloader. Delete migration/spike/compatibility scripts instead of
+   preserving wrappers.
