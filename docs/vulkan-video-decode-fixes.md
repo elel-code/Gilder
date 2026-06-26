@@ -49,6 +49,27 @@
 - 不用 descriptor set。
 - H.264/H.265 smoke 只读取真实 runtime session 字段，不再依赖顶层 `.session` 兼容字段。
 
+2026-06-26 Vulkanalia plane-view descriptor heap 复测:
+
+- validation: `/tmp/gilder-validation-plane-present-2.stdout`，H.265 Main8 4K/240
+  ready-prefix 240 帧，进程退出 0，未检出 `VUID`、`Validation Error`、`panic` 或
+  `failed`；runtime 报告 `descriptor_sets=0`、`descriptor_heap_plane_sampler_enabled=true`、
+  `uses_plane_sampler_descriptors=true`。
+- performance: `/tmp/gilder-h265-4k240-plane-heap`，仓库内真实 H.265 4K/240 源，
+  `decoded_frame_count=2400`、`presented_frame_count=2400`、
+  `average_present_fps=239.98432204022697`、`performance_max_private_dirty_kib=26268`、
+  `performance_avg_cpu_percent=16.46`。
+- 迁移前 ash 基线对照 commit 是
+  `1789e4f0bbc32f9c17ca5b570231dbf169681979`，其 H.265 4K/240 evidence
+  `/tmp/gilder-vulkan-h265-after-h264-barrier-tightened` 为
+  `average_present_fps=239.82864245894595`、`Private_Dirty max=24684 KiB`。
+- 这次跨回 30MB 以下的实质突破是 hand-written plane conversion：删除
+  `VkSamplerYcbcrConversion`、converted image view 和 descriptor-heap embedded sampler
+  mapping，改为 FFmpeg `hwcontext_vulkan.c` 同类的 multi-planar format plane view
+  (`R8/RG8` 或 `R16/R16G16`) 加普通 sampler descriptor，由 fragment shader 显式完成
+  YUV->RGB。streaming 生命周期收敛解释了 300MB/80MB 级别的常驻内存问题，最后从
+  40MB+ 压到 `26268 KiB` 主要来自这条 plane-view shader 路径。
+
 4K/240 的有效验证应使用仓库内真实源，关注:
 
 - `decoded_count == presented_count == requested_playback_frames`
@@ -74,13 +95,11 @@ env VK_LOADER_LAYERS_ENABLE='*validation*' \
 
 注意 validation 输出会污染 stdout JSON，脚本或手工解析时从第一个 `{` 开始取 JSON。
 
-仍需清理但不能用 descriptor set 规避的问题:
-
-- `VUID-vkCreateDevice-ppEnabledExtensionNames-01387`
-- `VUID-vkWriteSamplerDescriptorsEXT-pSamplers-11204`
-
-`11204` 的方向是清理 descriptor-heap sampler 写入路径；YCbCr sampler 仍应走
-descriptor heap / embedded immutable sampler 语义。
+当前主线是 decoded image 的 Y/UV plane view descriptor 写入 resource heap、普通 sampler
+写入 sampler heap，再由 fullscreen shader 完成 YUV->RGB。不要恢复 descriptor set、push
+descriptor 或 embedded YCbCr sampler fallback。2026-06-26 validation 复测未再复现
+`VUID-vkWriteSamplerDescriptorsEXT-pSamplers-11204`，也未复现
+`VUID-vkCmdBindSamplerHeapEXT-pBindInfo-11224`。
 
 ## Smoke
 

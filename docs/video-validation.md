@@ -1086,16 +1086,26 @@ view creation.
   remains false until the graphics present pass samples that retained decoded
   image into the swapchain.
 - The retained H.265 image now also has Vulkanalia graphics sampling resources.
-  `src/renderer/native_vulkan/vulkanalia_backend/render_present.rs` creates a
-  `VkSamplerYcbcrConversion`, immutable YCbCr sampler, converted 2D image view
-  and descriptor-heap combined-image-sampler entries for the retained decoded image after
-  the video+present device enables `samplerYcbcrConversion`. Real Wayland
-  `background` smoke confirms this for Main8/NV12 and Main10/P010 with
-  `retained_submitted=240`, `decoded_image_present_sampler.route=
-  decoded-image-ycbcr-sampler-present-resource` and no sampler error. The next
-  validation gate is recording the dynamic-rendering fullscreen draw and
-  presenting that sampled decoded image, so `decoded_image_zero_copy_presented`
-  remains false for this step.
+  `src/renderer/native_vulkan/vulkanalia_backend/render_present.rs` writes
+  retained decoded-image Y/UV plane descriptors into `VK_EXT_descriptor_heap`
+  resource/sampler heaps, then samples those two planes in the fullscreen
+  dynamic-rendering fragment shader. The active path does not use descriptor
+  sets, push descriptors or embedded YCbCr sampler fallback. Real Wayland
+  `background` smoke should report `decoded_image_present_sampler.route=
+  decoded-image-plane-sampler-present-resource`, NV12/P010 picture formats and
+  no sampler error.
+- 2026-06-26 validation/performance gate for that path passed on real
+  `WAYLAND_DISPLAY=wayland-1`, `HDMI-A-1`, H.265 Main8 4K/240 source. Validation
+  output `/tmp/gilder-validation-plane-present-2.stdout` had no `VUID`,
+  `Validation Error`, `panic` or `failed` hits and reported `descriptor_sets=0`.
+  Performance output `/tmp/gilder-h265-4k240-plane-heap` reported
+  `decoded_frame_count=2400`, `presented_frame_count=2400`,
+  `average_present_fps=239.98432204022697`,
+  `performance_max_private_dirty_kib=26268`, and
+  `performance_avg_cpu_percent=16.46`.
+  The memory break came from replacing `VkSamplerYcbcrConversion` / embedded
+  sampler mapping with explicit FFmpeg-style plane views plus shader conversion,
+  not from keeping the driver YCbCr sampler path.
 - `src/renderer/native_vulkan/demux.rs` owns the frontend-agnostic packet queue,
   access-unit timeline, loop serial and bootstrap window. The current
   GStreamer provider lives in `src/renderer/native_vulkan/demux_gst.rs`;
