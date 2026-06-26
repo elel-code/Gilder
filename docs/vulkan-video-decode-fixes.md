@@ -71,6 +71,46 @@
   YUV->RGB。streaming 生命周期收敛解释了 300MB/80MB 级别的常驻内存问题，最后从
   40MB+ 压到 `26268 KiB` 主要来自这条 plane-view shader 路径。
 
+2026-06-26 FFmpeg submit workspace/latest 4K/240 复测:
+
+- FFmpeg reference:
+  `references/ffmpeg/libavcodec/vulkan_decode.h:88-100`
+  (`refs[36]`/`ref_slots[36]`/`slices_buf`),
+  `references/ffmpeg/libavcodec/vulkan_decode.c:305-390`
+  (`ff_vk_decode_add_slice`/`av_fast_realloc`/pooled slices buffer),
+  `references/ffmpeg/libavcodec/vulkan_decode.c:488-568`
+  (current picture inactive `slotIndex = -1`, exec owns `slices_buf` after submit),
+  `references/ffmpeg/libavcodec/vulkan_hevc.c:720-815`,
+  `references/ffmpeg/libavcodec/vulkan_av1.c:288-365`.
+- H.264/H.265/AV1 submit plan 不再持有 per-frame owned reference-slot Vec；
+  lowering 时用 FFmpeg-style fixed stack arrays，streaming loop 复用 reference workspace。
+- H.264 不再在 frame input 里复制一份 `slice_offsets`；submit plan 直接借用
+  `first_slice.slice_offsets`，匹配 FFmpeg 的 `pSliceOffsets` 指针语义。
+- H.265 `slice_segment_offsets` 改为栈上单帧 slice 借用；AV1 decode references
+  使用 caller workspace，保持 FFmpeg duplicate-slot scan 语义。
+- H.264/H.265/AV1 smoke runtime 默认给子进程设置低 dirty glibc allocator 环境:
+  `MALLOC_ARENA_MAX=1`, `MALLOC_MMAP_THRESHOLD_=131072`,
+  `MALLOC_TRIM_THRESHOLD_=0`, `GLIBC_TUNABLES=glibc.malloc.tcache_count=0`。
+  这不改变 Vulkan/FFmpeg decode 语义，只避免 glibc tcache/file-backed COW 页污染
+  `Private_Dirty` gate；调用方显式设置同名环境时仍可覆盖。
+- 最新有效证据:
+  - H.264 `/tmp/gilder-perf-h264-default-rerun-4k240`:
+    `decoded_frame_count=2400`, `presented_frame_count=2400`,
+    `average_present_fps=240.00856962853402`,
+    `performance_max_private_dirty_kib=24828`, `descriptor_sets=0`.
+  - H.265 `/tmp/gilder-perf-h265-workspace-allocator-4k240`:
+    `decoded_frame_count=2400`, `presented_frame_count=2400`,
+    `average_present_fps=240.00585273330296`,
+    `performance_max_private_dirty_kib=22588`, `descriptor_sets=0`.
+  - AV1 Main8 `/tmp/gilder-perf-av1-main8-workspace-allocator-4k240`:
+    `displayed_frame_count=2400`, `presented_frame_count=2400`,
+    `average_present_fps=240.02434924659713`,
+    `performance_max_private_dirty_kib=21900`, `descriptor_sets=0`.
+  - AV1 Main10 `/tmp/gilder-perf-av1-main10-workspace-allocator-4k240`:
+    `displayed_frame_count=2400`, `presented_frame_count=2400`,
+    `average_present_fps=240.02807982349208`,
+    `performance_max_private_dirty_kib=21740`, `descriptor_sets=0`.
+
 4K/240 的有效验证应使用仓库内真实源，关注:
 
 - `decoded_count == presented_count == requested_playback_frames`
