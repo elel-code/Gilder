@@ -18,6 +18,12 @@ for old renderer, GStreamer, decoded-frame copy, or descriptor-set paths.
 - Passing 4K240 evidence requires `average_present_fps >= 239.999`,
   `performance_max_private_dirty_kib < 25600`, zero-copy presented frames, and
   no validation/performance mixing.
+- Any real-source, arbitrary-entry, or optimization evidence must include the
+  full performance snapshot: average CPU percent, max RSS/PSS/USS, max
+  `Private_Dirty`, max process GPU memory, decoded/presented frame counts,
+  average present FPS, descriptor-set count, descriptor-heap-only state, and
+  zero-copy state. Evidence without `--performance-snapshot` is only a
+  functional smoke, not a performance result.
 
 ## FFmpeg References
 
@@ -138,3 +144,10 @@ Use the codec-specific ready-prefix smoke scripts with the repository 4K240
 sources, `--playback-frames 2400`, `--performance-snapshot`, and
 `--max-private-dirty-kib 25600`. Validation-layer runs are for correctness
 only; do not use them for the memory/FPS gate.
+
+Real-source and arbitrary-entry runs use the same reporting rule. If the run is
+intended to prove performance, keep playback long enough for the sampler window
+and pass `--performance-snapshot --performance-duration <sec>
+--performance-interval <sec>`. The result summary must retain CPU, GPU memory,
+RSS/PSS/USS, `Private_Dirty`, FPS, frame counts, descriptor heap, and zero-copy
+fields together with the report directory.
