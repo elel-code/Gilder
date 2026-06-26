@@ -185,7 +185,7 @@ Wayland present is driven by the Vulkanalia swapchain runtime. Valid current
 evidence should report non-zero `presented_frame_count`,
 `average_present_fps`, codec-specific DPB/reference telemetry, and the streaming
 upload model:
-`decode.bitstream_buffer_model=streaming-persistent-mapped-reused-upload-buffer`
+`decode.bitstream_buffer_model=ffmpeg-picture-slices-buffer-pool-exec-owned`
 plus
 `decode.input_payload_model=bounded-streaming-packet-queue-per-frame-upload`.
 AV1 playback waits on the continuous streaming runtime. Spool, owned payload

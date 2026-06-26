@@ -13,9 +13,10 @@
   旧的顶层 session-bind smoke 不再在播放前额外运行，避免污染 private_dirty 和 CPU 采样。
 - H.264/H.265 runtime 从同一个 streaming queue 的 SPS/VPS/SPS 派生 coded extent，
   Vulkan Video session 和 resource image 按码流尺寸创建，不依赖 CLI 默认尺寸。
-- bitstream upload 对齐 FFmpeg 的按图像生命周期:保留单个持久映射
-  `VIDEO_DECODE_SRC_KHR` buffer，初始为 FFmpeg 风格单 picture 下限，payload 超过当前容量时
-  才 grow；不再按 decode window 或 `bitstream_samples` 常驻分配。
+- bitstream upload 对齐 FFmpeg 的按图像生命周期:每个 exec slot 使用 FFmpeg
+  `slices_buf` 语义的持久映射 `VIDEO_DECODE_SRC_KHR` buffer，提交后由该 slot/fence 生命周期
+  保活；复用 exec slot 前才等待 fence 并复用或替换该 slot buffer。不再保留单个共享 upload
+  buffer、分槽 stride 或全局 grow buffer。
 - H.264/H.265 streaming 从 GStreamer `Buffer` 直接持有 readable mapped payload 到 per-frame
   decode input，上传后立即释放；不再把 parser payload 复制进 retained `Vec<u8>` window。
 - descriptor 路径必须保持 `VK_EXT_descriptor_heap`。当前 Vulkanalia smoke 的有效 gate 是
@@ -75,7 +76,7 @@
 - `decoded_count == presented_count == requested_playback_frames`
 - `bad_frames == 0`
 - `descriptor_sets == 0`
-- `decode.bitstream_buffer_model == "streaming-persistent-mapped-reused-upload-buffer"`
+- `decode.bitstream_buffer_model == "ffmpeg-picture-slices-buffer-pool-exec-owned"`
 - `decode.input_payload_model == "bounded-streaming-packet-queue-per-frame-upload"`
 - `session_h265_ready_prefix_decode == false`
 - `session_bitstream_buffer == false`
