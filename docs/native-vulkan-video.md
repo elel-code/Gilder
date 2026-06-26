@@ -8,6 +8,10 @@ for old renderer, GStreamer, decoded-frame copy, or descriptor-set paths.
 
 - FFmpeg owns demux, packet/parser normalization, serial/clock semantics, and
   the queue model.
+- FFmpeg source is the first reference for performance work as well as
+  correctness. Every accepted optimization must name the local FFmpeg source
+  line range it follows, explain the Vulkan/runtime change, and keep the
+  descriptor-heap/zero-copy gates intact.
 - Vulkanalia owns Vulkan Video decode, GPU Y/UV sampling, dynamic rendering,
   and Wayland present.
 - `VK_EXT_descriptor_heap` is mandatory. Passing evidence must report
@@ -16,7 +20,7 @@ for old renderer, GStreamer, decoded-frame copy, or descriptor-set paths.
   image, the render pass samples Y/UV plane descriptors from descriptor heaps,
   and the swapchain owns only the final presented image.
 - Passing 4K240 evidence requires `average_present_fps >= 239.999`,
-  `performance_max_private_dirty_kib < 25600`, zero-copy presented frames, and
+  `performance_max_private_dirty_kib < 25000`, zero-copy presented frames, and
   no validation/performance mixing.
 - Any real-source, arbitrary-entry, or optimization evidence must include the
   full performance snapshot: average CPU percent, max RSS/PSS/USS, max
@@ -30,6 +34,11 @@ for old renderer, GStreamer, decoded-frame copy, or descriptor-set paths.
 - `references/ffmpeg/fftools/ffplay.c:114-123`: `PacketQueue` carries packet
   count, duration, and serial state.
 - `references/ffmpeg/fftools/ffplay.c:125-128`: video queue size is three.
+- `references/ffmpeg/fftools/ffplay.c:3132-3141`: the read thread blocks only
+  when queues have enough packets; native keeps this asynchronous shape but caps
+  the handoff by codec to stay under the 25,000 KiB `Private_Dirty` gate.
+- `references/ffmpeg/fftools/ffplay.c:420-456`: `av_packet_move_ref` transfers
+  packet payload ownership into and out of the packet queue.
 - `references/ffmpeg/fftools/ffplay.c:168-179` and
   `references/ffmpeg/fftools/ffplay.c:788-800`: `FrameQueue` implements
   `keep_last` ring-buffer advancement.
@@ -43,6 +52,12 @@ for old renderer, GStreamer, decoded-frame copy, or descriptor-set paths.
 - `references/ffmpeg/libavcodec/vulkan_decode.c:527-568`: current picture is
   bound as inactive with `slotIndex = -1`, then `slices_buf` becomes owned by
   the exec buffer.
+- `references/ffmpeg/libavcodec/vulkan_decode.c:575-586`: decoded frames carry
+  mirrored semaphore values as frame dependencies; optimization should preserve
+  this per-frame decode completion handoff instead of adding host waits.
+- `references/ffmpeg/libavcodec/vulkan_decode.c:586-690`: image layout work is
+  performed where the decode command actually consumes output/reference
+  resources; layout/sync changes should follow this per-frame dependency model.
 - `references/ffmpeg/libavcodec/vulkan_h264.c:476-562`: H.264 adds slices
   through `ff_vk_decode_add_slice`, prepares fixed reference arrays, and submits
   with `ff_vk_decode_frame`.
@@ -51,13 +66,19 @@ for old renderer, GStreamer, decoded-frame copy, or descriptor-set paths.
   `vp->ref_slots[idx]`, reference sets, and slice offsets.
 - `references/ffmpeg/libavcodec/vulkan_av1.c:298-358`: AV1 scans duplicate
   reference slots, fills unique refs, and writes `referenceNameSlotIndices`.
+- `references/ffmpeg/libavutil/mem.c:98-165` and
+  `references/ffmpeg/libavutil/mem.c:247-253`: FFmpeg allocates packet/parser
+  storage through aligned malloc/realloc and releases with `av_free`; native
+  configures the process allocator before FFmpeg streaming starts so this freed
+  storage returns to low-dirty behavior without requiring distribution-time env
+  tuning.
 
 ## Substantial Breakthroughs
 
 1. The practical memory breakthrough was shader-owned plane conversion.
    Removing the `VkSamplerYcbcrConversion`/embedded-sampler route and sampling
    Y/UV plane views explicitly through descriptor heaps dropped host
-   `Private_Dirty` below the 25 MiB gate while keeping zero-copy GPU present.
+   `Private_Dirty` below the 25,000 KiB gate while keeping zero-copy GPU present.
 2. The bitstream path was aligned to FFmpeg's picture-owned `slices_buf` model:
    two pooled 2 MiB slots, exec-owned lifetime after submit, no global growing
    AU buffer, and no retained payload window.
@@ -74,7 +95,19 @@ for old renderer, GStreamer, decoded-frame copy, or descriptor-set paths.
    profile is kept only for explicit comparison with
    `--allocator-profile glibc-low-dirty`; performance gates should be judged
    with the system profile unless a run is specifically documenting allocator
-   sensitivity.
+   sensitivity. Native streaming also configures glibc malloc in-process before
+   FFmpeg opens the source, so shipped binaries do not require external malloc
+   environment variables.
+7. Decode/present timeline synchronization follows FFmpeg's per-frame semaphore
+   dependency shape: decode signals at `VIDEO_DECODE_KHR` completion and
+   present waits on that per-frame value before touching the decoded image. Low
+   GPU busy with stable 240 fps should be treated as CPU/submit/synchronization
+   headroom, not as a reason to add copy paths or descriptor sets.
+8. FFmpeg read-thread handoff is codec-limited rather than a hidden second
+   queue. H.264 uses rendezvous handoff to keep heap dirty below 25,000 KiB; H.265
+   uses two handoff slots to recover Main10 throughput; AV1 keeps the default
+   single handoff slot because both Main8/Main10 already pass the memory/FPS
+   gates.
 
 ## Format Evidence
 
@@ -89,10 +122,14 @@ must be judged with the system profile.
   `artifacts/video-sources/h264/h264-high-b0-ref2-weightp0-weightb0-3840x2160-240fps-2640frames-g2401-d2400.mp4`.
 - Breakthroughs: descriptor-heap Y/UV plane shader conversion, borrowed slice
   offsets from the first slice path, fixed reference workspace, two-slot
-  FFmpeg-style slices buffer pool, and bounded streaming packet upload.
-- Evidence directory: `/tmp/gilder-perf-h264-default-rerun-4k240`.
-- Result: decoded/presented `2400/2400`, `average_present_fps=240.00856962853402`,
-  `performance_max_private_dirty_kib=24828`, `descriptor_sets=0`,
+  FFmpeg-style slices buffer pool, H.264 rendezvous FFmpeg packet handoff, and
+  bounded streaming packet upload.
+- Evidence directory: `/tmp/gilder-final-h264-4k240-25000`.
+- Result: decoded/presented `2400/2400`, `average_present_fps=240.01407249629443`,
+  `performance_max_private_dirty_kib=24580`, `performance_avg_cpu_percent=16.27`,
+  `performance_max_pss_kib=66646`, `performance_max_uss_kib=41824`,
+  `performance_avg_gpu_busy_percent=33`, `performance_max_gpu_busy_percent=47`,
+  `performance_max_nvidia_process_gpu_memory_mib=281`, `descriptor_sets=0`,
   `descriptor_heap_only=true`, `all_zero_copy_presented=true`,
   `picture_format=G8_B8R8_2PLANE_420_UNORM`.
 
@@ -105,18 +142,25 @@ must be judged with the system profile.
 - Breakthroughs: HEVC reference sets follow FFmpeg's `vp->ref_slots[idx]`
   filling, slice offsets are stack/borrowed instead of heap-retained, Main10
   uses the 10-bit two-plane Vulkan format directly, and both profiles share the
-  descriptor-heap shader conversion path.
-- Main8 evidence directory: `/tmp/gilder-perf-h265-workspace-allocator-4k240`.
+  descriptor-heap shader conversion path. H.265 keeps two FFmpeg read-thread
+  handoff slots because Main10 needs the demux/BSF overlap that
+  `references/ffmpeg/fftools/ffplay.c:3132-3141` provides.
+- Main8 evidence directory: `/tmp/gilder-final-h265-main8-4k240-25000`.
 - Main8 result: decoded/presented `2400/2400`,
-  `average_present_fps=240.00585273330296`,
-  `performance_max_private_dirty_kib=22588`, `descriptor_sets=0`,
+  `average_present_fps=240.0048899610724`,
+  `performance_max_private_dirty_kib=23820`, `performance_avg_cpu_percent=21.08`,
+  `performance_max_pss_kib=66128`, `performance_max_uss_kib=41928`,
+  `performance_avg_gpu_busy_percent=34`, `performance_max_gpu_busy_percent=45`,
+  `performance_max_nvidia_process_gpu_memory_mib=281`, `descriptor_sets=0`,
   `descriptor_heap_only=true`, `all_zero_copy_presented=true`,
   `picture_format=G8_B8R8_2PLANE_420_UNORM`.
-- Main10 evidence directory:
-  `/tmp/gilder-perf-h265-main10-workspace-allocator-4k240`.
+- Main10 evidence directory: `/tmp/gilder-final-h265-main10-4k240-25000`.
 - Main10 result: decoded/presented `2400/2400`,
-  `average_present_fps=240.01329693274263`,
-  `performance_max_private_dirty_kib=23032`, `descriptor_sets=0`,
+  `average_present_fps=240.0069369147951`,
+  `performance_max_private_dirty_kib=24016`, `performance_avg_cpu_percent=20.27`,
+  `performance_max_pss_kib=66215`, `performance_max_uss_kib=42104`,
+  `performance_avg_gpu_busy_percent=30`, `performance_max_gpu_busy_percent=31`,
+  `performance_max_nvidia_process_gpu_memory_mib=484`, `descriptor_sets=0`,
   `descriptor_heap_only=true`, `all_zero_copy_presented=true`,
   `picture_format=G10X6_B10X6R10X6_2PLANE_420_UNORM_3PACK16`.
 
@@ -130,17 +174,22 @@ must be judged with the system profile.
   unique `referenceNameSlotIndices`, caller-owned workspaces, and the same
   two-slot slices buffer pool; this removed retained-copy pressure while keeping
   continuous 4K240 present.
-- Main8 evidence directory: `/tmp/gilder-perf-av1-main8-workspace-allocator-4k240`.
+- Main8 evidence directory: `/tmp/gilder-final-av1-main8-4k240-25000`.
 - Main8 result: displayed/presented `2400/2400`,
-  `average_present_fps=240.02434924659713`,
-  `performance_max_private_dirty_kib=21900`, `descriptor_sets=0`,
+  `average_present_fps=240.00077061156145`,
+  `performance_max_private_dirty_kib=21812`, `performance_avg_cpu_percent=14.60`,
+  `performance_max_pss_kib=64267`, `performance_max_uss_kib=40160`,
+  `performance_avg_gpu_busy_percent=27`, `performance_max_gpu_busy_percent=29`,
+  `performance_max_nvidia_process_gpu_memory_mib=262`, `descriptor_sets=0`,
   `descriptor_heap_only=true`, `all_zero_copy_presented=true`,
   `picture_format=G8_B8R8_2PLANE_420_UNORM`.
-- Main10 evidence directory:
-  `/tmp/gilder-perf-av1-main10-workspace-allocator-4k240`.
+- Main10 evidence directory: `/tmp/gilder-final-av1-main10-4k240-25000`.
 - Main10 result: displayed/presented `2400/2400`,
-  `average_present_fps=240.02807982349208`,
-  `performance_max_private_dirty_kib=21740`, `descriptor_sets=0`,
+  `average_present_fps=240.0206298081496`,
+  `performance_max_private_dirty_kib=21768`, `performance_avg_cpu_percent=15.35`,
+  `performance_max_pss_kib=64125`, `performance_max_uss_kib=40024`,
+  `performance_avg_gpu_busy_percent=33`, `performance_max_gpu_busy_percent=39`,
+  `performance_max_nvidia_process_gpu_memory_mib=453`, `descriptor_sets=0`,
   `descriptor_heap_only=true`, `all_zero_copy_presented=true`,
   `picture_format=G10X6_B10X6R10X6_2PLANE_420_UNORM_3PACK16`.
 
@@ -151,53 +200,30 @@ must be judged with the system profile.
 `GLIBC_TUNABLES` before launching the video process. `glibc-low-dirty` is only
 for explicit allocator sensitivity comparisons.
 
-Current 4K240 system-profile comparison:
-
-- H.264 High8, `/tmp/gilder-perf-h264-4k240-no-glibc-direct`:
-  `average_present_fps=240.0010141468448`,
-  `performance_max_private_dirty_kib=25992`, `performance_avg_cpu_percent=18.45`,
-  `performance_max_pss_kib=68242`, `performance_max_uss_kib=45108`,
-  `performance_max_nvidia_process_gpu_memory_mib=281`, `descriptor_sets=0`,
-  `descriptor_heap_only=true`, `all_zero_copy_presented=true`. This currently
-  exceeds the 25 MiB gate and is the next memory target under distribution
-  conditions.
-- H.265 Main8, `/tmp/gilder-perf-h265-av1-no-glibc-direct/h265-main8`:
-  `average_present_fps=240.00476810539766`,
-  `performance_max_private_dirty_kib=24368`, `performance_avg_cpu_percent=19.45`,
-  `performance_max_pss_kib=66368`, `performance_max_uss_kib=42260`,
-  `performance_max_nvidia_process_gpu_memory_mib=281`, `descriptor_sets=0`,
-  `descriptor_heap_only=true`, `all_zero_copy_presented=true`.
-- H.265 Main10, `/tmp/gilder-perf-h265-av1-no-glibc-direct/h265-main10`:
-  `average_present_fps=240.0063321894075`,
-  `performance_max_private_dirty_kib=23856`, `performance_avg_cpu_percent=19.95`,
-  `performance_max_pss_kib=66006`, `performance_max_uss_kib=41828`,
-  `performance_max_nvidia_process_gpu_memory_mib=484`, `descriptor_sets=0`,
-  `descriptor_heap_only=true`, `all_zero_copy_presented=true`.
-- AV1 Main8, `/tmp/gilder-perf-h265-av1-no-glibc-direct/av1-main8`:
-  `average_present_fps=240.02825689080964`,
-  `performance_max_private_dirty_kib=22168`, `performance_avg_cpu_percent=13.97`,
-  `performance_max_pss_kib=64630`, `performance_max_uss_kib=40584`,
-  `performance_max_nvidia_process_gpu_memory_mib=262`, `descriptor_sets=0`,
-  `descriptor_heap_only=true`, `all_zero_copy_presented=true`.
-- AV1 Main10, `/tmp/gilder-perf-h265-av1-no-glibc-direct/av1-main10`:
-  `average_present_fps=240.02704665183066`,
-  `performance_max_private_dirty_kib=21928`, `performance_avg_cpu_percent=13.70`,
-  `performance_max_pss_kib=64105`, `performance_max_uss_kib=40012`,
-  `performance_max_nvidia_process_gpu_memory_mib=453`, `descriptor_sets=0`,
-  `descriptor_heap_only=true`, `all_zero_copy_presented=true`.
+Current 4K240 system-profile comparison is the evidence in the format sections
+above. All listed runs are under `performance_max_private_dirty_kib < 25000`,
+`average_present_fps >= 239.999`, `descriptor_sets=0`,
+`descriptor_heap_only=true`, and `all_zero_copy_presented=true`.
 
 ## Smoke Commands
 
 Use the codec-specific ready-prefix smoke scripts with the repository 4K240
-sources, `--playback-frames 2400`, `--performance-snapshot`, and
-`--max-private-dirty-kib 25600`. Validation-layer runs are for correctness
-only; do not use them for the memory/FPS gate.
+sources, `--playback-frames 2400`, and `--performance-snapshot`. The smoke
+scripts default performance snapshots to `--max-private-dirty-kib 25000`; an
+explicit `--max-private-dirty-kib` only overrides that hard gate. Validation
+layer runs are for correctness only; do not use them for the memory/FPS gate.
 
 The default allocator profile is `system`, which clears
 `MALLOC_ARENA_MAX`, `MALLOC_MMAP_THRESHOLD_`, `MALLOC_TRIM_THRESHOLD_`, and
-`GLIBC_TUNABLES` before launching the video process. Use
-`--allocator-profile glibc-low-dirty` only for allocator sensitivity
-comparisons.
+`GLIBC_TUNABLES` before launching the video process. Native video configures the
+process allocator internally before FFmpeg opens the source, so this is still
+the no-external-tuning distribution path. Use `--allocator-profile
+glibc-low-dirty` only for allocator sensitivity comparisons.
+
+Do not rebuild or overwrite `target/release/gilder-native-vulkan` while a
+performance run is sampling it. Linux may report the executable mapping as
+`Private_Dirty` after the file is replaced; that is a contaminated measurement,
+not codec heap pressure.
 
 Real-source and arbitrary-entry runs use the same reporting rule. If the run is
 intended to prove performance, keep playback long enough for the sampler window
