@@ -69,13 +69,19 @@ for old renderer, GStreamer, decoded-frame copy, or descriptor-set paths.
 5. Presentation follows the FFmpeg queue shape: bounded queue depth three,
    `keep_last` semantics, serial reset handling, and frame-timer PTS-delta
    pacing.
-6. Smoke runs use allocator settings that keep process-private memory visible
-   and bounded instead of hiding stale heap pages behind glibc arenas/tcache:
-   `MALLOC_ARENA_MAX=1`, `MALLOC_MMAP_THRESHOLD_=131072`,
-   `MALLOC_TRIM_THRESHOLD_=0`, and
-   `GLIBC_TUNABLES=glibc.malloc.tcache_count=0`.
+6. Smoke runs default to the distribution allocator environment
+   (`--allocator-profile system`). The previous glibc low-dirty allocator
+   profile is kept only for explicit comparison with
+   `--allocator-profile glibc-low-dirty`; performance gates should be judged
+   with the system profile unless a run is specifically documenting allocator
+   sensitivity.
 
 ## Format Evidence
+
+New performance evidence uses `allocator_profile=system` by default. Older
+report directories named `workspace-allocator` or captured before this rule are
+kept as architecture/throughput evidence, but allocator-sensitive memory gates
+must be judged with the system profile.
 
 ### H.264
 
@@ -138,12 +144,60 @@ for old renderer, GStreamer, decoded-frame copy, or descriptor-set paths.
   `descriptor_heap_only=true`, `all_zero_copy_presented=true`,
   `picture_format=G10X6_B10X6R10X6_2PLANE_420_UNORM_3PACK16`.
 
+## Allocator Profile Evidence
+
+`system` is the distribution/default profile: scripts clear
+`MALLOC_ARENA_MAX`, `MALLOC_MMAP_THRESHOLD_`, `MALLOC_TRIM_THRESHOLD_`, and
+`GLIBC_TUNABLES` before launching the video process. `glibc-low-dirty` is only
+for explicit allocator sensitivity comparisons.
+
+Current 4K240 system-profile comparison:
+
+- H.264 High8, `/tmp/gilder-perf-h264-4k240-no-glibc-direct`:
+  `average_present_fps=240.0010141468448`,
+  `performance_max_private_dirty_kib=25992`, `performance_avg_cpu_percent=18.45`,
+  `performance_max_pss_kib=68242`, `performance_max_uss_kib=45108`,
+  `performance_max_nvidia_process_gpu_memory_mib=281`, `descriptor_sets=0`,
+  `descriptor_heap_only=true`, `all_zero_copy_presented=true`. This currently
+  exceeds the 25 MiB gate and is the next memory target under distribution
+  conditions.
+- H.265 Main8, `/tmp/gilder-perf-h265-av1-no-glibc-direct/h265-main8`:
+  `average_present_fps=240.00476810539766`,
+  `performance_max_private_dirty_kib=24368`, `performance_avg_cpu_percent=19.45`,
+  `performance_max_pss_kib=66368`, `performance_max_uss_kib=42260`,
+  `performance_max_nvidia_process_gpu_memory_mib=281`, `descriptor_sets=0`,
+  `descriptor_heap_only=true`, `all_zero_copy_presented=true`.
+- H.265 Main10, `/tmp/gilder-perf-h265-av1-no-glibc-direct/h265-main10`:
+  `average_present_fps=240.0063321894075`,
+  `performance_max_private_dirty_kib=23856`, `performance_avg_cpu_percent=19.95`,
+  `performance_max_pss_kib=66006`, `performance_max_uss_kib=41828`,
+  `performance_max_nvidia_process_gpu_memory_mib=484`, `descriptor_sets=0`,
+  `descriptor_heap_only=true`, `all_zero_copy_presented=true`.
+- AV1 Main8, `/tmp/gilder-perf-h265-av1-no-glibc-direct/av1-main8`:
+  `average_present_fps=240.02825689080964`,
+  `performance_max_private_dirty_kib=22168`, `performance_avg_cpu_percent=13.97`,
+  `performance_max_pss_kib=64630`, `performance_max_uss_kib=40584`,
+  `performance_max_nvidia_process_gpu_memory_mib=262`, `descriptor_sets=0`,
+  `descriptor_heap_only=true`, `all_zero_copy_presented=true`.
+- AV1 Main10, `/tmp/gilder-perf-h265-av1-no-glibc-direct/av1-main10`:
+  `average_present_fps=240.02704665183066`,
+  `performance_max_private_dirty_kib=21928`, `performance_avg_cpu_percent=13.70`,
+  `performance_max_pss_kib=64105`, `performance_max_uss_kib=40012`,
+  `performance_max_nvidia_process_gpu_memory_mib=453`, `descriptor_sets=0`,
+  `descriptor_heap_only=true`, `all_zero_copy_presented=true`.
+
 ## Smoke Commands
 
 Use the codec-specific ready-prefix smoke scripts with the repository 4K240
 sources, `--playback-frames 2400`, `--performance-snapshot`, and
 `--max-private-dirty-kib 25600`. Validation-layer runs are for correctness
 only; do not use them for the memory/FPS gate.
+
+The default allocator profile is `system`, which clears
+`MALLOC_ARENA_MAX`, `MALLOC_MMAP_THRESHOLD_`, `MALLOC_TRIM_THRESHOLD_`, and
+`GLIBC_TUNABLES` before launching the video process. Use
+`--allocator-profile glibc-low-dirty` only for allocator sensitivity
+comparisons.
 
 Real-source and arbitrary-entry runs use the same reporting rule. If the run is
 intended to prove performance, keep playback long enough for the sampler window
