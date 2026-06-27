@@ -297,7 +297,15 @@ elapsed time was in `vkQueuePresentKHR`.
   audio-master pacing so pre-read AAC packets do not advance the video start
   clock. Snapshots report `audio_output_backend=pipewire-s16le`,
   `audio_output_frames`, `audio_output_samples`, `audio_output_bytes`,
-  `audio_output_sample_rate_hz`, and `audio_output_channel_count`.
+  `audio_output_sample_rate_hz`, `audio_output_channel_count`,
+  `audio_output_write_calls`, `audio_output_write_waits`,
+  `audio_output_process_callbacks`, `audio_output_buffer_errors`,
+  `audio_output_timeout_errors`, `audio_output_stream_ready`,
+  `playback_target_clock_ns`, `playback_covered_clock_ns`,
+  `playback_coverage_percent`, and `playback_target_reached`. The ready-prefix
+  smokes now require the audio clock/output window to cover the full requested
+  video playback duration and require the PipeWire write path to report real
+  write/process activity with zero buffer/timeout errors.
 
 ## Vulkan 1.4 And Roadmap Modernization
 
@@ -473,7 +481,8 @@ fields together with the report directory.
 
 ## Next Plan
 
-1. Audio integration: the native audio path lives under
+1. Audio integration: the native audio path is now about `90%` complete for the
+   direct ready-prefix player. It lives under
    `native_vulkan/audio/clock.rs` and the FFmpeg/PipeWire C shim. It selects an
    FFmpeg audio stream, decodes frames, immediately unreferences packet
    payloads, and reports serial-scoped clock samples for ready-prefix runs when
@@ -487,24 +496,40 @@ fields together with the report directory.
    `current_serial_start_clock_ns`, `current_serial_start_serial`,
    `current_serial_start_packet_index`, `audio_output_backend`,
    `audio_output_frames`, `audio_output_samples`, `audio_output_bytes`,
-   `audio_output_sample_rate_hz`, and `audio_output_channel_count`.
+   `audio_output_sample_rate_hz`, `audio_output_channel_count`,
+   `audio_output_write_calls`, `audio_output_write_waits`,
+   `audio_output_process_callbacks`, `audio_output_buffer_errors`,
+   `audio_output_timeout_errors`, `audio_output_stream_ready`,
+   `playback_runtime_model`, `playback_target_clock_ns`,
+   `playback_covered_clock_ns`, `playback_coverage_percent`, and
+   `playback_target_reached`.
    Ready-prefix video pacing consumes the stable `video_master_start_*` sample,
    while loop/seek evidence uses `current_serial_start_*` so pre-present audio
    decoding cannot move the first-frame master clock to a later loop. When
    playback requests more frames than the ready-prefix window, the audio path
-   enables FFmpeg EOS seek and exposes current-serial reset evidence without
-   retaining packet payloads. Next gates: move the PipeWire stream from
-   bounded ready-prefix playback into a long-lived audio runtime aligned with
-   video present lifetime, prove arbitrary-entry sync against real audio+video
-   sources, then wire daemon pause/mute/device lifecycle on top of the same
-   PipeWire-only backend.
-   Current PipeWire auto smoke:
-   `/tmp/gilder-audio-pipewire-smoke-audio-master` passes
+   now budgets enough FFmpeg packets to cover the full target playback duration,
+   enables FFmpeg EOS seek, and exposes current-serial reset evidence without
+   retaining packet payloads. Remaining 10% gates: real-source arbitrary-entry
+   A/V sync evidence, daemon pause/mute/device lifecycle, xrun/latency policy,
+   and full-scene audio response on top of the same PipeWire-only backend.
+   Current PipeWire duration-coverage auto smoke:
+   `/tmp/gilder-audio-duration-coverage-smoke` passes
    `--audio-clock-probe --audio-output auto --unmuted --pacing-master audio`,
-   reports `audio_output_backend=pipewire-s16le`, `audio_output_frames=3`,
-   `audio_output_samples=3072`, `audio_output_bytes=6144`,
-   `audio_output_sample_rate=48000`, `audio_output_channels=1`,
-   `consumed_packets=4`, and `retained_payload_bytes=0`.
+   reports `audio_output_backend=pipewire-s16le`, `audio_output_frames=7`,
+   `audio_output_samples=7168`, `audio_output_bytes=14336`,
+   `audio_playback_runtime_model=pipewire-duration-covered-runtime`,
+   `audio_playback_target_clock_ns=133333333`,
+   `audio_playback_covered_clock_ns=149333333`,
+   `audio_playback_coverage_percent=112`,
+   `audio_playback_target_reached=true`, positive PipeWire
+   `audio_output_write_calls`, `audio_output_write_waits`,
+   `audio_output_process_callbacks`, zero `audio_output_buffer_errors`,
+   zero `audio_output_timeout_errors`, `audio_output_stream_ready=true`,
+   `consumed_packets=8`, and `retained_payload_bytes=0`. The matching
+   clock-only coverage smoke `/tmp/gilder-audio-duration-clock-only-smoke`
+   passes with `audio_output_backend=none`, zero output counters, zero
+   PipeWire write counters, `audio_output_stream_ready=false`, and the same
+   `audio_playback_target_reached=true` coverage gate.
    Current H.264 generated-source loop-audio smoke:
    `/tmp/gilder-vulkan-h264-ready-prefix-video.JfquFZ` passes
    `--audio-clock-probe --pacing-master audio`, reports
