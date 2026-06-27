@@ -14,6 +14,8 @@ for old renderer, GStreamer, decoded-frame copy, or descriptor-set paths.
   descriptor-heap/zero-copy gates intact.
 - Vulkanalia owns Vulkan Video decode, GPU Y/UV sampling, dynamic rendering,
   and Wayland present.
+- The Vulkan loader is exactly `libvulkan.so.1`. Do not reintroduce loader
+  candidate mapping such as `libvulkan.so` fallback.
 - `VK_EXT_descriptor_heap` is mandatory. Passing evidence must report
   `descriptor_sets=0` and `descriptor_heap_only=true`.
 - Decoded pixels stay on the GPU: Vulkan Video writes the retained output/DPB
@@ -107,7 +109,7 @@ for old renderer, GStreamer, decoded-frame copy, or descriptor-set paths.
    packet-unref lifetime and keeping long-source `Private_Dirty` under the
    gate without allocator tuning.
 10. The packet handoff queue can still hold three active packets, but the free
-    Annex-B scratch pool retains only one buffer capped at 224 KiB. This keeps
+    Annex-B scratch pool retains only one buffer capped at 160 KiB. This keeps
     FFmpeg's `av_packet_move_ref` queue depth while avoiding a second hidden
     three-packet retained-payload pool.
 11. Vulkan Video parameter sets now use `VK_KHR_video_maintenance2` inline
@@ -160,7 +162,7 @@ must be judged with malloc/glibc tuning env cleared and no in-process
 ### H.265
 
 - Main8 source:
-  `artifacts/video-sources/h265/h265-main-8-b0-ref1-3840x2160-240fps-2402frames-g240-d2400.mp4`.
+  `artifacts/video-sources/h265/h265-main-8-b0-ref1-3840x2160-240fps-566frames-g240-d240.mp4`.
 - Main10 source:
   `artifacts/video-sources/h265/h265-main-10-b0-ref1-3840x2160-240fps-566frames-g240-d240.mp4`.
 - Breakthroughs: HEVC reference sets follow FFmpeg's `vp->ref_slots[idx]`
@@ -168,21 +170,30 @@ must be judged with malloc/glibc tuning env cleared and no in-process
   uses the 10-bit two-plane Vulkan format directly, and both profiles share the
   descriptor-heap shader conversion path. H.265 uses the same single-packet
   FFmpeg handoff and one retained Annex-B scratch buffer as H.264.
-- Main8 evidence directory: `/tmp/gilder-h265-main8-4k240-pool1-2400`.
-- Main8 result: decoded/presented `2400/2400`,
-  `average_present_fps=240.00573524668013`,
-  `performance_max_private_dirty_kib=24064`, `performance_avg_cpu_percent=15.72`,
-  `performance_max_pss_kib=66545`, `performance_max_uss_kib=38956`,
-  `performance_avg_gpu_busy_percent=31`, `performance_max_gpu_busy_percent=34`,
+- Current Main8 evidence directory:
+  `/tmp/gilder-h265-main8-4k240-main-matrix-final-rerun`.
+- Current Main8 result: decoded/presented `566/566`,
+  `average_present_fps=240.03084388696948`,
+  `performance_max_private_dirty_kib=24692`, `performance_avg_cpu_percent=15.23`,
   `performance_max_nvidia_process_gpu_memory_mib=126`, `descriptor_sets=0`,
   `descriptor_heap_only=true`, `all_zero_copy_presented=true`,
   `picture_format=G8_B8R8_2PLANE_420_UNORM`.
-- Main10 evidence directory: `/tmp/gilder-h265-main10-pool1-rerun`.
-- Main10 result: decoded/presented `2400/2400`,
-  `average_present_fps=240.00463578108003`,
-  `performance_max_private_dirty_kib=24048`, `performance_avg_cpu_percent=15.88`,
-  `performance_max_pss_kib=66580`, `performance_max_uss_kib=39000`,
-  `performance_avg_gpu_busy_percent=32`, `performance_max_gpu_busy_percent=38`,
+- Rejected fresh-rebuild Main8 evidence:
+  `/tmp/gilder-h265-main8-4k240-main-matrix-final` decoded/presented
+  `566/566`, but failed the strict memory gate at
+  `performance_max_private_dirty_kib=27800`. The same rebuilt release binary
+  passed on the immediate rerun above; the failed first run remains rejected
+  evidence, not an accepted pass.
+- Rejected Main8 long-window evidence:
+  `/tmp/gilder-h265-main8-4k240-main-matrix-2400-optimized` decoded/presented
+  `2400/2400`, but failed the strict memory gate at
+  `performance_max_private_dirty_kib=25052`. The gate remains `25000 KiB`;
+  this run is not accepted and is the next H.265 Main8 memory target.
+- Current Main10 evidence directory:
+  `/tmp/gilder-h265-main10-4k240-main-matrix-final`.
+- Current Main10 result: decoded/presented `566/566`,
+  `average_present_fps=240.0339348336484`,
+  `performance_max_private_dirty_kib=24576`, `performance_avg_cpu_percent=15.33`,
   `performance_max_nvidia_process_gpu_memory_mib=174`, `descriptor_sets=0`,
   `descriptor_heap_only=true`, `all_zero_copy_presented=true`,
   `picture_format=G10X6_B10X6R10X6_2PLANE_420_UNORM_3PACK16`.
@@ -198,23 +209,21 @@ must be judged with malloc/glibc tuning env cleared and no in-process
   FFmpeg-packet byte ranges when a container packet contains multiple frame
   units; this removed retained-copy pressure while keeping continuous 4K240
   present.
-- Main8 evidence directory: `/tmp/gilder-av1-main8-pool1`.
-- Main8 result: displayed/presented `2400/2400`,
-  `average_present_fps=240.03187096557068`,
-  `performance_max_private_dirty_kib=24004`, `performance_avg_cpu_percent=14.22`,
-  `performance_max_pss_kib=66591`, `performance_max_uss_kib=39012`,
-  `performance_avg_gpu_busy_percent=30`, `performance_max_gpu_busy_percent=33`,
-  `performance_max_nvidia_process_gpu_memory_mib=179`, `descriptor_sets=0`,
-  `descriptor_heap_only=true`, `all_zero_copy_presented=true`,
+- Current Main8 evidence directory: `/tmp/gilder-av1-main8-4k240-main-matrix-final`.
+- Current Main8 result: submitted/displayed/presented `585/566/566`,
+  `average_present_fps=240.04827113264776`,
+  `performance_max_private_dirty_kib=24640`, `performance_avg_cpu_percent=38.87`,
+  `performance_max_nvidia_process_gpu_memory_mib=179`,
+  `descriptor_sets=0`, `descriptor_heap_only=true`,
+  `descriptor_model=VK_EXT_descriptor_heap`, `all_zero_copy_presented=true`,
   `picture_format=G8_B8R8_2PLANE_420_UNORM`.
-- Main10 evidence directory: `/tmp/gilder-av1-main10-pool1`.
-- Main10 result: displayed/presented `2400/2400`,
-  `average_present_fps=240.04099556802595`,
-  `performance_max_private_dirty_kib=23836`, `performance_avg_cpu_percent=14.68`,
-  `performance_max_pss_kib=66580`, `performance_max_uss_kib=38912`,
-  `performance_avg_gpu_busy_percent=33`, `performance_max_gpu_busy_percent=44`,
-  `performance_max_nvidia_process_gpu_memory_mib=286`, `descriptor_sets=0`,
-  `descriptor_heap_only=true`, `all_zero_copy_presented=true`,
+- Current Main10 evidence directory: `/tmp/gilder-av1-main10-4k240-main-matrix-final`.
+- Current Main10 result: submitted/displayed/presented `585/566/566`,
+  `average_present_fps=240.07923906642975`,
+  `performance_max_private_dirty_kib=24580`, `performance_avg_cpu_percent=40.20`,
+  `performance_max_nvidia_process_gpu_memory_mib=286`,
+  `descriptor_sets=0`, `descriptor_heap_only=true`,
+  `descriptor_model=VK_EXT_descriptor_heap`, `all_zero_copy_presented=true`,
   `picture_format=G10X6_B10X6R10X6_2PLANE_420_UNORM_3PACK16`.
 
 ## Allocator Evidence
@@ -280,11 +289,11 @@ elapsed time was in `vkQueuePresentKHR`.
   metadata. This directory must not retain access-unit payload windows.
 - `src/renderer/native_vulkan/vulkan/`: the only Vulkan binding backend. It is
   split into `core/` device/feature/profile setup, `present/` swapchain/render
-  present, `scene/` scene-lite draw/present, and `video/` Vulkan Video session,
+  present, `scene/` scene draw/present, and `video/` Vulkan Video session,
   command, decode submit, and present runtime code.
 - `src/renderer/native_vulkan/present/`: renderer item planning plus clear and
   static-image present entry points.
-- `src/renderer/native_vulkan/scene/`: scene-lite planning/runtime bridge into
+- `src/renderer/native_vulkan/scene/`: scene planning/runtime bridge into
   the Vulkan present path.
 - `src/renderer/native_vulkan/audio/`: audio policy and clock boundary.
   `clock-only` decodes FFmpeg audio frames for timestamp/serial metadata and
@@ -589,31 +598,38 @@ fields together with the report directory.
    `video_master_start_*`/`current_serial_start_*` audio fields and applies the
    same loop gate when playback exceeds the ready-prefix window, so all direct
    ready-prefix codecs use the same audio-clock evidence fields.
-2. Full scene wallpaper support: the current completed work is still a native
-   scene-lite subset plus explicit full-scene bridge boundaries, not full
-   Wallpaper Engine scene execution. For progress accounting, full scene is
-   roughly `60%`: package/conversion boundaries, snapshot-time propagation,
+2. Full scene wallpaper support: the current completed work is a first-class
+   Gilder scene document/runtime path plus explicit full-scene boundaries, not
+   full Wallpaper Engine scene execution. For progress accounting, full scene
+   is roughly `80%`: package/conversion boundaries, `scene/gscene` format
+   validation, snapshot-time propagation,
    retained sampled-image resources, solid/image mixed composition, descriptor
    heap sampling, visible scene runtime status, native present route selection,
    retained resource status, clear-background composition, native runtime
    layer-coverage accounting, rounded-rectangle tessellation, simple/concave
-   path tessellation, stroke geometry, deterministic text glyph geometry, and first-class
-   `video` layer detection are in place;
-   particle systems, full WE scene graph
-   execution, SceneScript, shader/material graph, parallax, audio response,
-   complex font shaping/atlas typography, full path rasterization, and actual
-   video-as-scene composition remain open. The
-   scene-lite subpath is much
-   further along, but it is not the full-scene metric. Wallpaper Engine scene
-   conversions now write a structured `full_scene` report block with
+   path tessellation, stroke geometry, deterministic text glyph geometry,
+   first-class `video` layer detection, single-video-layer Vulkan Video scene
+   composition, clear-background plus video scene composition, scene
+   timeline animation snapshotting, property update binding, pause/resume
+   policy, and package state/property persistence are in place; particle
+   systems, full WE scene graph execution, SceneScript, shader/material graph,
+   parallax, PipeWire audio response, complex font shaping/atlas typography,
+   full path rasterization, and actual mixed video-as-scene composition remain
+   open. Wallpaper Engine scene conversions now write `assets/*.gscene.json`
+   documents with `source`, `resources`, `nodes`, `systems`,
+   `native_lowering`, and `unsupported_features` sections, plus a structured
+   `full_scene` report block with
    `target_runtime=native-vulkan-full-scene`,
-   `current_runtime=scene-lite-subset`, `progress_estimate_percent=60`,
+   `current_runtime=native-vulkan-scene-runtime`,
+   `progress_estimate_percent=80`,
    preserved source-scene metadata paths, completed boundaries, and pending
-   full-scene boundaries. Static wallpapers now lower into a single-image scene
-   layer before the Vulkan sampled-image runtime. Scene-lite plans already
-   route through `native_vulkan/scene/` and
+   full-scene boundaries. There is no internal legacy scene format, loader, or
+   lowering bridge; old `layers` fixture data was replaced by `nodes/resources`
+   gscene documents. Static wallpapers now lower into a single-image scene
+   layer before the Vulkan sampled-image runtime. Scene plans route through
+   `native_vulkan/scene/` and
    `native_vulkan/vulkan/scene/` with descriptor-heap sampled-image geometry.
-   The main scene-lite present entry now chooses the native fast-clear,
+   The main scene present entry now chooses the native fast-clear,
    solid-quad, sampled-image, or mixed solid+sampled-image Vulkan route from the
    runtime draw-pass plan, including implicit full-extent image layers that
    derive fit geometry from the swapchain extent at present time. Full-extent
@@ -622,9 +638,9 @@ fields together with the report directory.
    rendering clear background for `color + image`, `color + shape`, and
    `color + simple path` scenes instead of blocking native presentation. The
    native spike CLI uses the same path through
-   `--run-scene-lite` for image and color scene probes, and the CLI accepts
+   `--run-scene` for image and color scene probes, and the CLI accepts
    `--scene-time-ms`/`--snapshot-time-ms` so non-zero sampled scene time reaches
-   `SceneLiteWallpaperPlan` through the same entry point used by visible
+   `SceneWallpaperPlan` through the same entry point used by visible
    runtime smoke. Text layers now lower into deterministic built-in glyph
    geometry and render through the same solid dynamic-rendering pipeline as
    rectangles, rounded rectangles, ellipses, and simple paths; this gives text
@@ -632,7 +648,7 @@ fields together with the report directory.
    compatibility path.
    Scene sampled-image uploads now use Vulkan 1.4
    `hostImageCopy`, so static scene image upload has no staging buffer, upload
-   queue submit, or upload fence. Scene runtime and `SceneLiteWallpaperPlan`
+   queue submit, or upload fence. Scene runtime and `SceneWallpaperPlan`
    now carry `snapshot_time_ms` into the native Vulkan render item instead of
    resetting it to zero, which keeps the time-sampled scene state visible at
    the Vulkan boundary. Scene runtime and sampled-image present snapshots now
@@ -641,10 +657,11 @@ fields together with the report directory.
    `scene_sampled_image_resource_count`, and
    `scene_sampled_image_descriptor_heap_required`, making the group-flattened
    core snapshot boundary and descriptor-heap-only sampled-image resource model
-   directly visible in JSON evidence. Scene-lite now also accepts first-class
-   `video` layers in the core document model; native runtime snapshots expose
+   directly visible in JSON evidence. The scene document model accepts
+   first-class `video` layers; native runtime snapshots expose
    `draw_pass_video_op_count`, `scene_video_layer_resource_count`,
-   `draw_pass_required_video_resources`, and `draw_pass_requires_video_decode`.
+   `draw_pass_required_video_resources`, `scene_video_native_layer_count`,
+   and `draw_pass_requires_video_decode`.
    Full-scene runtime snapshots now expose `active_scene_layer_count`,
    `native_runtime_layer_count`, `native_runtime_pending_layer_count`,
    `native_runtime_coverage_percent`, `clear_background_layer_count`,
@@ -652,26 +669,44 @@ fields together with the report directory.
    `rounded_rectangle_layer_count`, `tessellated_path_layer_count`,
    `text_geometry_layer_count`, and `stroke_geometry_layer_count`, so scene
    progress is tied to actual layer
-   coverage rather than treating scene-lite as full scene.
+   coverage rather than treating scene as full scene.
+   Renderer plans now also count `timeline_animation_count`,
+   `timeline_animated_layer_count`, and `property_binding_count`; these values
+   are carried into `NativeVulkanRenderItem::Scene` and
+   `runtime.full_scene` instead of being inferred at the reporting boundary.
+   The property binding path uses the persisted global/output `AppState`
+   property store and the same resolver used to build visible scene snapshots.
    Visible scene present results now include `runtime.full_scene`, with
    `target_runtime=native-vulkan-full-scene`,
-   `current_runtime=native-vulkan-scene-runtime-subset`,
-   `progress_estimate_percent=60`, `native_present_route_ready`,
+   `current_runtime=native-vulkan-scene-runtime`,
+   `progress_estimate_percent=80`, `native_present_route_ready`,
    `retained_resource_model_ready`, `timeline_snapshot_runtime_ready`,
+   `timeline_animation_runtime_ready`, `timeline_animation_count`,
+   `timeline_animated_layer_count`, `property_update_runtime_ready`,
+   `property_binding_count`, `pause_resume_policy_ready`,
+   `package_state_persistence_ready`, `scene_state_persistence_model`,
    `source_layer_count`, flattened draw counts, per-feature layer counts,
-   completed boundaries, and pending boundaries.
-   The current native backend intentionally reports
-   `video-layer-vulkan-video-scene-bridge-pending` with blocking reason
-   `video-layer-needs-vulkan-video-scene-bridge`, which makes the next
-   Vulkan-Video-as-scene composition boundary explicit instead of silently
-   rasterizing or falling back.
+   completed boundaries, and pending boundaries. A single scene `video` layer
+   now routes through the same Vulkanalia ready-prefix Vulkan Video presenter
+   used by direct video wallpapers and reports
+   `video-layer-vulkan-video-scene-bridge-ready`. A leading full-screen color
+   scene layer plus one video layer now routes through the same presenter as
+   `clear-background-video-layer-vulkan-video-scene-bridge-ready`; the dynamic
+   rendering attachment clear color is carried in each decoded-image draw
+   snapshot. Mixed video scenes with overlays remain explicitly pending under
+   `mixed-video-scene-composition` instead of silently rasterizing or falling
+   back.
    Current runtime smoke:
-   `WAYLAND_DISPLAY=wayland-1 target/release/gilder-native-vulkan --run-scene-lite --output-name HDMI-A-1 --source artifacts/smoke/scene-lite-heap-smoke.png --fit cover --duration 1 --target-fps 30 --scene-time-ms 1234`
+   `WAYLAND_DISPLAY=wayland-1 target/release/gilder-native-vulkan --run-scene --output-name HDMI-A-1 --source artifacts/smoke/scene-heap-smoke.png --fit cover --duration 1 --target-fps 30 --scene-time-ms 1234`
    presents `30` frames at `29.99748264125423` FPS and reports
-   `runtime.full_scene.progress_estimate_percent=60`,
+   `runtime.full_scene.progress_estimate_percent=80`,
    `runtime.full_scene.native_present_route_ready=true`,
    `runtime.full_scene.retained_resource_model_ready=true`,
    `runtime.full_scene.timeline_snapshot_runtime_ready=true`,
+   `runtime.full_scene.timeline_animation_runtime_ready=true`,
+   `runtime.full_scene.property_update_runtime_ready=true`,
+   `runtime.full_scene.pause_resume_policy_ready=true`,
+   `runtime.full_scene.package_state_persistence_ready=true`,
    `runtime.full_scene.native_runtime_coverage_percent=100`,
    `scene_resource_model=retained-sampled-images-descriptor-heap`,
    `scene_sampled_image_resource_count=1`,
@@ -682,14 +717,34 @@ fields together with the report directory.
    `uses_present_id2=true`, `present_wait2_available=true`,
    `swapchain.present_id2_enabled=true`, `swapchain.present_wait2_enabled=true`,
    and no legacy `uses_present_id`/`present_wait_available` fields.
+   Current video scene smoke:
+   `/tmp/gilder-scene-video-h265-main8-background-final.json` from
+   `WAYLAND_DISPLAY=wayland-1 target/release/gilder-native-vulkan --run-scene --scene-video --output-name HDMI-A-1 --source artifacts/video-sources/h265/h265-main-8-b0-ref1-3840x2160-240fps-566frames-g240-d240.mp4 --video-codec h265 --width 3840 --height 2160 --decode-h265-ready-prefix 4 --playback-frames 4 --target-fps 240 --background '#102030' --fit contain`
+   reports `scene_present_route=video`,
+   `draw_pass_backend_status=clear-background-video-layer-vulkan-video-scene-bridge-ready`,
+   `scene_resource_model=clear-background-and-retained-vulkan-video-scene-resource`,
+   `active_scene_layer_count=2`, `clear_background_layer_count=1`,
+   `video_native_layer_count=1`, `native_runtime_layer_count=2`,
+   `native_runtime_pending_layer_count=0`,
+   `native_runtime_coverage_percent=100`, presented `4` H.265 Main8 frames,
+   `descriptor_model=VK_EXT_descriptor_heap`, `all_zero_copy_presented=true`,
+   and decoded-image draw `clear_color=[0.062745101749897,0.125490203499794,0.1882352977991104,1.0]`.
    Current regression coverage:
-   `cargo test --features native-vulkan-renderer scene_lite -- --nocapture`
-   passes `44` scene-lite-related tests across lib/bin/gilderd entry points.
+   `cargo test --features native-vulkan-renderer scene -- --nocapture`
+   passes `85` filtered lib tests, `5` native-vulkan CLI tests, and `1`
+   gilderd test. The added renderer/runtime coverage asserts gscene package
+   validation, WE scene-to-gscene conversion, timeline animation metadata reaches
+   `SceneWallpaperPlan`, first-frame animation
+   snapshot values are applied, property binding counts reach the native
+   runtime, and the completed full-scene boundaries include
+   `timeline-animation-runtime`, `property-update-runtime`,
+   `pause-resume-policy-runtime`, and `package-state-persistence`.
    Next gates:
-   wiring video-as-scene layer composition from this explicit bridge boundary,
+   wiring mixed video-as-scene layer composition from this explicit bridge boundary,
    complex font shaping/atlas typography, full path rasterization,
-   property updates beyond snapshot time zero, pause/resume policy, and package
-   state persistence. The scene path must keep retained GPU images,
+   full Wallpaper Engine graph execution, SceneScript, shader/material graph,
+   particle systems, parallax camera behavior, and PipeWire audio response.
+   The scene path must keep retained GPU images,
    `descriptor_sets=0`, and descriptor-heap sampling.
 3. Video coverage and regression: the H.264/H.265/AV1 core decode/present path
    is now in coverage/stability mode. Expand real and generated matrices across
