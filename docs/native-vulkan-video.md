@@ -303,7 +303,12 @@ distribution behavior, not as a loose local profile:
   `average_present_fps=60.24337748247325`, `audio_video_sync.ready=true`,
   source PTS deltas `16666666..16666667 ns`,
   `audio_output_xrun_count=0`, `ffmpeg_slices_buffer_pool_capacity_bytes=1651200`,
-  and `max_src_buffer_range=953600`.
+  and `max_src_buffer_range=953600`. After the PipeWire small-stack and
+  FFmpeg Annex-B scratch retention update, the same coded `1712x1088` source
+  passes at `/tmp/gilder-vulkan-h264-3407391149-audio-6s-smallstack-payload128`
+  with `Private_Dirty=24780 KiB`, `average_present_fps=60.24070514810772`,
+  `audio_video_sync.ready=true`, `audio_output_process_callbacks=282`, and
+  `audio_output_xrun_count=0`.
 - Workshop `3655044877` (`Mac-OS Dubai Night 4k 240 FPS`) is advertised as
   240 FPS but `ffprobe` identifies the downloaded MP4 as H.264 Main 8-bit
   `3840x2160`, `60/1` FPS, video-only. The first strict 6s smoke passed at
@@ -331,7 +336,13 @@ distribution behavior, not as a loose local profile:
   `/tmp/gilder-vulkan-h264-2985290493-video-6s` passed at
   `Private_Dirty=21788 KiB`, heap `3128 KiB`, anon `5568 KiB`, and
   `average_present_fps=60.04126508038644`, making this a current AAC/PipeWire
-  memory-pressure sample rather than a video decode pressure sample.
+  memory-pressure sample rather than a video decode pressure sample. The
+  current small-stack plus FFmpeg payload-retention cap binary passes
+  `/tmp/gilder-vulkan-h264-2985290493-audio-6s-smallstack-payload128` at
+  `Private_Dirty=24836 KiB`, `average_present_fps=60.27155100510979`,
+  `audio_output_process_callbacks=259`, `audio_output_xrun_count=0`; its
+  no-build rerun `/tmp/gilder-vulkan-h264-2985290493-audio-6s-smallstack-payload128-rerun`
+  passes at `Private_Dirty=24908 KiB` and `performance_avg_cpu_percent=9.93`.
 
 If a performance run starts immediately after
 `target/release/gilder-native-vulkan` was rebuilt or replaced, Linux can report
@@ -633,9 +644,15 @@ fields together with the report directory.
    playback requests more frames than the ready-prefix window, the audio path
    now budgets enough FFmpeg packets to cover the full target playback duration,
    enables FFmpeg EOS seek, and exposes current-serial reset evidence without
-   retaining packet payloads. The remaining audio work is outside the direct
-   ready-prefix player: full-scene audio response must consume the same
-   PipeWire-only backend from the scene runtime.
+   retaining packet payloads. The native audio runtime now uses a fixed
+   128 KiB Rust output-worker stack and a 128 KiB PipeWire thread-loop stack;
+   larger PipeWire buffer overrides were rejected because they raised process
+   callback count without meaningful memory benefit. Video FFmpeg Annex-B
+   scratch retains only one small reusable payload buffer and releases 4K-scale
+   packet storage after handoff, matching FFmpeg's `av_packet_unref` lifetime
+   more closely. The remaining audio work is outside the direct ready-prefix
+   player: full-scene audio response must consume the same PipeWire-only
+   backend from the scene runtime.
    Current PipeWire ready-prefix auto smoke:
    `/tmp/gilder-audio-scene-remaining10-auto-smoke` passes
    `--audio-clock-probe --audio-output auto --unmuted --pacing-master audio`,
@@ -734,10 +751,10 @@ fields together with the report directory.
    first-class `video` layer detection, single-video-layer Vulkan Video scene
    composition, clear-background plus video scene composition, scene
    timeline animation snapshotting, property update binding, pause/resume
-   policy, and package state/property persistence are in place; particle
-   systems, full WE scene graph execution, arbitrary SceneScript,
-   shader/material graph, cursor parallax input plumbing,
-   PipeWire audio response, complex font
+   policy, package state/property persistence, and scene audio cues carried
+   through the renderer/runtime boundary are in place; particle systems, full
+   WE scene graph execution, arbitrary SceneScript, shader/material graph,
+   cursor parallax input plumbing, PipeWire audio response, complex font
    shaping/atlas typography, full path rasterization, and actual mixed
    video-as-scene composition remain open. Wallpaper Engine scene conversions
    now write `assets/*.gscene.json`
@@ -747,7 +764,7 @@ fields together with the report directory.
    `full_scene` report block with
    `target_runtime=native-vulkan-full-scene`,
    `current_runtime=native-vulkan-scene-runtime`,
-   `progress_estimate_percent=92`,
+   `progress_estimate_percent=93`,
    preserved source-scene metadata paths, completed boundaries, and pending
    full-scene boundaries. Gilder scene is the runtime format, not a
    Wallpaper Engine schema clone: WE's historical fields are treated as an
@@ -852,10 +869,14 @@ fields together with the report directory.
    `runtime.full_scene` instead of being inferred at the reporting boundary.
    The property binding path uses the persisted global/output `AppState`
    property store and the same resolver used to build visible scene snapshots.
+   Scene audio cues are preserved in `SceneSnapshotLayer`, carried into
+   `SceneRenderLayer`, counted in `SceneWallpaperPlan`, and surfaced as
+   `scene_audio_cue_count` plus `scene_audio_cue_resource_model_ready` in
+   `runtime.full_scene`; audio response remains a separate pending system.
    Visible scene present results now include `runtime.full_scene`, with
    `target_runtime=native-vulkan-full-scene`,
    `current_runtime=native-vulkan-scene-runtime`,
-   `progress_estimate_percent=92`, `native_present_route_ready`,
+   `progress_estimate_percent=93`, `native_present_route_ready`,
    `retained_resource_model_ready`, `timeline_snapshot_runtime_ready`,
    `timeline_animation_runtime_ready`, `timeline_animation_count`,
    `timeline_animated_layer_count`, `property_update_runtime_ready`,
@@ -916,7 +937,7 @@ fields together with the report directory.
    Current runtime smoke:
    `WAYLAND_DISPLAY=wayland-1 target/release/gilder-native-vulkan --run-scene --output-name HDMI-A-1 --source artifacts/smoke/scene-heap-smoke.png --fit cover --duration 1 --target-fps 30 --scene-time-ms 1234`
    presents `30` frames at `29.99748264125423` FPS and reports
-   `runtime.full_scene.progress_estimate_percent=92`,
+   `runtime.full_scene.progress_estimate_percent=93`,
    `runtime.full_scene.native_present_route_ready=true`,
    `runtime.full_scene.retained_resource_model_ready=true`,
    `runtime.full_scene.timeline_snapshot_runtime_ready=true`,
