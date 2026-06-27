@@ -258,6 +258,19 @@ at `24364 KiB` with file mapping `Private_Dirty=124 KiB`. The gate stays
 `25000 KiB`; no file-mapping or gilder-binary memory is subtracted from the
 metric.
 
+After switching present mode selection to prefer Roadmap 2026
+`VK_KHR_present_mode_fifo_latest_ready` over `MAILBOX`, the current rebuilt
+H.264 4K240 release run
+`/tmp/gilder-vulkan-h264-ready-prefix-video.EFHymZ` passes strict gates with
+`present_mode=fifo-latest-ready`, `presented_frame_count=2400`,
+`present_mode_gate_failed=0`, `average_present_fps=240.006152921391`,
+`performance_max_private_dirty_kib=24368`, and
+`memory_category_file_mapping_private_dirty_kib=0`. The immediately preceding
+same-source `MAILBOX` run
+`/tmp/gilder-vulkan-h264-ready-prefix-video.XDKz2d` stayed under memory at
+`24356 KiB` but failed the FPS gate at `224.57390736245236` because almost all
+elapsed time was in `vkQueuePresentKHR`.
+
 ## Code Layout
 
 - `src/renderer/native_vulkan.rs`: facade, shared codec parsers, snapshot
@@ -276,9 +289,11 @@ metric.
 - `src/renderer/native_vulkan/audio/`: audio policy and clock boundary.
   Clock-only audio now probes FFmpeg audio packets as timestamp/serial metadata
   and immediately releases packet payloads. Ready-prefix runs perform the probe
-  before video present when requested and can enable muted audio-master pacing
-  for decoded-image present telemetry. Audible output is still deliberately out
-  of scope until daemon mute/pause/device lifecycle is wired.
+  before video present when requested, keep `clock_ns` as the probe diagnostic,
+  and pass the first ready `video_master_start_clock_ns` sample into muted
+  audio-master pacing so pre-read AAC packets do not advance the video start
+  clock. Audible output is still deliberately out of scope until daemon
+  mute/pause/device lifecycle is wired.
 
 ## Vulkan 1.4 And Roadmap Modernization
 
@@ -298,9 +313,12 @@ Current modern baseline:
   `VK_KHR_present_id` and `VK_KHR_present_wait` route is not an allowed
   fallback.
 - `VK_KHR_present_mode_fifo_latest_ready` is queried and enabled through the
-  device feature chain when available. Present mode selection stays `MAILBOX`
-  first, then uses `FIFO_LATEST_READY` before `FIFO_RELAXED`/`FIFO` when that
-  KHR feature is enabled.
+  device feature chain when available. Present mode selection now uses
+  `FIFO_LATEST_READY` when that KHR feature and surface mode are both
+  available, otherwise `FIFO_RELAXED`/`FIFO`. `MAILBOX` is not a native Vulkan
+  fallback even when the surface advertises it. Ready-prefix video smoke gates
+  now accept only `fifo-latest-ready`, `fifo-relaxed`, or `fifo` and fail
+  `mailbox`/`immediate` evidence.
 - Resource memory binding and host mapping use Vulkan 1.4-style
   `vkBind*Memory2`, `vkMapMemory2`, and `vkUnmapMemory2`.
 - Scene sampled-image upload uses Vulkan 1.4 `hostImageCopy`: image resources
@@ -317,6 +335,42 @@ Current modern baseline:
   reports it. Keeping this enabled is part of the roadmap contract; the 25,000
   KiB memory gate must be met by reducing FFmpeg/runtime retained memory, not by
   disabling modern Vulkan features.
+- Current runtime maintenance use is split by API family: Vulkan 1.4 core keeps
+  `maintenance5`/`maintenance6`, Vulkan Video keeps `VK_KHR_video_maintenance2`
+  for inline codec parameters, and present keeps surface/swapchain maintenance1.
+  Those are not compatibility fallbacks and are not replaced by
+  `VK_KHR_maintenance10`. Roadmap 2026 still requires
+  `VK_KHR_maintenance7`, `VK_KHR_maintenance8`, and `VK_KHR_maintenance9`; keep
+  probing them. `VK_KHR_maintenance10` is tracked as an additional modern
+  ratified extension, not as a replacement for 7/8/9.
+- `--probe-vulkanalia` now emits a per-physical-device `roadmap_2026` evidence
+  block. That block records `api_version_1_4_or_newer`,
+  `core_vulkan_1_4_features_ready`, the available/missing tracked Roadmap 2026
+  device extensions, and feature bits for pipeline binary, robustness2,
+  fragment shading rate, shader clock, cooperative matrix, compute shader
+  derivatives, depth-clamp-zero-one, copy-memory-indirect, maintenance7/8/9/10,
+  and shader untyped pointers. For `VK_KHR_maintenance10`, the probe also
+  records the `PhysicalDeviceMaintenance10PropertiesKHR` sRGB resolve and RGBA4
+  opaque-black behavior bits. M10 is useful when the native scene path needs
+  explicit sRGB resolve transfer-function control, dynamic-rendering end-info
+  extensibility, or depth/stencil copy capability on non-graphics queues; it is
+  not expected to improve the current 4K240 direct-video memory/FPS gate until
+  one of those paths exists. This is probe evidence only: an extension is not
+  considered runtime-used until the relevant scene/video/present path consumes it
+  and exposes path-specific JSON fields.
+  Current probe evidence:
+  `cargo run --features native-vulkan-video --bin gilder-native-vulkan -- --probe-vulkanalia`
+  reports `NVIDIA GeForce RTX 4060 Laptop GPU` with Vulkan `1.4.341`,
+  `roadmap_2026.api_version_1_4_or_newer=true`,
+  `roadmap_2026.core_vulkan_1_4_features_ready=true`,
+  `roadmap_2026.tracked_device_extensions_missing=[]`, and true feature bits
+  for pipeline binaries, robustness2/null descriptors, fragment shading rate,
+  shader clock, cooperative matrix, compute shader derivatives,
+  depth-clamp-zero-one, copy-memory-indirect, maintenance7/8/9/10, and shader
+  untyped pointers. The same probe reports all three maintenance10 property
+  bits true: `rgba4_opaque_black_swizzled`,
+  `resolve_srgb_format_applies_transfer_function`, and
+  `resolve_srgb_format_supports_transfer_function_control`.
 
 Primary Vulkan references for this baseline:
 
@@ -335,6 +389,24 @@ Primary Vulkan references for this baseline:
   contract for native present telemetry:
   <https://docs.vulkan.org/refpages/latest/refpages/source/VK_KHR_present_id2.html>,
   <https://docs.vulkan.org/refpages/latest/refpages/source/VK_KHR_present_wait2.html>.
+- `VK_KHR_surface_maintenance1` and `VK_KHR_swapchain_maintenance1` are WSI
+  extensions, not general rendering maintenance. Surface maintenance1 is for
+  per-present-mode surface capabilities, scaling capability, and compatible
+  present-mode queries; swapchain maintenance1 is for per-present-mode changes,
+  present fences, deferred swapchain allocation, present scaling, and releasing
+  acquired images:
+  <https://docs.vulkan.org/refpages/latest/refpages/source/VK_KHR_surface_maintenance1.html>,
+  <https://docs.vulkan.org/refpages/latest/refpages/source/VK_KHR_swapchain_maintenance1.html>.
+- `VK_KHR_video_maintenance1` is specific to Vulkan Video. Its benefits are
+  profile-independent video buffers/images and inline video query metadata; it
+  complements `VK_KHR_video_maintenance2` inline codec parameters and is not
+  replaced by general `VK_KHR_maintenance*` extensions:
+  <https://docs.vulkan.org/refpages/latest/refpages/source/VK_KHR_video_maintenance1.html>.
+- `VK_KHR_maintenance10` is a Roadmap-era maintenance extension available in
+  current vulkanalia bindings. Track both its `maintenance10` feature and its
+  sRGB resolve/RGBA4 opaque-black properties before promoting it into scene or
+  video resolve paths:
+  <https://docs.vulkan.org/refpages/latest/refpages/source/VK_KHR_maintenance10.html>.
 
 Next Vulkan/roadmap gates:
 
@@ -351,7 +423,14 @@ Next Vulkan/roadmap gates:
    present handoff once validation confirms the video/image-layout path.
 5. Emit `VK_EXT_frame_boundary` markers around demux/decode/render/present work
    for profiling and driver scheduling evidence.
-6. Evaluate shader-object and extended-dynamic-state cleanup only after the
+6. Promote the new Roadmap 2026 probe bits into runtime paths where they remove
+   actual work: `VK_KHR_pipeline_binary` for retained scene/video pipelines,
+   `VK_KHR_robustness2`/null descriptors for descriptor-heap resource tables,
+   maintenance7/8/9 where they simplify image/memory limits, `VK_KHR_maintenance10`
+   where it simplifies image/resolve behavior, and
+   copy-memory-indirect only if it replaces CPU-side upload loops without
+   retaining extra buffers.
+7. Evaluate shader-object and extended-dynamic-state cleanup only after the
    scene path has video/text/path layers. The target is fewer pipeline variants,
    not a second shader binding model.
 
@@ -396,30 +475,71 @@ fields together with the report directory.
    reports a muted audio-clock snapshot from ready-prefix runs when
    `--audio-clock-probe` is requested. The probe now runs before decoded-image
    present and, when it finds an audio stream with clock samples, passes the
-   probed `clock_ns` into the decoded-image present timer as the muted
-   audio-master start sample. Audio snapshots now explicitly report
-   `video_master_clock_ready` and `video_master_start_clock_ns`, and ready-prefix
-   video pacing consumes that contract instead of re-inferring it from loose
-   fields. Next gates: replace the probe-backed start sample with a live audio
-   callback/runtime clock, prove loop/arbitrary-entry sync against real
-   audio+video sources, then add audible output with daemon pause/mute/device
-   lifecycle.
-   Current generated-source smoke:
-   `/tmp/gilder-vulkan-h265-ready-prefix-video.9WFi6v` uses
-   `artifacts/video-sources/h265/h265-main-8-b0-ref1-320x192-240fps-10frames-g9-d8-aac48000.mp4`,
-   passes `--audio-clock-probe --pacing-master audio`, reports
+   first ready `video_master_start_clock_ns` into the decoded-image present
+   timer as the muted audio-master start sample while leaving the final
+   `clock_ns` as probe diagnostics. Audio snapshots now explicitly report
+   `video_master_clock_ready`, `video_master_start_clock_ns`,
+   `video_master_start_serial`, `video_master_start_packet_index`,
+   `current_serial_start_clock_ns`, `current_serial_start_serial`, and
+   `current_serial_start_packet_index`. Ready-prefix video pacing consumes the
+   stable `video_master_start_*` start sample, while loop/seek evidence uses
+   the `current_serial_start_*` fields so pre-present probing cannot move the
+   first-frame master clock to a later loop. When playback requests more frames
+   than the ready-prefix window, the audio probe enables FFmpeg EOS seek and
+   expands the bounded metadata-only packet probe to expose current-serial
+   reset evidence without retaining packet payloads. The H.264/H.265
+   ready-prefix smokes now fail generated-source audio-clock loop probes when
+   `loop_count`, `current_serial`, or `current_serial_start_serial` never
+   leaves serial `0`. Next gates: replace the probe-backed start sample with a
+   live audio callback/runtime clock, prove arbitrary-entry sync against real
+   audio+video sources, then add audible output with daemon
+   pause/mute/device lifecycle.
+   Current H.264 generated-source loop-audio smoke:
+   `/tmp/gilder-vulkan-h264-ready-prefix-video.JfquFZ` passes
+   `--audio-clock-probe --pacing-master audio`, reports
+   `consumed_packets=512`, `loop_count=4`, `current_serial=4`,
+   `video_master_start_clock_ns=21333333`, `retained_payload_bytes=0`,
+   `video_master_start_serial=0`, `video_master_start_packet_index=1`,
+   `current_serial_start_serial=4`,
+   `current_serial_start_packet_index=469`,
+   `pacing_strategy=audio-clock-master-pts-sync-sleep`,
+   `frame_sleep_count=7`, `missed_frame_pacing_count=0`, and
+   `total_frame_sleep_us=1726024`.
+   Current H.265 generated-source loop-audio smoke:
+   `/tmp/gilder-vulkan-h265-ready-prefix-video.t7XlLE` passes
+   `--audio-clock-probe --pacing-master audio`, reports
    `audio_output_mode=clock-only`, `audio_stream_found=true`,
-   `consumed_packets=2`, `current_serial=0`,
+   `consumed_packets=512`, `loop_count=4`, `current_serial=4`,
    `video_master_clock_ready=true`,
-   `video_master_start_clock_ns=21333333`, `retained_payload_bytes=0`, and
-   pacing `audio-clock-master-pts-sync-sleep`. The same run reports
+   `video_master_start_clock_ns=21333333`,
+   `video_master_start_serial=0`, `current_serial_start_serial=4`,
+   `retained_payload_bytes=0`, and pacing
+   `audio-clock-master-pts-sync-sleep`. The same run reports
    `video_session_create_inline_session_parameters=true`,
    `video_session_create_flags_bits=32`,
    `uses_inline_session_parameters=true`, and
    `video_session_parameters_handle_used=false`.
-2. Full scene wallpaper support: static wallpapers now lower into a
-   single-image scene layer before the Vulkan sampled-image runtime. Scene-lite
-   plans already route through `native_vulkan/scene/` and
+   The AV1 ready-prefix smoke now reports the same
+   `video_master_start_*`/`current_serial_start_*` audio fields and applies the
+   same loop-probe gate when playback exceeds the ready-prefix window, so all
+   direct ready-prefix codecs use one audio-clock evidence contract.
+2. Full scene wallpaper support: the current completed work is still a native
+   scene-lite subset plus explicit full-scene bridge boundaries, not full
+   Wallpaper Engine scene execution. For progress accounting, full scene is
+   roughly `20-25%`: package/conversion boundaries, snapshot-time propagation,
+   retained sampled-image resources, solid/image mixed composition, descriptor
+   heap sampling, and first-class `video` layer detection are in place; particle
+   systems, full timeline animation, SceneScript, shader/material graph,
+   parallax, audio response, text/path GPU rasterization, and actual
+   video-as-scene composition remain open. The scene-lite subpath is much
+   further along, but it is not the full-scene metric. Wallpaper Engine scene
+   conversions now write a structured `full_scene` report block with
+   `target_runtime=native-vulkan-full-scene`,
+   `current_runtime=scene-lite-subset`, `progress_estimate_percent=22`,
+   preserved source-scene metadata paths, completed boundaries, and pending
+   full-scene boundaries. Static wallpapers now lower into a single-image scene
+   layer before the Vulkan sampled-image runtime. Scene-lite plans already
+   route through `native_vulkan/scene/` and
    `native_vulkan/vulkan/scene/` with descriptor-heap sampled-image geometry.
    The main scene-lite present entry now chooses the native fast-clear,
    solid-quad, sampled-image, or mixed solid+sampled-image Vulkan route from the
@@ -427,21 +547,43 @@ fields together with the report directory.
    derive fit geometry from the swapchain extent at present time. Full-extent
    image backgrounds can now compose with solid quad overlays through the mixed
    scene route. The native spike CLI uses the same path through
-   `--run-scene-lite` for image and color scene probes. Scene sampled-image
-   uploads now use Vulkan 1.4 `hostImageCopy`, so static scene image upload has
-   no staging buffer, upload queue submit, or upload fence.
+   `--run-scene-lite` for image and color scene probes, and the CLI accepts
+   `--scene-time-ms`/`--snapshot-time-ms` so non-zero sampled scene time reaches
+   `SceneLiteWallpaperPlan` through the same entry point used by visible
+   runtime smoke. Scene sampled-image uploads now use Vulkan 1.4
+   `hostImageCopy`, so static scene image upload has no staging buffer, upload
+   queue submit, or upload fence. Scene runtime and `SceneLiteWallpaperPlan`
+   now carry `snapshot_time_ms` into the native Vulkan render item instead of
+   resetting it to zero, which keeps the time-sampled scene state visible at
+   the Vulkan boundary. Scene runtime and sampled-image present snapshots now
+   expose `scene_input_model`,
+   `scene_resource_model`, `scene_solid_quad_draw_count`,
+   `scene_sampled_image_resource_count`, and
+   `scene_sampled_image_descriptor_heap_required`, making the group-flattened
+   core snapshot boundary and descriptor-heap-only sampled-image resource model
+   directly visible in JSON evidence. Scene-lite now also accepts first-class
+   `video` layers in the core document model; native runtime snapshots expose
+   `draw_pass_video_op_count`, `scene_video_layer_resource_count`,
+   `draw_pass_required_video_resources`, and `draw_pass_requires_video_decode`.
+   The current native backend intentionally reports
+   `video-layer-vulkan-video-scene-bridge-pending` with blocking reason
+   `video-layer-needs-vulkan-video-scene-bridge`, which makes the next
+   Vulkan-Video-as-scene composition boundary explicit instead of silently
+   rasterizing or falling back.
    Current runtime smoke:
-   `WAYLAND_DISPLAY=wayland-1 target/debug/gilder-native-vulkan --run-scene-lite --output-name HDMI-A-1 --source artifacts/smoke/scene-lite-heap-smoke.png --fit cover --duration 1 --target-fps 30`
-   presents `30` frames at `29.997445957456286` FPS and reports
+   `WAYLAND_DISPLAY=wayland-1 target/release/gilder-native-vulkan --run-scene-lite --output-name HDMI-A-1 --source artifacts/smoke/scene-lite-heap-smoke.png --fit cover --duration 1 --target-fps 30 --scene-time-ms 1234`
+   presents `30` frames at `29.997164188086316` FPS and reports
+   `scene_resource_model=retained-sampled-images-descriptor-heap`,
+   `scene_sampled_image_resource_count=1`,
+   `scene_sampled_image_descriptor_heap_required=true`,
    `uses_host_image_copy=true`, `staging_buffer_bytes=0`,
-   `upload_submitted=false`, `descriptor_set_count=0`, `uses_present_id2=true`,
-   `present_wait2_available=true`, and
-   `present_mode_fifo_latest_ready_enabled=true`.
+   `upload_submitted=false`, `descriptor_model=VK_EXT_descriptor_heap`,
+   `uses_present_id2=true`, and `present_wait2_available=true`.
    Current regression coverage:
    `cargo test --features native-vulkan-renderer scene_lite -- --nocapture`
-   passes `40` scene-lite-related tests across lib/bin/gilderd entry points.
+   passes `42` scene-lite-related tests across lib/bin/gilderd entry points.
    Next gates:
-   video-as-scene layer composition,
+   wiring video-as-scene layer composition from this explicit bridge boundary,
    text/path rasterization,
    property updates beyond snapshot time zero, pause/resume policy, and package
    state persistence. The scene path must keep retained GPU images,
