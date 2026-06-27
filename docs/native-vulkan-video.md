@@ -204,7 +204,7 @@ above. All listed runs are under `performance_max_private_dirty_kib < 25000`,
 
 ## Code Layout
 
-- `src/renderer/native_vulkan/mod.rs`: facade, shared codec parsers, snapshot
+- `src/renderer/native_vulkan.rs`: facade, shared codec parsers, snapshot
   construction, and public native Vulkan contract types.
 - `src/renderer/native_vulkan/video/`: FFmpeg demux/packet handoff, codec
   reference planning, route selection, pacing, timeline, and video extraction
