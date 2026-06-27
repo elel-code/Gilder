@@ -217,9 +217,10 @@ above. All listed runs are under `performance_max_private_dirty_kib < 25000`,
   static-image present entry points.
 - `src/renderer/native_vulkan/scene/`: scene-lite planning/runtime bridge into
   the Vulkan present path.
-- `src/renderer/native_vulkan/audio/`: audio policy boundary. Audio code should
-  enter here first, then wire to FFmpeg demux/clock and daemon lifecycle after
-  clock-only evidence is stable.
+- `src/renderer/native_vulkan/audio/`: audio policy and clock boundary.
+  Clock-only audio now probes FFmpeg audio packets as timestamp/serial metadata
+  and immediately releases packet payloads. Audible output is still deliberately
+  out of scope until daemon mute/pause/device lifecycle is wired.
 
 ## Smoke Commands
 
@@ -248,17 +249,20 @@ fields together with the report directory.
 
 ## Next Plan
 
-1. Audio integration: add an FFmpeg-owned audio demux/packet queue and clock
-   serial path under `native_vulkan/audio/`. The first acceptance target is
-   muted clock-only synchronization driving video pacing with FFmpeg serial,
-   loop, and arbitrary-entry semantics. Audible output should come after the
-   clock-only path is stable, with output pause/mute/lifecycle wired through
-   daemon policy.
-2. Full scene wallpaper support: make static wallpapers lower into a
-   single-image scene layer, then route scene-lite plans through
-   `native_vulkan/scene/` and `native_vulkan/vulkan/scene/`. The scene lifecycle
-   must cover output selection, fit/crop/background through scene transforms,
-   static-image/video composition, properties, pause/resume policy, and package
+1. Audio integration: the first clock-only boundary exists under
+   `native_vulkan/audio/clock.rs`. It selects an FFmpeg audio stream, consumes
+   packet PTS/duration/serial metadata, immediately unreferences payloads, and
+   reports a muted audio-clock snapshot from ready-prefix runs when
+   `--audio-clock-probe` is requested. Next gates: feed this clock into the
+   continuous present timer, prove loop/arbitrary-entry sync against real
+   audio+video sources, then add audible output with daemon pause/mute/device
+   lifecycle.
+2. Full scene wallpaper support: static wallpapers now lower into a
+   single-image scene layer before the Vulkan sampled-image runtime. Scene-lite
+   plans already route through `native_vulkan/scene/` and
+   `native_vulkan/vulkan/scene/` with descriptor-heap sampled-image geometry.
+   Next gates: video-as-scene layer composition, text/path rasterization,
+   property updates beyond snapshot time zero, pause/resume policy, and package
    state persistence. The scene path must keep retained GPU images,
    `descriptor_sets=0`, and descriptor-heap sampling.
 3. Video coverage and regression: the H.264/H.265/AV1 core decode/present path
