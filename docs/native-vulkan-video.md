@@ -287,13 +287,17 @@ elapsed time was in `vkQueuePresentKHR`.
 - `src/renderer/native_vulkan/scene/`: scene-lite planning/runtime bridge into
   the Vulkan present path.
 - `src/renderer/native_vulkan/audio/`: audio policy and clock boundary.
-  Clock-only audio now probes FFmpeg audio packets as timestamp/serial metadata
-  and immediately releases packet payloads. Ready-prefix runs perform the probe
-  before video present when requested, keep `clock_ns` as the probe diagnostic,
-  and pass the first ready `video_master_start_clock_ns` sample into muted
+  `clock-only` decodes FFmpeg audio frames for timestamp/serial metadata and
+  immediately releases packet payloads. `auto` is now PipeWire-only: FFmpeg
+  decoded frames are resampled through `libswresample` to S16LE interleaved and
+  written directly to a native PipeWire playback stream. There is no PulseAudio,
+  ALSA, GStreamer `autoaudiosink`, or silent fallback path; if PipeWire cannot
+  start, `auto` fails the run. Ready-prefix runs keep `clock_ns` as the
+  diagnostic and pass the first ready `video_master_start_clock_ns` sample into
   audio-master pacing so pre-read AAC packets do not advance the video start
-  clock. Audible output is still deliberately out of scope until daemon
-  mute/pause/device lifecycle is wired.
+  clock. Snapshots report `audio_output_backend=pipewire-s16le`,
+  `audio_output_frames`, `audio_output_samples`, `audio_output_bytes`,
+  `audio_output_sample_rate_hz`, and `audio_output_channel_count`.
 
 ## Vulkan 1.4 And Roadmap Modernization
 
@@ -469,31 +473,38 @@ fields together with the report directory.
 
 ## Next Plan
 
-1. Audio integration: the first clock-only boundary exists under
-   `native_vulkan/audio/clock.rs`. It selects an FFmpeg audio stream, consumes
-   packet PTS/duration/serial metadata, immediately unreferences payloads, and
-   reports a muted audio-clock snapshot from ready-prefix runs when
-   `--audio-clock-probe` is requested. The probe now runs before decoded-image
-   present and, when it finds an audio stream with clock samples, passes the
-   first ready `video_master_start_clock_ns` into the decoded-image present
-   timer as the muted audio-master start sample while leaving the final
-   `clock_ns` as probe diagnostics. Audio snapshots now explicitly report
+1. Audio integration: the native audio path lives under
+   `native_vulkan/audio/clock.rs` and the FFmpeg/PipeWire C shim. It selects an
+   FFmpeg audio stream, decodes frames, immediately unreferences packet
+   payloads, and reports serial-scoped clock samples for ready-prefix runs when
+   `--audio-clock-probe` is requested. `clock-only` keeps output counters at
+   zero. `auto` is now native PipeWire-only: decoded FFmpeg frames are resampled
+   with `libswresample` to S16LE interleaved and written to a PipeWire playback
+   stream. There is no PulseAudio/ALSA/GStreamer fallback and no compatibility
+   alias for old output names. Audio snapshots explicitly report
    `video_master_clock_ready`, `video_master_start_clock_ns`,
    `video_master_start_serial`, `video_master_start_packet_index`,
-   `current_serial_start_clock_ns`, `current_serial_start_serial`, and
-   `current_serial_start_packet_index`. Ready-prefix video pacing consumes the
-   stable `video_master_start_*` start sample, while loop/seek evidence uses
-   the `current_serial_start_*` fields so pre-present probing cannot move the
-   first-frame master clock to a later loop. When playback requests more frames
-   than the ready-prefix window, the audio probe enables FFmpeg EOS seek and
-   expands the bounded metadata-only packet probe to expose current-serial
-   reset evidence without retaining packet payloads. The H.264/H.265
-   ready-prefix smokes now fail generated-source audio-clock loop probes when
-   `loop_count`, `current_serial`, or `current_serial_start_serial` never
-   leaves serial `0`. Next gates: replace the probe-backed start sample with a
-   live audio callback/runtime clock, prove arbitrary-entry sync against real
-   audio+video sources, then add audible output with daemon
-   pause/mute/device lifecycle.
+   `current_serial_start_clock_ns`, `current_serial_start_serial`,
+   `current_serial_start_packet_index`, `audio_output_backend`,
+   `audio_output_frames`, `audio_output_samples`, `audio_output_bytes`,
+   `audio_output_sample_rate_hz`, and `audio_output_channel_count`.
+   Ready-prefix video pacing consumes the stable `video_master_start_*` sample,
+   while loop/seek evidence uses `current_serial_start_*` so pre-present audio
+   decoding cannot move the first-frame master clock to a later loop. When
+   playback requests more frames than the ready-prefix window, the audio path
+   enables FFmpeg EOS seek and exposes current-serial reset evidence without
+   retaining packet payloads. Next gates: move the PipeWire stream from
+   bounded ready-prefix playback into a long-lived audio runtime aligned with
+   video present lifetime, prove arbitrary-entry sync against real audio+video
+   sources, then wire daemon pause/mute/device lifecycle on top of the same
+   PipeWire-only backend.
+   Current PipeWire auto smoke:
+   `/tmp/gilder-audio-pipewire-smoke-audio-master` passes
+   `--audio-clock-probe --audio-output auto --unmuted --pacing-master audio`,
+   reports `audio_output_backend=pipewire-s16le`, `audio_output_frames=3`,
+   `audio_output_samples=3072`, `audio_output_bytes=6144`,
+   `audio_output_sample_rate=48000`, `audio_output_channels=1`,
+   `consumed_packets=4`, and `retained_payload_bytes=0`.
    Current H.264 generated-source loop-audio smoke:
    `/tmp/gilder-vulkan-h264-ready-prefix-video.JfquFZ` passes
    `--audio-clock-probe --pacing-master audio`, reports
