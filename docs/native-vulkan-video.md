@@ -359,12 +359,13 @@ Current modern baseline:
   disabling modern Vulkan features.
 - Current runtime maintenance use is split by API family: Vulkan 1.4 core keeps
   `maintenance5`/`maintenance6`, Vulkan Video keeps `VK_KHR_video_maintenance2`
-  for inline codec parameters, and present keeps surface/swapchain maintenance1.
-  Those are not compatibility fallbacks and are not replaced by
-  `VK_KHR_maintenance10`. Roadmap 2026 still requires
-  `VK_KHR_maintenance7`, `VK_KHR_maintenance8`, and `VK_KHR_maintenance9`; keep
-  probing them. `VK_KHR_maintenance10` is tracked as an additional modern
-  ratified extension, not as a replacement for 7/8/9.
+  for inline codec parameters, WSI keeps surface/swapchain maintenance1, and
+  the present device feature selection now enables `VK_KHR_maintenance7`,
+  `VK_KHR_maintenance8`, `VK_KHR_maintenance9`, and `VK_KHR_maintenance10`
+  when both the extension and feature bit are available. Those are not
+  compatibility paths and `VK_KHR_maintenance10` does not replace 7/8/9; the
+  enabled device-extension list and present-device snapshot expose the runtime
+  state separately for all four maintenance generations.
 - `--probe-vulkanalia` now emits a per-physical-device `roadmap_2026` evidence
   block. That block records `api_version_1_4_or_newer`,
   `core_vulkan_1_4_features_ready`, the available/missing tracked Roadmap 2026
@@ -377,9 +378,10 @@ Current modern baseline:
   explicit sRGB resolve transfer-function control, dynamic-rendering end-info
   extensibility, or depth/stencil copy capability on non-graphics queues; it is
   not expected to improve the current 4K240 direct-video memory/FPS gate until
-  one of those paths exists. This is probe evidence only: an extension is not
-  considered runtime-used until the relevant scene/video/present path consumes it
-  and exposes path-specific JSON fields.
+  one of those paths exists. Maintenance7/8/9/10 are now present-device runtime
+  features when available; the remaining Roadmap 2026 items are still probe
+  evidence until the relevant scene/video/present path consumes them and exposes
+  path-specific JSON fields.
   Current probe evidence:
   `cargo run --features native-vulkan-video --bin gilder-native-vulkan -- --probe-vulkanalia`
   reports `NVIDIA GeForce RTX 4060 Laptop GPU` with Vulkan `1.4.341`,
@@ -425,9 +427,10 @@ Primary Vulkan references for this baseline:
   replaced by general `VK_KHR_maintenance*` extensions:
   <https://docs.vulkan.org/refpages/latest/refpages/source/VK_KHR_video_maintenance1.html>.
 - `VK_KHR_maintenance10` is a Roadmap-era maintenance extension available in
-  current vulkanalia bindings. Track both its `maintenance10` feature and its
-  sRGB resolve/RGBA4 opaque-black properties before promoting it into scene or
-  video resolve paths:
+  current vulkanalia bindings. The present device enables its `maintenance10`
+  feature when available; its sRGB resolve/RGBA4 opaque-black properties still
+  need a concrete scene or video resolve path before they count as path-specific
+  rendering work:
   <https://docs.vulkan.org/refpages/latest/refpages/source/VK_KHR_maintenance10.html>.
 
 Next Vulkan/roadmap gates:
@@ -445,11 +448,10 @@ Next Vulkan/roadmap gates:
    present handoff once validation confirms the video/image-layout path.
 5. Emit `VK_EXT_frame_boundary` markers around demux/decode/render/present work
    for profiling and driver scheduling evidence.
-6. Promote the new Roadmap 2026 probe bits into runtime paths where they remove
+6. Promote the remaining Roadmap 2026 probe bits into runtime paths where they remove
    actual work: `VK_KHR_pipeline_binary` for retained scene/video pipelines,
    `VK_KHR_robustness2`/null descriptors for descriptor-heap resource tables,
-   maintenance7/8/9 where they simplify image/memory limits, `VK_KHR_maintenance10`
-   where it simplifies image/resolve behavior, and
+   M10-specific image/resolve behavior where it removes an existing pass, and
    copy-memory-indirect only if it replaces CPU-side upload loops without
    retaining extra buffers.
 7. Evaluate shader-object and extended-dynamic-state cleanup only after the
@@ -590,21 +592,22 @@ fields together with the report directory.
 2. Full scene wallpaper support: the current completed work is still a native
    scene-lite subset plus explicit full-scene bridge boundaries, not full
    Wallpaper Engine scene execution. For progress accounting, full scene is
-   roughly `48%`: package/conversion boundaries, snapshot-time propagation,
+   roughly `55%`: package/conversion boundaries, snapshot-time propagation,
    retained sampled-image resources, solid/image mixed composition, descriptor
    heap sampling, visible scene runtime status, native present route selection,
    retained resource status, clear-background composition, native runtime
    layer-coverage accounting, rounded-rectangle tessellation, simple/concave
-   path tessellation, and first-class `video` layer detection are in place;
+   path tessellation, deterministic text glyph geometry, and first-class
+   `video` layer detection are in place;
    particle systems, full WE scene graph
    execution, SceneScript, shader/material graph, parallax, audio response,
-   text-atlas GPU rasterization, full path rasterization, and actual
+   complex font shaping/atlas typography, full path rasterization, and actual
    video-as-scene composition remain open. The
    scene-lite subpath is much
    further along, but it is not the full-scene metric. Wallpaper Engine scene
    conversions now write a structured `full_scene` report block with
    `target_runtime=native-vulkan-full-scene`,
-   `current_runtime=scene-lite-subset`, `progress_estimate_percent=48`,
+   `current_runtime=scene-lite-subset`, `progress_estimate_percent=55`,
    preserved source-scene metadata paths, completed boundaries, and pending
    full-scene boundaries. Static wallpapers now lower into a single-image scene
    layer before the Vulkan sampled-image runtime. Scene-lite plans already
@@ -622,7 +625,12 @@ fields together with the report directory.
    `--run-scene-lite` for image and color scene probes, and the CLI accepts
    `--scene-time-ms`/`--snapshot-time-ms` so non-zero sampled scene time reaches
    `SceneLiteWallpaperPlan` through the same entry point used by visible
-   runtime smoke. Scene sampled-image uploads now use Vulkan 1.4
+   runtime smoke. Text layers now lower into deterministic built-in glyph
+   geometry and render through the same solid dynamic-rendering pipeline as
+   rectangles, rounded rectangles, ellipses, and simple paths; this gives text
+   layers real native coverage without adding a legacy font-renderer
+   compatibility path.
+   Scene sampled-image uploads now use Vulkan 1.4
    `hostImageCopy`, so static scene image upload has no staging buffer, upload
    queue submit, or upload fence. Scene runtime and `SceneLiteWallpaperPlan`
    now carry `snapshot_time_ms` into the native Vulkan render item instead of
@@ -641,13 +649,13 @@ fields together with the report directory.
    `native_runtime_layer_count`, `native_runtime_pending_layer_count`,
    `native_runtime_coverage_percent`, `clear_background_layer_count`,
    `sampled_image_native_layer_count`, `solid_geometry_layer_count`,
-   `rounded_rectangle_layer_count`, and `tessellated_path_layer_count`, so scene
-   progress is tied to actual layer coverage rather than treating scene-lite as
-   full scene.
+   `rounded_rectangle_layer_count`, `tessellated_path_layer_count`, and
+   `text_geometry_layer_count`, so scene progress is tied to actual layer
+   coverage rather than treating scene-lite as full scene.
    Visible scene present results now include `runtime.full_scene`, with
    `target_runtime=native-vulkan-full-scene`,
    `current_runtime=native-vulkan-scene-runtime-subset`,
-   `progress_estimate_percent=48`, `native_present_route_ready`,
+   `progress_estimate_percent=55`, `native_present_route_ready`,
    `retained_resource_model_ready`, `timeline_snapshot_runtime_ready`,
    `source_layer_count`, flattened draw counts, per-feature layer counts,
    completed boundaries, and pending boundaries.
@@ -659,7 +667,7 @@ fields together with the report directory.
    Current runtime smoke:
    `WAYLAND_DISPLAY=wayland-1 target/release/gilder-native-vulkan --run-scene-lite --output-name HDMI-A-1 --source artifacts/smoke/scene-lite-heap-smoke.png --fit cover --duration 1 --target-fps 30 --scene-time-ms 1234`
    presents `30` frames at `29.99748264125423` FPS and reports
-   `runtime.full_scene.progress_estimate_percent=48`,
+   `runtime.full_scene.progress_estimate_percent=55`,
    `runtime.full_scene.native_present_route_ready=true`,
    `runtime.full_scene.retained_resource_model_ready=true`,
    `runtime.full_scene.timeline_snapshot_runtime_ready=true`,
@@ -678,7 +686,7 @@ fields together with the report directory.
    passes `44` scene-lite-related tests across lib/bin/gilderd entry points.
    Next gates:
    wiring video-as-scene layer composition from this explicit bridge boundary,
-   text-atlas rasterization, full path rasterization,
+   complex font shaping/atlas typography, full path rasterization,
    property updates beyond snapshot time zero, pause/resume policy, and package
    state persistence. The scene path must keep retained GPU images,
    `descriptor_sets=0`, and descriptor-heap sampling.
