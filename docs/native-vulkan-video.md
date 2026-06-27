@@ -58,6 +58,12 @@ for old renderer, GStreamer, decoded-frame copy, or descriptor-set paths.
   async execution/hardware frame pools from the decode queue and hardware
   frames context. Native async-depth changes must follow this model and still
   pass the 25,000 KiB `Private_Dirty` gate.
+- `references/ffmpeg/libavutil/buffer.h:222-303`: `AVBufferPool` reuses
+  fixed-size buffers and only frees the pool after outstanding buffer refs are
+  released. Scene animation resource updates should use the same lifetime
+  shape: retain a bounded per-frame resource ring and update only the frame
+  slot whose fence has completed, rather than forcing a global idle/wait before
+  touching shared data.
 - `references/ffmpeg/fftools/ffplay.c:168-179` and
   `references/ffmpeg/fftools/ffplay.c:788-800`: `FrameQueue` implements
   `keep_last` ring-buffer advancement.
@@ -162,6 +168,15 @@ for old renderer, GStreamer, decoded-frame copy, or descriptor-set paths.
     decode thread count remains one, while Vulkan async-depth follows FFmpeg's
     Vulkan decode formula. This is worker ownership and lifetime alignment, not
     host CPU decode parallelism or relaxed memory gates.
+14. Animated full-scene spritesheet geometry now follows the same bounded
+    per-frame ownership model: static sampled-image scenes keep one retained
+    vertex buffer, while animated atlas draw steps allocate one host-visible
+    vertex buffer per WSI frame slot. The present loop waits only the current
+    slot fence, rewrites that slot's UVs from runtime elapsed time, and records
+    the command buffer with that slot's vertex buffer. This removes the previous
+    all-in-flight fence wait and matches the `AVBufferPool`/hardware-frame-pool
+    lifetime rule above: resources are reused only after their owning frame has
+    completed.
 
 ## Format Evidence
 
@@ -954,22 +969,24 @@ fields together with the report directory.
    `--scene-time-ms`
    `WAYLAND_DISPLAY=wayland-1 XDG_RUNTIME_DIR=/run/user/1000 target/debug/gilder-native-vulkan --run-scene --output-name HDMI-A-1 --source /tmp/gilder-we-3726503096-output-current/assets/scene.gscene.json --scene-root /tmp/gilder-we-3726503096-output-current --fit cover --duration 6 --target-fps 60`
    presents through `scene_present_route=sampled-image`, `frames_presented=360`,
-   `average_present_fps=59.99776901295814`,
+   `average_present_fps=59.9992342697725`,
    `draw_pass_backend_status=clear-background-sampled-image-recording-ready`,
    `draw_pass_background_clear_color=#b3b3b3`, `texture_region.frame_count=12`,
    `native_runtime_coverage_percent=100`,
    `scene_resource_model=retained-sampled-images-descriptor-heap`,
    `uses_host_image_copy=true`, `staging_buffer_bytes=0`, and geometry
-   `source_label=scene-runtime-sampled-image-draw-plan+scene-viewport-fit`.
+   `source_label=scene-runtime-sampled-image-draw-plan+scene-viewport-fit`,
+   `vertex_buffer_count=2`, and
+   `upload_model=per-frame host-visible sampled-image geometry buffers retained across present frames`.
    The runtime now carries the gscene document size (`2160x1440`) into the
    sampled-image present path and applies scene-level `cover` viewport mapping
    before recording geometry for the actual swapchain extent (`2561x1601` in
    this smoke), so scene-space coordinates are centered/cropped instead of
    being interpreted as output pixels. Spritesheet draw steps retain `columns`,
-   `rows`, `fps`, and `loop_playback`; animated atlas regions update the
-   retained host-visible vertex buffer from runtime elapsed time each frame,
-   with all in-flight frame fences waited before rewriting the shared geometry
-   buffer. Sized `scene-render-clear-color` layers are treated as render
+   `rows`, `fps`, and `loop_playback`; animated atlas regions now use a
+   per-frame host-visible vertex-buffer ring and update only the current frame
+   slot's UVs from runtime elapsed time after that slot fence has completed.
+   Sized `scene-render-clear-color` layers are treated as render
    clear-background layers in the native draw pass, not as normal geometry, so
    the WE clear color composes with the atlas image without introducing a
    compatibility fallback. The converter must not up-label the generated frame
