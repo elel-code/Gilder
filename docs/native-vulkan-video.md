@@ -249,16 +249,26 @@ fields together with the report directory.
 ## Next Plan
 
 1. Audio integration: add an FFmpeg-owned audio demux/packet queue and clock
-   serial path under `native_vulkan/audio/`, then connect muted clock-only
-   synchronization to video pacing before enabling audible output.
-2. Full scene wallpaper support: route scene-lite plans through
-   `native_vulkan/scene/` and `native_vulkan/vulkan/scene/`, including output
-   selection, scene transforms, static-image/video composition, properties,
-   pause/resume policy, and package state persistence.
-3. Bitstream coverage: expand H.264, H.265, and AV1 matrices across real
-   sources and generated sources, including Main/Main10, reference counts,
-   B-frame patterns, arbitrary entry points, loop boundaries, long-run resource
-   stability, and validation-layer correctness runs.
+   serial path under `native_vulkan/audio/`. The first acceptance target is
+   muted clock-only synchronization driving video pacing with FFmpeg serial,
+   loop, and arbitrary-entry semantics. Audible output should come after the
+   clock-only path is stable, with output pause/mute/lifecycle wired through
+   daemon policy.
+2. Full scene wallpaper support: make static wallpapers lower into a
+   single-image scene layer, then route scene-lite plans through
+   `native_vulkan/scene/` and `native_vulkan/vulkan/scene/`. The scene lifecycle
+   must cover output selection, fit/crop/background through scene transforms,
+   static-image/video composition, properties, pause/resume policy, and package
+   state persistence. The scene path must keep retained GPU images,
+   `descriptor_sets=0`, and descriptor-heap sampling.
+3. Video coverage and regression: the H.264/H.265/AV1 core decode/present path
+   is now in coverage/stability mode. Expand real and generated matrices across
+   Main/Main10, reference counts, B-frame patterns, weighted prediction,
+   long-term references, HDR/color metadata, MP4/MKV/WebM containers,
+   extradata/Annex-B boundaries, arbitrary entry points, loop boundaries, bad
+   packets, unsupported profiles, driver capability failures, long-run resource
+   stability, validation-layer correctness runs, and audio/scene integration
+   regressions.
 4. Script hygiene: keep the active codec smokes, real-source matrix,
    performance sampler, CI dependency/policy scripts, packaging scripts, and
    workshop downloader. Delete one-off spike scripts instead of preserving
