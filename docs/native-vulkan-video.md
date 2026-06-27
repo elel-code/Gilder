@@ -783,8 +783,9 @@ fields together with the report directory.
    WE `{script,value}` wrapper lowering without a JS engine, deterministic
    numeric SceneScript expression lowering into native property bindings,
    geometry-field timeline/property animation, parallax depth camera-property
-   offsets, WE TEXV0005/TEXB0004 RGBA texture decoding, spritesheet atlas
-   resources with time-sampled UV frame selection, retained sampled-image
+   offsets, Hyprland compositor cursor parallax input,
+   WE TEXV0005/TEXB0004 RGBA texture decoding, spritesheet atlas resources
+   with time-sampled UV frame selection, retained sampled-image
    resources, solid/image mixed composition, descriptor heap sampling,
    visible scene runtime status, native present route selection,
    retained resource status, clear-background composition, native runtime
@@ -796,7 +797,7 @@ fields together with the report directory.
    policy, package state/property persistence, renderer-resolved scene audio
    cues, and native FFmpeg/PipeWire scene audio cue playback are in place;
    particle systems, arbitrary SceneScript, shader/material graph,
-   cursor parallax input plumbing, PipeWire audio response, complex font
+   PipeWire audio response, complex font
    shaping/atlas typography, full path rasterization, and actual mixed
    video-as-scene composition remain open. Wallpaper Engine scene conversions
    now write `assets/*.gscene.json`
@@ -929,6 +930,18 @@ fields together with the report directory.
    are not auto-started; `playback_mode=loop` enables FFmpeg EOS seek for the
    requested present duration. Audio response remains a separate pending
    visual-response system.
+   Cursor parallax input now flows through the desktop snapshot instead of
+   taking Wayland pointer focus: Hyprland uses `hyprctl cursorpos -j`, maps the
+   cursor into the selected output rectangle, normalizes it to `[-1,1]`, writes
+   `scene.parallax.x/y` into the render properties, and carries
+   `cursor_parallax_input_ready` through `SceneWallpaperPlan`,
+   `NativeVulkanRenderItem::Scene`, and `runtime.full_scene`. When the selected
+   output has a real cursor source, `cursor-parallax-input-source` moves from
+   pending to completed boundaries. niri is not marked ready because the
+   current CLI does not expose a reliable non-interactive cursor-position
+   command. `GILDER_CURSOR_PARALLAX=<output>:x,y` is kept as a local validation
+   input for desktop-sync and direct `--run-scene` gscene entry points, and is
+   clamped to the same normalized range.
    Visible scene present results now include `runtime.full_scene`, with
    `target_runtime=native-vulkan-full-scene`,
    `current_runtime=native-vulkan-scene-runtime`,
@@ -936,7 +949,8 @@ fields together with the report directory.
    `retained_resource_model_ready`, `timeline_snapshot_runtime_ready`,
    `timeline_animation_runtime_ready`, `timeline_animation_count`,
    `timeline_animated_layer_count`, `property_update_runtime_ready`,
-   `property_binding_count`, `pause_resume_policy_ready`,
+   `property_binding_count`, `cursor_parallax_input_ready`,
+   `pause_resume_policy_ready`,
    `package_state_persistence_ready`, `scene_state_persistence_model`,
    `source_layer_count`, flattened draw counts, per-feature layer counts,
    completed boundaries, pending boundaries, and `runtime_display_available`
@@ -978,6 +992,12 @@ fields together with the report directory.
    `source_label=scene-runtime-sampled-image-draw-plan+scene-viewport-fit`,
    `vertex_buffer_count=2`, and
    `upload_model=per-frame host-visible sampled-image geometry buffers retained across present frames`.
+   Repeating the same direct gscene smoke after rebuild with
+   `GILDER_CURSOR_PARALLAX=HDMI-A-1:0.4,-0.2` reports
+   `frames_presented=360`, `average_present_fps=59.99940346593094`,
+   `cursor_parallax_input_ready=true`, completed
+   `cursor-parallax-input-source`, no pending cursor boundary, and
+   `vertex_buffer_count=2`.
    The runtime now carries the gscene document size (`2160x1440`) into the
    sampled-image present path and applies scene-level `cover` viewport mapping
    before recording geometry for the actual swapchain extent (`2561x1601` in
@@ -1069,13 +1089,14 @@ fields together with the report directory.
    `timeline-animation-runtime`, `property-update-runtime`,
    `pause-resume-policy-runtime`, `package-state-persistence`,
    `wallpaper-engine-scene-pkg-import`, and
-   `scene-we-spritesheet-atlas-runtime`.
+   `scene-we-spritesheet-atlas-runtime`; Hyprland/override cursor scene
+   coverage also asserts `cursor-parallax-input-source` completion.
    Next gates:
    wiring mixed video-as-scene layer composition from this explicit bridge boundary,
    complex font shaping/atlas typography, full path rasterization,
    full Wallpaper Engine graph execution, WE animation layer blending,
    arbitrary SceneScript runtime, shader/material graph, particle systems,
-   cursor parallax input source, and PipeWire audio response.
+   broader compositor cursor sources beyond Hyprland, and PipeWire audio response.
    The scene path must keep retained GPU images,
    `descriptor_sets=0`, and descriptor-heap sampling.
 3. Video coverage and regression: the H.264/H.265/AV1 core decode/present path
