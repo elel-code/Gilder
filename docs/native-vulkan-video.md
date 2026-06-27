@@ -601,11 +601,15 @@ fields together with the report directory.
 2. Full scene wallpaper support: the current completed work is a first-class
    Gilder scene document/runtime path plus explicit full-scene boundaries, not
    full Wallpaper Engine scene execution. For progress accounting, full scene
-   is roughly `82%`: package/conversion boundaries, `scene/gscene` format
+   is roughly `90%`: package/conversion boundaries, `scene/gscene` format
    validation, snapshot-time propagation, render clear-color snapshot layers,
    WE parent-id graph lowering into gscene children,
    WE `shape`/`solid`/`radius` lowering into native rectangle/ellipse nodes,
    explicit WE keyframe timeline lowering into gscene timeline channels,
+   WE `{script,value}` wrapper lowering without a JS engine, deterministic
+   numeric SceneScript expression lowering into native property bindings,
+   geometry-field timeline/property animation, and parallax depth
+   camera-property offsets,
    retained sampled-image resources, solid/image mixed composition, descriptor
    heap sampling, visible scene runtime status, native present route selection,
    retained resource status, clear-background composition, native runtime
@@ -615,17 +619,19 @@ fields together with the report directory.
    composition, clear-background plus video scene composition, scene
    timeline animation snapshotting, property update binding, pause/resume
    policy, and package state/property persistence are in place; particle
-   systems, full WE scene graph execution, SceneScript, shader/material graph,
-   parallax, PipeWire audio response, complex font shaping/atlas typography,
-   full path rasterization, and actual mixed video-as-scene composition remain
-   open. Wallpaper Engine scene conversions now write `assets/*.gscene.json`
+   systems, full WE scene graph execution, arbitrary SceneScript,
+   shader/material graph,
+   cursor parallax input plumbing, PipeWire audio response, complex font
+   shaping/atlas typography, full path rasterization, and actual mixed
+   video-as-scene composition remain open. Wallpaper Engine scene conversions
+   now write `assets/*.gscene.json`
    documents with `source`, `size`, `render`, `camera`, `import`,
    `resources`, `nodes`, `systems`, `native_lowering`, and
    `unsupported_features` sections, plus a structured
    `full_scene` report block with
    `target_runtime=native-vulkan-full-scene`,
    `current_runtime=native-vulkan-scene-runtime`,
-   `progress_estimate_percent=82`,
+   `progress_estimate_percent=90`,
    preserved source-scene metadata paths, completed boundaries, and pending
    full-scene boundaries. Gilder scene is the runtime format, not a
    Wallpaper Engine schema clone: WE's historical fields are treated as an
@@ -650,7 +656,18 @@ fields together with the report directory.
    tracks for supported transform/opacity properties now lower into gscene
    `timelines`, including vector `origin`/`scale` split into native `x`/`y`
    and `scale-x`/`scale-y` channels, so the existing core timeline runtime
-   executes converted motion instead of leaving it only in provenance.
+   executes converted motion instead of leaving it only in provenance. The
+   same channel now covers geometry fields (`width`, `height`,
+   `corner-radius`), and WE `{script: ..., value: ...}` wrappers are unwrapped
+   to deterministic gscene defaults without introducing a JS engine. User-bound
+   scalar wrappers for transform, opacity, size, and radius lower into
+   `property_bindings`; deterministic numeric SceneScript expressions over one
+   user property, `value`, constants, parentheses, and `+ - * /` now compile
+   into the same native `scale`/`offset` binding model. Arbitrary JS-like
+   SceneScript remains explicit pending work instead of being executed by a
+   compatibility VM. Parallax now has a gscene runtime model:
+   `render.parallax.amount` plus node `parallax_depth` consumes
+   `scene.parallax.x/y` property values to offset snapshot transforms.
    The converter now understands WE `object.image` as a model JSON entry
    rather than a direct image path, follows `model -> material -> texture`,
    copies model/material/effect/audio/texture assets into the gscene resource
@@ -714,7 +731,7 @@ fields together with the report directory.
    Visible scene present results now include `runtime.full_scene`, with
    `target_runtime=native-vulkan-full-scene`,
    `current_runtime=native-vulkan-scene-runtime`,
-   `progress_estimate_percent=82`, `native_present_route_ready`,
+   `progress_estimate_percent=90`, `native_present_route_ready`,
    `retained_resource_model_ready`, `timeline_snapshot_runtime_ready`,
    `timeline_animation_runtime_ready`, `timeline_animation_count`,
    `timeline_animated_layer_count`, `property_update_runtime_ready`,
@@ -734,7 +751,7 @@ fields together with the report directory.
    Current runtime smoke:
    `WAYLAND_DISPLAY=wayland-1 target/release/gilder-native-vulkan --run-scene --output-name HDMI-A-1 --source artifacts/smoke/scene-heap-smoke.png --fit cover --duration 1 --target-fps 30 --scene-time-ms 1234`
    presents `30` frames at `29.99748264125423` FPS and reports
-   `runtime.full_scene.progress_estimate_percent=82`,
+   `runtime.full_scene.progress_estimate_percent=90`,
    `runtime.full_scene.native_present_route_ready=true`,
    `runtime.full_scene.retained_resource_model_ready=true`,
    `runtime.full_scene.timeline_snapshot_runtime_ready=true`,
@@ -766,7 +783,7 @@ fields together with the report directory.
    and decoded-image draw `clear_color=[0.062745101749897,0.125490203499794,0.1882352977991104,1.0]`.
    Current regression coverage:
    `cargo test --features native-vulkan-renderer scene -- --nocapture`
-   passes `93` filtered lib tests, `5` native-vulkan CLI tests, and `1`
+   passes `97` filtered lib tests, `5` native-vulkan CLI tests, and `1`
    gilderd test. The added renderer/runtime coverage asserts gscene package
    validation, clean WE scene-to-gscene conversion, WE model/material texture
    provenance, renderable material image texture resource resolution, WE parent
@@ -774,6 +791,9 @@ fields together with the report directory.
    WE text wrapper conversion, visible property binding lowering, WE
    shape/solid/radius lowering into native snapshot nodes, explicit WE
    keyframe timeline lowering into native timeline snapshot values,
+   geometry field timeline/property animation, script/value wrapper lowering
+   without a JS engine, deterministic numeric SceneScript expression lowering,
+   and parallax depth property-camera offsets,
    timeline animation metadata reaches `SceneWallpaperPlan`, first-frame animation
    snapshot values are applied, property binding counts reach the native
    runtime, and the completed full-scene boundaries include
@@ -783,8 +803,8 @@ fields together with the report directory.
    wiring mixed video-as-scene layer composition from this explicit bridge boundary,
    complex font shaping/atlas typography, full path rasterization,
    full Wallpaper Engine graph execution, WE animation layer blending,
-   SceneScript, shader/material graph, particle systems, parallax camera
-   behavior, and PipeWire audio response.
+   arbitrary SceneScript runtime, shader/material graph, particle systems,
+   cursor parallax input source, and PipeWire audio response.
    The scene path must keep retained GPU images,
    `descriptor_sets=0`, and descriptor-heap sampling.
 3. Video coverage and regression: the H.264/H.265/AV1 core decode/present path
