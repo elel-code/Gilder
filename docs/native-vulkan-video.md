@@ -329,7 +329,10 @@ Current modern baseline:
   decoded video and scene sampled images.
 - Present timing is `VK_KHR_present_id2`/`VK_KHR_present_wait2` only. The older
   `VK_KHR_present_id` and `VK_KHR_present_wait` route is not an allowed
-  fallback.
+  fallback. Runtime JSON no longer exposes legacy `uses_present_id`,
+  `present_id_enabled`, `present_wait_enabled`, or `present_wait_available`
+  fields; path evidence is the id2/wait2 field set plus
+  `present_id_mode=present-id2-khr`.
 - `VK_KHR_present_mode_fifo_latest_ready` is queried and enabled through the
   device feature chain when available. Present mode selection now uses
   `FIFO_LATEST_READY` when that KHR feature and surface mode are both
@@ -586,18 +589,20 @@ fields together with the report directory.
 2. Full scene wallpaper support: the current completed work is still a native
    scene-lite subset plus explicit full-scene bridge boundaries, not full
    Wallpaper Engine scene execution. For progress accounting, full scene is
-   roughly `36%`: package/conversion boundaries, snapshot-time propagation,
+   roughly `44%`: package/conversion boundaries, snapshot-time propagation,
    retained sampled-image resources, solid/image mixed composition, descriptor
    heap sampling, visible scene runtime status, native present route selection,
-   retained resource status, and first-class `video` layer detection are in
-   place; particle systems, full WE scene graph execution, SceneScript,
-   shader/material graph, parallax, audio response, text/path GPU
-   rasterization, and actual video-as-scene composition remain open. The
+   retained resource status, clear-background composition, native runtime
+   layer-coverage accounting, simple path tessellation, and first-class `video`
+   layer detection are in place; particle systems, full WE scene graph
+   execution, SceneScript, shader/material graph, parallax, audio response,
+   text-atlas GPU rasterization, full path rasterization, and actual
+   video-as-scene composition remain open. The
    scene-lite subpath is much
    further along, but it is not the full-scene metric. Wallpaper Engine scene
    conversions now write a structured `full_scene` report block with
    `target_runtime=native-vulkan-full-scene`,
-   `current_runtime=scene-lite-subset`, `progress_estimate_percent=36`,
+   `current_runtime=scene-lite-subset`, `progress_estimate_percent=44`,
    preserved source-scene metadata paths, completed boundaries, and pending
    full-scene boundaries. Static wallpapers now lower into a single-image scene
    layer before the Vulkan sampled-image runtime. Scene-lite plans already
@@ -608,7 +613,10 @@ fields together with the report directory.
    runtime draw-pass plan, including implicit full-extent image layers that
    derive fit geometry from the swapchain extent at present time. Full-extent
    image backgrounds can now compose with solid quad overlays through the mixed
-   scene route. The native spike CLI uses the same path through
+   scene route, and a leading full-screen color layer now becomes the dynamic
+   rendering clear background for `color + image`, `color + shape`, and
+   `color + simple path` scenes instead of blocking native presentation. The
+   native spike CLI uses the same path through
    `--run-scene-lite` for image and color scene probes, and the CLI accepts
    `--scene-time-ms`/`--snapshot-time-ms` so non-zero sampled scene time reaches
    `SceneLiteWallpaperPlan` through the same entry point used by visible
@@ -627,10 +635,16 @@ fields together with the report directory.
    `video` layers in the core document model; native runtime snapshots expose
    `draw_pass_video_op_count`, `scene_video_layer_resource_count`,
    `draw_pass_required_video_resources`, and `draw_pass_requires_video_decode`.
+   Full-scene runtime snapshots now expose `active_scene_layer_count`,
+   `native_runtime_layer_count`, `native_runtime_pending_layer_count`,
+   `native_runtime_coverage_percent`, `clear_background_layer_count`,
+   `sampled_image_native_layer_count`, `solid_geometry_layer_count`, and
+   `tessellated_path_layer_count`, so scene progress is tied to actual layer
+   coverage rather than treating scene-lite as full scene.
    Visible scene present results now include `runtime.full_scene`, with
    `target_runtime=native-vulkan-full-scene`,
    `current_runtime=native-vulkan-scene-runtime-subset`,
-   `progress_estimate_percent=36`, `native_present_route_ready`,
+   `progress_estimate_percent=44`, `native_present_route_ready`,
    `retained_resource_model_ready`, `timeline_snapshot_runtime_ready`,
    `source_layer_count`, flattened draw counts, per-feature layer counts,
    completed boundaries, and pending boundaries.
@@ -641,23 +655,26 @@ fields together with the report directory.
    rasterizing or falling back.
    Current runtime smoke:
    `WAYLAND_DISPLAY=wayland-1 target/release/gilder-native-vulkan --run-scene-lite --output-name HDMI-A-1 --source artifacts/smoke/scene-lite-heap-smoke.png --fit cover --duration 1 --target-fps 30 --scene-time-ms 1234`
-   presents `30` frames at `29.997164188086316` FPS and reports
-   `runtime.full_scene.progress_estimate_percent=36`,
+   presents `30` frames at `29.997349854129784` FPS and reports
+   `runtime.full_scene.progress_estimate_percent=44`,
    `runtime.full_scene.native_present_route_ready=true`,
    `runtime.full_scene.retained_resource_model_ready=true`,
    `runtime.full_scene.timeline_snapshot_runtime_ready=true`,
+   `runtime.full_scene.native_runtime_coverage_percent=100`,
    `scene_resource_model=retained-sampled-images-descriptor-heap`,
    `scene_sampled_image_resource_count=1`,
    `scene_sampled_image_descriptor_heap_required=true`,
    `uses_host_image_copy=true`, `staging_buffer_bytes=0`,
-   `upload_submitted=false`, `descriptor_model=VK_EXT_descriptor_heap`,
-   `uses_present_id2=true`, and `present_wait2_available=true`.
+   `upload_submitted=false`,
+   `descriptor_heap.descriptor_model=VK_EXT_descriptor_heap`,
+   `uses_present_id2=true`, `present_wait2_available=true`, and no legacy
+   `uses_present_id`/`present_wait_available` fields.
    Current regression coverage:
    `cargo test --features native-vulkan-renderer scene_lite -- --nocapture`
-   passes `42` scene-lite-related tests across lib/bin/gilderd entry points.
+   passes `44` scene-lite-related tests across lib/bin/gilderd entry points.
    Next gates:
    wiring video-as-scene layer composition from this explicit bridge boundary,
-   text/path rasterization,
+   text-atlas rasterization, full path rasterization,
    property updates beyond snapshot time zero, pause/resume policy, and package
    state persistence. The scene path must keep retained GPU images,
    `descriptor_sets=0`, and descriptor-heap sampling.
