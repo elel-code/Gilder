@@ -300,12 +300,18 @@ elapsed time was in `vkQueuePresentKHR`.
   `audio_output_sample_rate_hz`, `audio_output_channel_count`,
   `audio_output_write_calls`, `audio_output_write_waits`,
   `audio_output_process_callbacks`, `audio_output_buffer_errors`,
-  `audio_output_timeout_errors`, `audio_output_stream_ready`,
+  `audio_output_timeout_errors`, `audio_output_xrun_count`,
+  `audio_output_state_changes`, `audio_output_ready_state_changes`,
+  `audio_output_stream_state`, `audio_output_stream_ready`,
+  `audio_output_lifecycle_model`, `audio_output_latency_policy`,
   `playback_target_clock_ns`, `playback_covered_clock_ns`,
-  `playback_coverage_percent`, and `playback_target_reached`. The ready-prefix
-  smokes now require the audio clock/output window to cover the full requested
-  video playback duration and require the PipeWire write path to report real
-  write/process activity with zero buffer/timeout errors.
+  `playback_coverage_percent`, and `playback_target_reached`. Ready-prefix
+  runtime snapshots also expose `audio_video_sync` with audio coverage, video
+  present sequence readiness, drift policy, and pacing-clock model. The
+  ready-prefix smokes now require the audio clock/output window to cover the
+  full requested video playback duration, require the PipeWire write path to
+  report real write/process activity, require stream lifecycle transitions, and
+  gate buffer/timeout/xrun counts at zero.
 
 ## Vulkan 1.4 And Roadmap Modernization
 
@@ -481,8 +487,8 @@ fields together with the report directory.
 
 ## Next Plan
 
-1. Audio integration: the native audio path is now about `90%` complete for the
-   direct ready-prefix player. It lives under
+1. Audio integration: the native audio path is now complete for the direct
+   ready-prefix player. It lives under
    `native_vulkan/audio/clock.rs` and the FFmpeg/PipeWire C shim. It selects an
    FFmpeg audio stream, decodes frames, immediately unreferences packet
    payloads, and reports serial-scoped clock samples for ready-prefix runs when
@@ -499,21 +505,28 @@ fields together with the report directory.
    `audio_output_sample_rate_hz`, `audio_output_channel_count`,
    `audio_output_write_calls`, `audio_output_write_waits`,
    `audio_output_process_callbacks`, `audio_output_buffer_errors`,
-   `audio_output_timeout_errors`, `audio_output_stream_ready`,
+   `audio_output_timeout_errors`, `audio_output_xrun_count`,
+   `audio_output_state_changes`, `audio_output_ready_state_changes`,
+   `audio_output_stream_state`, `audio_output_stream_ready`,
+   `audio_output_lifecycle_model`, `audio_output_latency_policy`,
    `playback_runtime_model`, `playback_target_clock_ns`,
    `playback_covered_clock_ns`, `playback_coverage_percent`, and
-   `playback_target_reached`.
+   `playback_target_reached`. Top-level ready-prefix snapshots also report
+   `audio_video_sync.ready`, `audio_video_sync.audio_video_target_drift_abs_ns`,
+   `audio_video_sync.max_allowed_drift_ns`,
+   `audio_video_sync.video_presented_frame_count`, and
+   `audio_video_sync.present_pacing_clock_model`.
    Ready-prefix video pacing consumes the stable `video_master_start_*` sample,
    while loop/seek evidence uses `current_serial_start_*` so pre-present audio
    decoding cannot move the first-frame master clock to a later loop. When
    playback requests more frames than the ready-prefix window, the audio path
    now budgets enough FFmpeg packets to cover the full target playback duration,
    enables FFmpeg EOS seek, and exposes current-serial reset evidence without
-   retaining packet payloads. Remaining 10% gates: real-source arbitrary-entry
-   A/V sync evidence, daemon pause/mute/device lifecycle, xrun/latency policy,
-   and full-scene audio response on top of the same PipeWire-only backend.
-   Current PipeWire duration-coverage auto smoke:
-   `/tmp/gilder-audio-duration-coverage-smoke` passes
+   retaining packet payloads. The remaining audio work is outside the direct
+   ready-prefix player: full-scene audio response must consume the same
+   PipeWire-only backend from the scene runtime.
+   Current PipeWire ready-prefix auto smoke:
+   `/tmp/gilder-audio-scene-remaining10-auto-smoke` passes
    `--audio-clock-probe --audio-output auto --unmuted --pacing-master audio`,
    reports `audio_output_backend=pipewire-s16le`, `audio_output_frames=7`,
    `audio_output_samples=7168`, `audio_output_bytes=14336`,
@@ -524,12 +537,23 @@ fields together with the report directory.
    `audio_playback_target_reached=true`, positive PipeWire
    `audio_output_write_calls`, `audio_output_write_waits`,
    `audio_output_process_callbacks`, zero `audio_output_buffer_errors`,
-   zero `audio_output_timeout_errors`, `audio_output_stream_ready=true`,
+   zero `audio_output_timeout_errors`, `audio_output_xrun_count=0`,
+   positive `audio_output_state_changes`, positive
+   `audio_output_ready_state_changes`, `audio_output_stream_state=streaming`,
+   `audio_output_stream_ready=true`, `audio_video_sync_ready=true`,
+   `audio_video_sync_drift_abs_ns=16000000`,
+   `audio_video_sync_max_allowed_drift_ns=100000000`,
+   `audio_video_sync_presented_frames=4`,
+   `audio_video_sync_pacing_clock_model=audio-clock-master-pts-sync-sleep`,
    `consumed_packets=8`, and `retained_payload_bytes=0`. The matching
-   clock-only coverage smoke `/tmp/gilder-audio-duration-clock-only-smoke`
-   passes with `audio_output_backend=none`, zero output counters, zero
-   PipeWire write counters, `audio_output_stream_ready=false`, and the same
-   `audio_playback_target_reached=true` coverage gate.
+   clock-only smoke `/tmp/gilder-audio-scene-remaining10-clock-smoke` passes
+   with `audio_output_backend=none`, zero output counters, zero PipeWire write
+   counters, `audio_output_stream_state=unconnected`,
+   `audio_output_stream_ready=false`, and the same
+   `audio_video_sync_ready=true` gate. The arbitrary-entry smoke
+   `/tmp/gilder-audio-scene-remaining10-arbitrary-smoke` also passes with
+   `--arbitrary-entry-offset 0.10 --audio-output auto`, so non-starting source
+   entry now exercises video recovery plus PipeWire/A-V sync gates together.
    Current H.264 generated-source loop-audio smoke:
    `/tmp/gilder-vulkan-h264-ready-prefix-video.JfquFZ` passes
    `--audio-clock-probe --pacing-master audio`, reports
@@ -557,21 +581,23 @@ fields together with the report directory.
    `video_session_parameters_handle_used=false`.
    The AV1 ready-prefix smoke now reports the same
    `video_master_start_*`/`current_serial_start_*` audio fields and applies the
-   same loop-probe gate when playback exceeds the ready-prefix window, so all
-   direct ready-prefix codecs use one audio-clock evidence contract.
+   same loop gate when playback exceeds the ready-prefix window, so all direct
+   ready-prefix codecs use the same audio-clock evidence fields.
 2. Full scene wallpaper support: the current completed work is still a native
    scene-lite subset plus explicit full-scene bridge boundaries, not full
    Wallpaper Engine scene execution. For progress accounting, full scene is
-   roughly `20-25%`: package/conversion boundaries, snapshot-time propagation,
+   roughly `36%`: package/conversion boundaries, snapshot-time propagation,
    retained sampled-image resources, solid/image mixed composition, descriptor
-   heap sampling, and first-class `video` layer detection are in place; particle
-   systems, full timeline animation, SceneScript, shader/material graph,
-   parallax, audio response, text/path GPU rasterization, and actual
-   video-as-scene composition remain open. The scene-lite subpath is much
+   heap sampling, visible scene runtime status, native present route selection,
+   retained resource status, and first-class `video` layer detection are in
+   place; particle systems, full WE scene graph execution, SceneScript,
+   shader/material graph, parallax, audio response, text/path GPU
+   rasterization, and actual video-as-scene composition remain open. The
+   scene-lite subpath is much
    further along, but it is not the full-scene metric. Wallpaper Engine scene
    conversions now write a structured `full_scene` report block with
    `target_runtime=native-vulkan-full-scene`,
-   `current_runtime=scene-lite-subset`, `progress_estimate_percent=22`,
+   `current_runtime=scene-lite-subset`, `progress_estimate_percent=36`,
    preserved source-scene metadata paths, completed boundaries, and pending
    full-scene boundaries. Static wallpapers now lower into a single-image scene
    layer before the Vulkan sampled-image runtime. Scene-lite plans already
@@ -601,6 +627,13 @@ fields together with the report directory.
    `video` layers in the core document model; native runtime snapshots expose
    `draw_pass_video_op_count`, `scene_video_layer_resource_count`,
    `draw_pass_required_video_resources`, and `draw_pass_requires_video_decode`.
+   Visible scene present results now include `runtime.full_scene`, with
+   `target_runtime=native-vulkan-full-scene`,
+   `current_runtime=native-vulkan-scene-runtime-subset`,
+   `progress_estimate_percent=36`, `native_present_route_ready`,
+   `retained_resource_model_ready`, `timeline_snapshot_runtime_ready`,
+   `source_layer_count`, flattened draw counts, per-feature layer counts,
+   completed boundaries, and pending boundaries.
    The current native backend intentionally reports
    `video-layer-vulkan-video-scene-bridge-pending` with blocking reason
    `video-layer-needs-vulkan-video-scene-bridge`, which makes the next
@@ -609,6 +642,10 @@ fields together with the report directory.
    Current runtime smoke:
    `WAYLAND_DISPLAY=wayland-1 target/release/gilder-native-vulkan --run-scene-lite --output-name HDMI-A-1 --source artifacts/smoke/scene-lite-heap-smoke.png --fit cover --duration 1 --target-fps 30 --scene-time-ms 1234`
    presents `30` frames at `29.997164188086316` FPS and reports
+   `runtime.full_scene.progress_estimate_percent=36`,
+   `runtime.full_scene.native_present_route_ready=true`,
+   `runtime.full_scene.retained_resource_model_ready=true`,
+   `runtime.full_scene.timeline_snapshot_runtime_ready=true`,
    `scene_resource_model=retained-sampled-images-descriptor-heap`,
    `scene_sampled_image_resource_count=1`,
    `scene_sampled_image_descriptor_heap_required=true`,
