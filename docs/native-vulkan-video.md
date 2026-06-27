@@ -41,6 +41,23 @@ for old renderer, GStreamer, decoded-frame copy, or descriptor-set paths.
   the handoff by codec to stay under the 25,000 KiB `Private_Dirty` gate.
 - `references/ffmpeg/fftools/ffplay.c:420-456`: `av_packet_move_ref` transfers
   packet payload ownership into and out of the packet queue.
+- `references/ffmpeg/fftools/ffplay.c:3295`,
+  `references/ffmpeg/fftools/ffplay.c:2205`, and
+  `references/ffmpeg/fftools/ffplay.c:580-680`: ffplay uses a demux read
+  thread, packet queues, and decoder worker loops around
+  `avcodec_send_packet`/`avcodec_receive_frame`; native should move toward this
+  shape by separating read, decode-submit, and present workers without adding a
+  host-side compressed-payload FIFO.
+- `references/ffmpeg/libavcodec/pthread.c:45-80` and
+  `references/ffmpeg/libavcodec/pthread_slice.c:112-148`: FFmpeg CPU decode
+  threading is frame/slice-thread driven. Vulkan hardware decode should not add
+  arbitrary CPU decode threads; concurrency comes from queue handoff and Vulkan
+  async execution depth.
+- `references/ffmpeg/libavcodec/vulkan_decode.c:1370-1377` and
+  `references/ffmpeg/libavcodec/decode.c:1088-1095`: FFmpeg sizes Vulkan decode
+  async execution/hardware frame pools from the decode queue and hardware
+  frames context. Native async-depth changes must follow this model and still
+  pass the 25,000 KiB `Private_Dirty` gate.
 - `references/ffmpeg/fftools/ffplay.c:168-179` and
   `references/ffmpeg/fftools/ffplay.c:788-800`: `FrameQueue` implements
   `keep_last` ring-buffer advancement.
@@ -139,6 +156,12 @@ for old renderer, GStreamer, decoded-frame copy, or descriptor-set paths.
     then adapts on observed B-picture/out-of-order keys as FFmpeg does; H.265
     uses SPS `max_num_reorder_pics` for the active temporal layer. DPB
     `array_layers` no longer masquerades as display reorder depth.
+13. Next FFmpeg alignment target: split the current present-owned decode loop
+    into an FFmpeg-style video decode worker that consumes the streaming packet
+    queue and hands decoded-frame metadata to the presenter. The default decode
+    thread count remains one; the useful modernization is worker ownership and
+    Vulkan async-depth sizing, not host CPU decode parallelism or relaxed memory
+    gates.
 
 ## Format Evidence
 
@@ -735,10 +758,11 @@ fields together with the report directory.
 2. Full scene wallpaper support: the current completed work is a first-class
    Gilder scene document/runtime path plus explicit full-scene boundaries, not
    full Wallpaper Engine scene execution. For progress accounting, full scene
-   is roughly `94%`: package/conversion boundaries, `scene/gscene` format
+   is roughly `95%`: package/conversion boundaries, `scene/gscene` format
    validation, snapshot-time propagation, render clear-color snapshot layers,
    WE `scene.pkg` direct import,
    WE parent-id graph lowering into gscene children,
+   native scene graph transform/opacity execution,
    WE `shape`/`solid`/`radius` lowering into native rectangle/ellipse nodes,
    explicit WE keyframe timeline lowering into gscene timeline channels,
    WE `{script,value}` wrapper lowering without a JS engine, deterministic
@@ -756,8 +780,7 @@ fields together with the report directory.
    timeline animation snapshotting, property update binding, pause/resume
    policy, package state/property persistence, renderer-resolved scene audio
    cues, and native FFmpeg/PipeWire scene audio cue playback are in place;
-   particle systems, full
-   WE scene graph execution, arbitrary SceneScript, shader/material graph,
+   particle systems, arbitrary SceneScript, shader/material graph,
    cursor parallax input plumbing, PipeWire audio response, complex font
    shaping/atlas typography, full path rasterization, and actual mixed
    video-as-scene composition remain open. Wallpaper Engine scene conversions
@@ -768,7 +791,7 @@ fields together with the report directory.
    `full_scene` report block with
    `target_runtime=native-vulkan-full-scene`,
    `current_runtime=native-vulkan-scene-runtime`,
-   `progress_estimate_percent=94`,
+   `progress_estimate_percent=95`,
    preserved source-scene metadata paths, completed boundaries, and pending
    full-scene boundaries. Gilder scene is the runtime format, not a
    Wallpaper Engine schema clone: WE's historical fields are treated as an
@@ -778,8 +801,12 @@ fields together with the report directory.
    dependencies, original transforms, model/material chains, particles,
    animation layers, and instance overrides live under node `provenance`.
    Matched WE parent ids are lowered into real gscene `children`, so the core
-   snapshot path now composes parent/child transform and opacity instead of only
-   preserving parent ids as metadata. `render.clear_color` with
+   snapshot path now composes parent/child transform and opacity as a completed
+   native scene graph runtime boundary instead of only preserving parent ids as
+   metadata. `native_lowering.fallback` was removed from the gscene runtime
+   schema: package preview images may still exist for UI metadata, but they are
+   not referenced as scene resources and are not substituted as runtime nodes.
+   `render.clear_color` with
    `clear_enabled != false` now emits the first snapshot color layer, so
    converted WE scene clear color participates in native clear-background and
    mixed scene composition. WE `{ value: ... }` wrappers for text, point size,
@@ -820,9 +847,10 @@ fields together with the report directory.
    textures, shaders, particles, arbitrary SceneScript, effect graphs, and
    audio-response systems are preserved structurally and reported as explicit
    pending runtime systems instead of being hidden behind a legacy loader.
-   There is no internal legacy scene format, loader, or
-   lowering bridge; old `layers` fixture data was replaced by `nodes/resources`
-   gscene documents. Static wallpapers now lower into a single-image scene
+   There is no internal legacy scene format, loader, preview-fallback scene
+   node, or lowering bridge; old `layers` fixture data was replaced by
+   `nodes/resources` gscene documents. Static wallpapers now lower into a
+   single-image scene
    layer before the Vulkan sampled-image runtime. Scene plans route through
    `native_vulkan/scene/` and
    `native_vulkan/vulkan/scene/` with descriptor-heap sampled-image geometry.
@@ -889,14 +917,16 @@ fields together with the report directory.
    Visible scene present results now include `runtime.full_scene`, with
    `target_runtime=native-vulkan-full-scene`,
    `current_runtime=native-vulkan-scene-runtime`,
-   `progress_estimate_percent=94`, `native_present_route_ready`,
+   `progress_estimate_percent=95`, `native_present_route_ready`,
    `retained_resource_model_ready`, `timeline_snapshot_runtime_ready`,
    `timeline_animation_runtime_ready`, `timeline_animation_count`,
    `timeline_animated_layer_count`, `property_update_runtime_ready`,
    `property_binding_count`, `pause_resume_policy_ready`,
    `package_state_persistence_ready`, `scene_state_persistence_model`,
    `source_layer_count`, flattened draw counts, per-feature layer counts,
-   completed boundaries, and pending boundaries. A single scene `video` layer
+   completed boundaries, pending boundaries, and `runtime_display_available`
+   instead of the old preview/fallback availability field. A single scene
+   `video` layer
    now routes through the same Vulkanalia ready-prefix Vulkan Video presenter
    used by direct video wallpapers and reports
    `video-layer-vulkan-video-scene-bridge-ready`. A leading full-screen color
@@ -950,7 +980,7 @@ fields together with the report directory.
    Current runtime smoke:
    `WAYLAND_DISPLAY=wayland-1 target/release/gilder-native-vulkan --run-scene --output-name HDMI-A-1 --source artifacts/smoke/scene-heap-smoke.png --fit cover --duration 1 --target-fps 30 --scene-time-ms 1234`
    presents `30` frames at `29.99748264125423` FPS and reports
-   `runtime.full_scene.progress_estimate_percent=94`,
+   `runtime.full_scene.progress_estimate_percent=95`,
    `runtime.full_scene.native_present_route_ready=true`,
    `runtime.full_scene.retained_resource_model_ready=true`,
    `runtime.full_scene.timeline_snapshot_runtime_ready=true`,
