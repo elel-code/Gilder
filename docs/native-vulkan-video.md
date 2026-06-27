@@ -602,7 +602,8 @@ fields together with the report directory.
    Gilder scene document/runtime path plus explicit full-scene boundaries, not
    full Wallpaper Engine scene execution. For progress accounting, full scene
    is roughly `80%`: package/conversion boundaries, `scene/gscene` format
-   validation, snapshot-time propagation,
+   validation, snapshot-time propagation, render clear-color snapshot layers,
+   WE parent-id graph lowering into gscene children,
    retained sampled-image resources, solid/image mixed composition, descriptor
    heap sampling, visible scene runtime status, native present route selection,
    retained resource status, clear-background composition, native runtime
@@ -616,14 +617,39 @@ fields together with the report directory.
    parallax, PipeWire audio response, complex font shaping/atlas typography,
    full path rasterization, and actual mixed video-as-scene composition remain
    open. Wallpaper Engine scene conversions now write `assets/*.gscene.json`
-   documents with `source`, `resources`, `nodes`, `systems`,
-   `native_lowering`, and `unsupported_features` sections, plus a structured
+   documents with `source`, `size`, `render`, `camera`, `import`,
+   `resources`, `nodes`, `systems`, `native_lowering`, and
+   `unsupported_features` sections, plus a structured
    `full_scene` report block with
    `target_runtime=native-vulkan-full-scene`,
    `current_runtime=native-vulkan-scene-runtime`,
    `progress_estimate_percent=80`,
    preserved source-scene metadata paths, completed boundaries, and pending
-   full-scene boundaries. There is no internal legacy scene format, loader, or
+   full-scene boundaries. Gilder scene is the runtime format, not a
+   Wallpaper Engine schema clone: WE's historical fields are treated as an
+   input dialect and are isolated in converter-owned `provenance`/`import`
+   metadata. Runtime-facing node roots stay clean (`type`, `transform`,
+   `resource`, `effects`, `audio`, draw properties), while WE ids, parent ids,
+   dependencies, original transforms, model/material chains, particles,
+   animation layers, and instance overrides live under node `provenance`.
+   Matched WE parent ids are lowered into real gscene `children`, so the core
+   snapshot path now composes parent/child transform and opacity instead of only
+   preserving parent ids as metadata. `render.clear_color` with
+   `clear_enabled != false` now emits the first snapshot color layer, so
+   converted WE scene clear color participates in native clear-background and
+   mixed scene composition. WE `{ value: ... }` wrappers for text, point size,
+   font, and horizontal alignment are lowered to gscene text node fields, and
+   WE `visible: { value, user }` is lowered to a gscene opacity property
+   binding so runtime property updates can reveal/hide the layer without a
+   legacy visibility path.
+   The converter now understands WE `object.image` as a model JSON entry
+   rather than a direct image path, follows `model -> material -> texture`,
+   copies model/material/effect/audio/texture assets into the gscene resource
+   graph, and only assigns `node.resource` when the resolved texture is a
+   directly renderable image. WE `.tex`, runtime `_rt_` textures, shaders,
+   particles, SceneScript, and effect graphs are preserved structurally and
+   reported as explicit pending runtime systems instead of being hidden behind
+   a legacy loader. There is no internal legacy scene format, loader, or
    lowering bridge; old `layers` fixture data was replaced by `nodes/resources`
    gscene documents. Static wallpapers now lower into a single-image scene
    layer before the Vulkan sampled-image runtime. Scene plans route through
@@ -731,10 +757,13 @@ fields together with the report directory.
    and decoded-image draw `clear_color=[0.062745101749897,0.125490203499794,0.1882352977991104,1.0]`.
    Current regression coverage:
    `cargo test --features native-vulkan-renderer scene -- --nocapture`
-   passes `85` filtered lib tests, `5` native-vulkan CLI tests, and `1`
+   passes `91` filtered lib tests, `5` native-vulkan CLI tests, and `1`
    gilderd test. The added renderer/runtime coverage asserts gscene package
-   validation, WE scene-to-gscene conversion, timeline animation metadata reaches
-   `SceneWallpaperPlan`, first-frame animation
+   validation, clean WE scene-to-gscene conversion, WE model/material texture
+   provenance, renderable material image texture resource resolution, WE parent
+   graph lowering into gscene children, render clear-color snapshot layers,
+   WE text wrapper conversion and visible property binding lowering,
+   timeline animation metadata reaches `SceneWallpaperPlan`, first-frame animation
    snapshot values are applied, property binding counts reach the native
    runtime, and the completed full-scene boundaries include
    `timeline-animation-runtime`, `property-update-runtime`,
