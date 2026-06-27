@@ -63,16 +63,26 @@ for old renderer, GStreamer, decoded-frame copy, or descriptor-set paths.
 - `references/ffmpeg/libavcodec/vulkan_h264.c:476-562`: H.264 adds slices
   through `ff_vk_decode_add_slice`, prepares fixed reference arrays, and submits
   with `ff_vk_decode_frame`.
+- `references/ffmpeg/libavcodec/h264_slice.c:1295-1367`: H.264 output
+  selection is a delayed-picture queue. It raises `has_b_frames` from SPS
+  `num_reorder_frames` when VUI bitstream restriction is present, may increase
+  the reorder buffer when observed POC order requires it, and outputs the
+  lowest display-order picture only when the delayed queue exceeds that depth.
 - `references/ffmpeg/libavcodec/vulkan_hevc.c:743-815` and
   `references/ffmpeg/libavcodec/vulkan_hevc.c:828-842`: HEVC fills
   `vp->ref_slots[idx]`, reference sets, and slice offsets.
+- `references/ffmpeg/libavcodec/hevc/refs.c:267-305` and
+  `references/ffmpeg/libavcodec/hevc/hevcdec.c:3371-3372`: HEVC output uses
+  pending-output frames and the active SPS temporal layer's `num_reorder_pics`
+  as the `max_output` display delay.
 - `references/ffmpeg/libavcodec/vulkan_av1.c:298-358`: AV1 scans duplicate
   reference slots, fills unique refs, and writes `referenceNameSlotIndices`.
 - `references/ffmpeg/libavutil/mem.c:98-165` and
   `references/ffmpeg/libavutil/mem.c:247-253`: FFmpeg allocates packet/parser
   storage through aligned malloc/realloc and releases with `av_free`; native
-  must reduce dirty memory through ownership/lifetime changes, not glibc
-  allocator tuning.
+  must keep AV storage on FFmpeg ownership boundaries. Process allocator policy
+  may limit glibc heap retention, but it is not a substitute for releasing
+  packet/frame ownership at the FFmpeg lifetime boundary.
 
 ## Substantial Breakthroughs
 
@@ -91,10 +101,12 @@ for old renderer, GStreamer, decoded-frame copy, or descriptor-set paths.
 5. Presentation follows the FFmpeg queue shape: bounded queue depth three,
    `keep_last` semantics, serial reset handling, and frame-timer PTS-delta
    pacing.
-6. Smoke runs use the untuned distribution allocator behavior. The scripts clear
-   external malloc/glibc tuning variables before launch and the native process
-   does not call `mallopt`; memory reductions must come from FFmpeg-aligned
-   ownership, queue, copy, and lifetime changes.
+6. Distribution runs use the native process allocator policy. The scripts clear
+   external malloc/glibc tuning variables before launch so user env cannot hide
+   regressions; the `gilder-native-vulkan` binary then self-execs with the
+   required glibc startup tunables and the FFmpeg shim applies process
+   `mallopt` before opening AV input. Memory reductions still must come first
+   from FFmpeg-aligned ownership, queue, copy, and lifetime changes.
 7. Decode/present timeline synchronization follows FFmpeg's per-frame semaphore
    dependency shape: decode signals at `VIDEO_DECODE_KHR` completion and
    present waits on that per-frame value before touching the decoded image. Low
@@ -118,12 +130,18 @@ for old renderer, GStreamer, decoded-frame copy, or descriptor-set paths.
     codec parameters through `VkVideoDecodeInfoKHR` pNext, and leave
     `VkVideoBeginCodingInfoKHR::videoSessionParameters` null in the streaming
     path.
+12. H.264/H.265 decoded-frame handoff now follows FFmpeg display-order
+    semantics instead of decode FIFO. H.264 parses SPS VUI bitstream
+    restriction and uses `num_reorder_frames` as the initial `has_b_frames`,
+    then adapts on observed B-picture/out-of-order keys as FFmpeg does; H.265
+    uses SPS `max_num_reorder_pics` for the active temporal layer. DPB
+    `array_layers` no longer masquerades as display reorder depth.
 
 ## Format Evidence
 
-Performance evidence uses no allocator tuning profile. Current memory gates
-must be judged with malloc/glibc tuning env cleared and no in-process
-`mallopt`.
+Performance evidence uses no optional allocator profile. Current memory gates
+must be judged with external malloc/glibc tuning env cleared; the distribution
+binary itself applies the required process allocator policy.
 
 ### H.264
 
@@ -228,15 +246,92 @@ must be judged with malloc/glibc tuning env cleared and no in-process
 
 ## Allocator Evidence
 
-There is no allocator tuning profile. Scripts clear
-`MALLOC_ARENA_MAX`, `MALLOC_MMAP_THRESHOLD_`, `MALLOC_TRIM_THRESHOLD_`, and
-`GLIBC_TUNABLES` before launching the video process, and the binary must not
-configure glibc malloc internally.
+There is no optional allocator profile and no script-only tuning. Scripts clear
+external `MALLOC_ARENA_MAX`, `MALLOC_MMAP_THRESHOLD_`,
+`MALLOC_TRIM_THRESHOLD_`, `MALLOC_TOP_PAD_`, and `GLIBC_TUNABLES` before
+launching the measured process so local shell state cannot make a run pass.
+When built with `native-vulkan-video`, `gilder-native-vulkan` self-execs once
+with the required distribution environment:
+`MALLOC_ARENA_MAX=1`, `MALLOC_MMAP_THRESHOLD_=131072`,
+`MALLOC_TRIM_THRESHOLD_=0`, `MALLOC_TOP_PAD_=0`, and
+`GLIBC_TUNABLES=glibc.malloc.tcache_count=0` while preserving unrelated glibc
+tunables. The FFmpeg shim also calls `mallopt(M_ARENA_MAX, 1)`,
+`mallopt(M_TRIM_THRESHOLD, 0)`, `mallopt(M_TOP_PAD, 0)`, and
+`mallopt(M_MMAP_THRESHOLD, 128 KiB)` before AV input open, and calls
+`malloc_trim(0)` after video/audio FFmpeg teardown.
 
-Current 4K240 no-tuning comparison is the evidence in the format sections
-above. All listed runs are under `performance_max_private_dirty_kib < 25000`,
+Current 4K240 comparison is the evidence in the format sections above. All
+listed runs are under `performance_max_private_dirty_kib < 25000`,
 `average_present_fps >= 239.999`, `descriptor_sets=0`,
 `descriptor_heap_only=true`, and `all_zero_copy_presented=true`.
+
+Real-source measurements show why the startup tcache tunable is required for
+distribution behavior, not as a loose local profile:
+
+- Workshop `3498008367`, H.264 Main 4K60 video-only, 360 presented frames:
+  source-level `mallopt` only reported `Private_Dirty=24036 KiB`,
+  heap `8820 KiB`, anon `2124 KiB`, and
+  `average_present_fps=60.043573313409325`; adding the startup glibc tunables
+  reported `Private_Dirty=21060 KiB`, heap `3272 KiB`, anon `4692 KiB`, and
+  `average_present_fps=60.04155505460744`. After moving the tunables into the
+  binary self-exec path and clearing external env before launch,
+  `/tmp/gilder-real-video-3498008367-binary-allocator.1782592023` reports
+  `Private_Dirty=20984 KiB`, heap `3200 KiB`, anon `4692 KiB`, and
+  `average_present_fps=60.038757663791046`.
+- Workshop `3454093707`, H.264 Main 4K60 video-only, 360 presented frames:
+  source-level `mallopt` only reported `Private_Dirty=24496 KiB`,
+  heap `8464 KiB`, anon `2776 KiB`, and
+  `average_present_fps=60.04367534462413`; adding the startup glibc tunables
+  reported `Private_Dirty=21872 KiB`, heap `3540 KiB`, anon `5260 KiB`, and
+  `average_present_fps=60.0403326570722`.
+- Workshop `3454093707`, same source with PipeWire S16LE output and
+  audio-master pacing: source-level `mallopt` only reported
+  `Private_Dirty=25128 KiB`; adding the startup glibc tunables reported
+  `Private_Dirty=24772 KiB` with PipeWire streaming active, audio output
+  frames `282`, samples `288768`, bytes `1155072`, and zero xrun/buffer/timeout
+  errors. The binary self-exec path now passes the formal H.264 smoke at
+  `/tmp/gilder-vulkan-h264-ready-prefix-video.n0gewv` with external allocator
+  env cleared: `Private_Dirty=24688 KiB`, heap `4292 KiB`, anon `6664 KiB`,
+  `presented_frame_count=360`, `average_present_fps=60.25415646627786`,
+  `audio_output_backend=pipewire-s16le`, and zero xrun/buffer/timeout errors.
+- Workshop `3407391149`, H.264 High 1700x1080 display / 1712x1088 coded
+  extent plus AAC, 360 presented frames: this source exposed B-frame display
+  reordering. The first FIFO decode-order handoff failed with non-monotonic PTS
+  and display order; the FFmpeg-aligned delayed-picture handoff now passes at
+  `/tmp/gilder-vulkan-h264-3407391149-audio-6s-trim0` with
+  `Private_Dirty=24712 KiB`, heap `3920 KiB`, anon `5888 KiB`,
+  `average_present_fps=60.24337748247325`, `audio_video_sync.ready=true`,
+  source PTS deltas `16666666..16666667 ns`,
+  `audio_output_xrun_count=0`, `ffmpeg_slices_buffer_pool_capacity_bytes=1651200`,
+  and `max_src_buffer_range=953600`.
+- Workshop `3655044877` (`Mac-OS Dubai Night 4k 240 FPS`) is advertised as
+  240 FPS but `ffprobe` identifies the downloaded MP4 as H.264 Main 8-bit
+  `3840x2160`, `60/1` FPS, video-only. The first strict 6s smoke passed at
+  `/tmp/gilder-vulkan-h264-3655044877-video-6s` with
+  `Private_Dirty=21984 KiB`, heap `3064 KiB`, anon `5076 KiB`,
+  `average_present_fps=60.0436230234559`, 360 submitted/presented frames,
+  PTS/display order monotonic, and zero-copy present. The no-build rerun
+  `/tmp/gilder-vulkan-h264-3655044877-video-6s-rerun` also passed with
+  `Private_Dirty=22000 KiB`, heap `3060 KiB`, anon `5076 KiB`,
+  `average_present_fps=60.04763680389402`,
+  `ffmpeg_slices_buffer_pool_capacity_bytes=948992`, and
+  `max_src_buffer_range=626688`.
+- Workshop `2985290493` (`Reverse: 1999 Vertin`) is advertised as 4K120 but
+  `ffprobe` identifies the MP4 as H.264 High 8-bit `3840x2160`, `60/1` FPS,
+  plus AAC LC stereo 44.1 kHz. Full audio/video 6s strict smoke
+  `/tmp/gilder-vulkan-h264-2985290493-audio-6s` passed with
+  `Private_Dirty=24948 KiB`, heap `3944 KiB`, anon `7464 KiB`,
+  `average_present_fps=60.25450651934367`, `audio_video_sync.ready=true`,
+  source PTS deltas `16666000..16667000 ns`, zero xrun, 360
+  submitted/presented frames, `ffmpeg_slices_buffer_pool_capacity_bytes=242688`,
+  and `max_src_buffer_range=160768`. The no-build rerun
+  `/tmp/gilder-vulkan-h264-2985290493-audio-6s-rerun` also passed at
+  `Private_Dirty=24988 KiB`, `average_present_fps=60.276466283413136`, and the
+  same A/V sync/zero-copy/PTS gates. The matching video-only run
+  `/tmp/gilder-vulkan-h264-2985290493-video-6s` passed at
+  `Private_Dirty=21788 KiB`, heap `3128 KiB`, anon `5568 KiB`, and
+  `average_present_fps=60.04126508038644`, making this a current AAC/PipeWire
+  memory-pressure sample rather than a video decode pressure sample.
 
 If a performance run starts immediately after
 `target/release/gilder-native-vulkan` was rebuilt or replaced, Linux can report
@@ -475,10 +570,11 @@ smoke scripts default performance snapshots to `--max-private-dirty-kib 25000`;
 an explicit `--max-private-dirty-kib` only overrides that hard gate. Validation
 layer runs are for correctness only; do not use them for the memory/FPS gate.
 
-The scripts clear
-`MALLOC_ARENA_MAX`, `MALLOC_MMAP_THRESHOLD_`, `MALLOC_TRIM_THRESHOLD_`, and
+The scripts clear externally supplied `MALLOC_ARENA_MAX`,
+`MALLOC_MMAP_THRESHOLD_`, `MALLOC_TRIM_THRESHOLD_`, `MALLOC_TOP_PAD_`, and
 `GLIBC_TUNABLES` before launching the video process. There is no
-`--allocator-profile` option and no in-process glibc allocator tuning.
+`--allocator-profile` option; allocator behavior is the binary's fixed
+process-glibc-mallopt-tcache-off policy.
 
 Do not rebuild or overwrite `target/release/gilder-native-vulkan` while a
 performance run is sampling it. Linux may report the executable mapping as
@@ -569,6 +665,24 @@ fields together with the report directory.
    `/tmp/gilder-audio-scene-remaining10-arbitrary-smoke` also passes with
    `--arbitrary-entry-offset 0.10 --audio-output auto`, so non-starting source
    entry now exercises video recovery plus PipeWire/A-V sync gates together.
+   Workshop item `3454093707` (`Mercy_Full_Audio.mp4`, H.264 Main 4K60 plus
+   AAC) exposed a startup deadlock when audio output could be heard but decoded
+   video stayed black and the run never exited. The cause was treating the
+   fixed 3-frame FFmpeg-style handoff FIFO as a startup preroll requirement
+   while this stream only needs two coincident DPB/output image layers
+   (`session_max_dpb_slots=2`, `resource_image.array_layers=2`). Decode could
+   block waiting for a layer release while present was still waiting for three
+   queued frames. Decoded-image present now starts as soon as the first display
+   frame is available; the 3-frame value remains FIFO capacity only. A rebuilt
+   4-frame run exits with `presented_frame_count=4`,
+   `decoded_image_zero_copy_presented=true`,
+   `audio_output_backend=pipewire-s16le`, and `audio_output_xrun_count=0`.
+   The current binary self-exec allocator run exits, presents `360/360` frames
+   at `average_present_fps=60.25415646627786`, reports
+   `audio_video_sync.ready=true`, and passes the strict 25MiB
+   `Private_Dirty` gate at `24688 KiB`; the remaining work is further source
+   lifetime reduction, not black-screen recovery or script-side allocator
+   tuning.
    Current H.264 generated-source loop-audio smoke:
    `/tmp/gilder-vulkan-h264-ready-prefix-video.JfquFZ` passes
    `--audio-clock-probe --pacing-master audio`, reports
