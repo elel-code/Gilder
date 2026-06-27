@@ -202,6 +202,25 @@ above. All listed runs are under `performance_max_private_dirty_kib < 25000`,
 `average_present_fps >= 239.999`, `descriptor_sets=0`,
 `descriptor_heap_only=true`, and `all_zero_copy_presented=true`.
 
+## Code Layout
+
+- `src/renderer/native_vulkan/mod.rs`: facade, shared codec parsers, snapshot
+  construction, and public native Vulkan contract types.
+- `src/renderer/native_vulkan/video/`: FFmpeg demux/packet handoff, codec
+  reference planning, route selection, pacing, timeline, and video extraction
+  metadata. This directory must not retain access-unit payload windows.
+- `src/renderer/native_vulkan/vulkan/`: the only Vulkan binding backend. It is
+  split into `core/` device/feature/profile setup, `present/` swapchain/render
+  present, `scene/` scene-lite draw/present, and `video/` Vulkan Video session,
+  command, decode submit, and present runtime code.
+- `src/renderer/native_vulkan/present/`: renderer item planning plus clear and
+  static-image present entry points.
+- `src/renderer/native_vulkan/scene/`: scene-lite planning/runtime bridge into
+  the Vulkan present path.
+- `src/renderer/native_vulkan/audio/`: audio policy boundary. Audio code should
+  enter here first, then wire to FFmpeg demux/clock and daemon lifecycle after
+  clock-only evidence is stable.
+
 ## Smoke Commands
 
 Use the codec-specific ready-prefix smoke scripts with the repository 4K240
@@ -229,18 +248,18 @@ fields together with the report directory.
 
 ## Next Plan
 
-1. Audio integration: follow FFmpeg's demux, packet queue, clock serial, loop,
-   and frame-timer semantics. The first accepted path is muted clock-only audio
-   for synchronization; audible output comes after clock behavior is stable.
-2. Full scene wallpaper support: route native Vulkan video through the normal
-   daemon wallpaper lifecycle, including output selection, scene transforms,
-   static-image/video composition, properties, pause/resume policy, and package
-   state persistence.
+1. Audio integration: add an FFmpeg-owned audio demux/packet queue and clock
+   serial path under `native_vulkan/audio/`, then connect muted clock-only
+   synchronization to video pacing before enabling audible output.
+2. Full scene wallpaper support: route scene-lite plans through
+   `native_vulkan/scene/` and `native_vulkan/vulkan/scene/`, including output
+   selection, scene transforms, static-image/video composition, properties,
+   pause/resume policy, and package state persistence.
 3. Bitstream coverage: expand H.264, H.265, and AV1 matrices across real
    sources and generated sources, including Main/Main10, reference counts,
    B-frame patterns, arbitrary entry points, loop boundaries, long-run resource
    stability, and validation-layer correctness runs.
 4. Script hygiene: keep the active codec smokes, real-source matrix,
    performance sampler, CI dependency/policy scripts, packaging scripts, and
-   workshop downloader. Delete migration/spike/compatibility scripts instead of
-   preserving wrappers.
+   workshop downloader. Delete one-off spike scripts instead of preserving
+   wrappers.
