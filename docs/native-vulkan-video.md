@@ -156,12 +156,12 @@ for old renderer, GStreamer, decoded-frame copy, or descriptor-set paths.
     then adapts on observed B-picture/out-of-order keys as FFmpeg does; H.265
     uses SPS `max_num_reorder_pics` for the active temporal layer. DPB
     `array_layers` no longer masquerades as display reorder depth.
-13. Next FFmpeg alignment target: split the current present-owned decode loop
-    into an FFmpeg-style video decode worker that consumes the streaming packet
-    queue and hands decoded-frame metadata to the presenter. The default decode
-    thread count remains one; the useful modernization is worker ownership and
-    Vulkan async-depth sizing, not host CPU decode parallelism or relaxed memory
-    gates.
+13. Ready-prefix video now has the FFmpeg execution split in runtime evidence:
+    FFmpeg packet read thread -> bounded packet queue -> single video decode
+    worker -> bounded decoded-frame handoff -> present worker. The default
+    decode thread count remains one, while Vulkan async-depth follows FFmpeg's
+    Vulkan decode formula. This is worker ownership and lifetime alignment, not
+    host CPU decode parallelism or relaxed memory gates.
 
 ## Format Evidence
 
@@ -940,7 +940,7 @@ fields together with the report directory.
    `3726503096` (`Beneath The Seventh`) is tagged `3840 x 2160` by Workshop,
    but the package's WE scene/model frame is `2160x1440` and its material
    texture is a `6480x5760` atlas (`3x4`, 12 frames). The native conversion at
-   `/tmp/gilder-we-3726503096-output-atlas` now starts from the original
+   `/tmp/gilder-we-3726503096-output-current` now starts from the original
    Workshop directory, parses `scene.pkg` `PKGV0023` directly, and writes
    `assets/scene-resources/scene/resource-4-img-5944-atlas.png` as the native
    sampled-image atlas resource. The gscene node `resource` is
@@ -950,9 +950,31 @@ fields together with the report directory.
    as `resource-3-img-5944` provenance. The conversion report records
    `scene-we-package-import`, `scene-we-tex-rgba-frame-decode`, and
    `scene-we-spritesheet-atlas-runtime`, so this sample now uses the completed
-   atlas runtime path. The converter must not
-   up-label the generated frame to 4K; the 4K tag is a presentation/display
-   label, not the asset frame dimensions.
+   atlas runtime path. The 6 second native scene smoke without fixed
+   `--scene-time-ms`
+   `WAYLAND_DISPLAY=wayland-1 XDG_RUNTIME_DIR=/run/user/1000 target/debug/gilder-native-vulkan --run-scene --output-name HDMI-A-1 --source /tmp/gilder-we-3726503096-output-current/assets/scene.gscene.json --scene-root /tmp/gilder-we-3726503096-output-current --fit cover --duration 6 --target-fps 60`
+   presents through `scene_present_route=sampled-image`, `frames_presented=360`,
+   `average_present_fps=59.99776901295814`,
+   `draw_pass_backend_status=clear-background-sampled-image-recording-ready`,
+   `draw_pass_background_clear_color=#b3b3b3`, `texture_region.frame_count=12`,
+   `native_runtime_coverage_percent=100`,
+   `scene_resource_model=retained-sampled-images-descriptor-heap`,
+   `uses_host_image_copy=true`, `staging_buffer_bytes=0`, and geometry
+   `source_label=scene-runtime-sampled-image-draw-plan+scene-viewport-fit`.
+   The runtime now carries the gscene document size (`2160x1440`) into the
+   sampled-image present path and applies scene-level `cover` viewport mapping
+   before recording geometry for the actual swapchain extent (`2561x1601` in
+   this smoke), so scene-space coordinates are centered/cropped instead of
+   being interpreted as output pixels. Spritesheet draw steps retain `columns`,
+   `rows`, `fps`, and `loop_playback`; animated atlas regions update the
+   retained host-visible vertex buffer from runtime elapsed time each frame,
+   with all in-flight frame fences waited before rewriting the shared geometry
+   buffer. Sized `scene-render-clear-color` layers are treated as render
+   clear-background layers in the native draw pass, not as normal geometry, so
+   the WE clear color composes with the atlas image without introducing a
+   compatibility fallback. The converter must not up-label the generated frame
+   to 4K; the 4K tag is a presentation/display label, not the asset frame
+   dimensions.
    Current real Workshop video conversion sample: Steam Workshop item
    `3498008367` (`素晴 爆裂魔法`) downloads into
    `artifacts/wallpaper-engine-workshop/steamcmd-root/steamapps/workshop/content/431960/3498008367`
