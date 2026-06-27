@@ -601,17 +601,19 @@ fields together with the report directory.
 2. Full scene wallpaper support: the current completed work is a first-class
    Gilder scene document/runtime path plus explicit full-scene boundaries, not
    full Wallpaper Engine scene execution. For progress accounting, full scene
-   is roughly `90%`: package/conversion boundaries, `scene/gscene` format
+   is roughly `92%`: package/conversion boundaries, `scene/gscene` format
    validation, snapshot-time propagation, render clear-color snapshot layers,
+   WE `scene.pkg` direct import,
    WE parent-id graph lowering into gscene children,
    WE `shape`/`solid`/`radius` lowering into native rectangle/ellipse nodes,
    explicit WE keyframe timeline lowering into gscene timeline channels,
    WE `{script,value}` wrapper lowering without a JS engine, deterministic
    numeric SceneScript expression lowering into native property bindings,
-   geometry-field timeline/property animation, and parallax depth
-   camera-property offsets,
-   retained sampled-image resources, solid/image mixed composition, descriptor
-   heap sampling, visible scene runtime status, native present route selection,
+   geometry-field timeline/property animation, parallax depth camera-property
+   offsets, WE TEXV0005/TEXB0004 RGBA texture decoding, spritesheet atlas
+   resources with time-sampled UV frame selection, retained sampled-image
+   resources, solid/image mixed composition, descriptor heap sampling,
+   visible scene runtime status, native present route selection,
    retained resource status, clear-background composition, native runtime
    layer-coverage accounting, rounded-rectangle tessellation, simple/concave
    path tessellation, stroke geometry, deterministic text glyph geometry,
@@ -620,8 +622,8 @@ fields together with the report directory.
    timeline animation snapshotting, property update binding, pause/resume
    policy, and package state/property persistence are in place; particle
    systems, full WE scene graph execution, arbitrary SceneScript,
-   shader/material graph,
-   cursor parallax input plumbing, PipeWire audio response, complex font
+   shader/material graph, cursor parallax input plumbing,
+   PipeWire audio response, complex font
    shaping/atlas typography, full path rasterization, and actual mixed
    video-as-scene composition remain open. Wallpaper Engine scene conversions
    now write `assets/*.gscene.json`
@@ -631,7 +633,7 @@ fields together with the report directory.
    `full_scene` report block with
    `target_runtime=native-vulkan-full-scene`,
    `current_runtime=native-vulkan-scene-runtime`,
-   `progress_estimate_percent=90`,
+   `progress_estimate_percent=92`,
    preserved source-scene metadata paths, completed boundaries, and pending
    full-scene boundaries. Gilder scene is the runtime format, not a
    Wallpaper Engine schema clone: WE's historical fields are treated as an
@@ -671,11 +673,19 @@ fields together with the report directory.
    The converter now understands WE `object.image` as a model JSON entry
    rather than a direct image path, follows `model -> material -> texture`,
    copies model/material/effect/audio/texture assets into the gscene resource
-   graph, and only assigns `node.resource` when the resolved texture is a
-   directly renderable image. WE `.tex`, runtime `_rt_` textures, shaders,
-   particles, SceneScript, and effect graphs are preserved structurally and
-   reported as explicit pending runtime systems instead of being hidden behind
-   a legacy loader. There is no internal legacy scene format, loader, or
+   graph, and assigns `node.resource` only to a native sampled-image resource.
+   Standard WE `TEXV0005/TEXB0004` RGBA `.tex` material textures are decoded
+   through their LZ4 block payload. Non-spritesheet textures are cropped to the
+   model's first frame when the model width/height divides the atlas; WE
+   `SPRITESHEET` materials instead write the full atlas as a generated PNG
+   image resource and attach `properties.spritesheet` (`atlas-grid`, atlas
+   size, frame size, columns/rows, frame count, FPS, loop flag) to the gscene
+   node. The original `.tex` remains as provenance, while the runtime-facing
+   sampled image is the generated PNG. Runtime `_rt_`
+   textures, shaders, particles, arbitrary SceneScript, effect graphs, and
+   audio-response systems are preserved structurally and reported as explicit
+   pending runtime systems instead of being hidden behind a legacy loader.
+   There is no internal legacy scene format, loader, or
    lowering bridge; old `layers` fixture data was replaced by `nodes/resources`
    gscene documents. Static wallpapers now lower into a single-image scene
    layer before the Vulkan sampled-image runtime. Scene plans route through
@@ -731,7 +741,7 @@ fields together with the report directory.
    Visible scene present results now include `runtime.full_scene`, with
    `target_runtime=native-vulkan-full-scene`,
    `current_runtime=native-vulkan-scene-runtime`,
-   `progress_estimate_percent=90`, `native_present_route_ready`,
+   `progress_estimate_percent=92`, `native_present_route_ready`,
    `retained_resource_model_ready`, `timeline_snapshot_runtime_ready`,
    `timeline_animation_runtime_ready`, `timeline_animation_count`,
    `timeline_animated_layer_count`, `property_update_runtime_ready`,
@@ -748,10 +758,51 @@ fields together with the report directory.
    snapshot. Mixed video scenes with overlays remain explicitly pending under
    `mixed-video-scene-composition` instead of silently rasterizing or falling
    back.
+   Current real Workshop scene conversion sample: Steam Workshop item
+   `3726503096` (`Beneath The Seventh`) is tagged `3840 x 2160` by Workshop,
+   but the package's WE scene/model frame is `2160x1440` and its material
+   texture is a `6480x5760` atlas (`3x4`, 12 frames). The native conversion at
+   `/tmp/gilder-we-3726503096-output-atlas` now starts from the original
+   Workshop directory, parses `scene.pkg` `PKGV0023` directly, and writes
+   `assets/scene-resources/scene/resource-4-img-5944-atlas.png` as the native
+   sampled-image atlas resource. The gscene node `resource` is
+   `resource-4-img-5944-atlas`; `properties.spritesheet` records atlas
+   `6480x5760`, frame `2160x1440`, `columns=3`, `rows=4`,
+   `frame_count=12`, `fps=12.0`, and `loop=true`; the original `.tex` remains
+   as `resource-3-img-5944` provenance. The conversion report records
+   `scene-we-package-import`, `scene-we-tex-rgba-frame-decode`, and
+   `scene-we-spritesheet-atlas-runtime`, so this sample now uses the completed
+   atlas runtime path. The converter must not
+   up-label the generated frame to 4K; the 4K tag is a presentation/display
+   label, not the asset frame dimensions.
+   Current real Workshop video conversion sample: Steam Workshop item
+   `3498008367` (`素晴 爆裂魔法`) downloads into
+   `artifacts/wallpaper-engine-workshop/steamcmd-root/steamapps/workshop/content/431960/3498008367`
+   as `project.json`, `preview.gif`, and `慧慧.mp4`. The converter output at
+   `/tmp/gilder-we-3498008367-output-video` is a clean video package:
+   `assets/loop.mp4`, `previews/poster.gif`, `kind=video`,
+   `entry.source=assets/loop.mp4`, `entry.poster=previews/poster.gif`,
+   `property:schemecolor`, and an empty `unsupported_features` list.
+   `ffprobe` identifies the source as H.264 Main, `yuv420p`, `3840x2160`,
+   `60/1` FPS, 20 seconds, 1200 frames. The H.264 ready-prefix runtime now
+   sizes its streaming packet queue from the requested bitstream/ready-prefix
+   window instead of the fixed FFplay picture-queue handoff size, so this
+   real stream's third P frame can request three active references without
+   losing the current output slot. The 4K60 smoke
+   `env WAYLAND_DISPLAY=wayland-1 scripts/native-vulkan-h264-ready-prefix-video-smoke.sh --source /tmp/gilder-we-3498008367-output-video/assets/loop.mp4 --width 3840 --height 2160 --target-fps 60 --decode-prefix 60 --playback-frames 60 --output-name HDMI-A-1 --fit cover`
+   passes with 60 decoded frames, 60 presented frames, 2 IDR frames,
+   58 P frames, `stream_dpb_slots=4`,
+   `stream_max_active_reference_pictures=3`,
+   `session_max_dpb_slots=4`,
+   `session_max_active_reference_pictures=3`,
+   `distinct_sampled_array_layer_count=4`,
+   `all_zero_copy_presented=true`,
+   source PTS deltas `16..17` ms, `average_present_fps=60.017923854505206`,
+   `present_mode=fifo-latest-ready`, and no failed present-mode/pacing gates.
    Current runtime smoke:
    `WAYLAND_DISPLAY=wayland-1 target/release/gilder-native-vulkan --run-scene --output-name HDMI-A-1 --source artifacts/smoke/scene-heap-smoke.png --fit cover --duration 1 --target-fps 30 --scene-time-ms 1234`
    presents `30` frames at `29.99748264125423` FPS and reports
-   `runtime.full_scene.progress_estimate_percent=90`,
+   `runtime.full_scene.progress_estimate_percent=92`,
    `runtime.full_scene.native_present_route_ready=true`,
    `runtime.full_scene.retained_resource_model_ready=true`,
    `runtime.full_scene.timeline_snapshot_runtime_ready=true`,
@@ -783,7 +834,7 @@ fields together with the report directory.
    and decoded-image draw `clear_color=[0.062745101749897,0.125490203499794,0.1882352977991104,1.0]`.
    Current regression coverage:
    `cargo test --features native-vulkan-renderer scene -- --nocapture`
-   passes `97` filtered lib tests, `5` native-vulkan CLI tests, and `1`
+   passes `101` filtered lib tests, `5` native-vulkan CLI tests, and `1`
    gilderd test. The added renderer/runtime coverage asserts gscene package
    validation, clean WE scene-to-gscene conversion, WE model/material texture
    provenance, renderable material image texture resource resolution, WE parent
@@ -793,12 +844,15 @@ fields together with the report directory.
    keyframe timeline lowering into native timeline snapshot values,
    geometry field timeline/property animation, script/value wrapper lowering
    without a JS engine, deterministic numeric SceneScript expression lowering,
-   and parallax depth property-camera offsets,
-   timeline animation metadata reaches `SceneWallpaperPlan`, first-frame animation
-   snapshot values are applied, property binding counts reach the native
-   runtime, and the completed full-scene boundaries include
+   WE `.tex` RGBA/LZ4 first-frame or spritesheet-atlas decoding to a renderable
+   PNG resource, `scene.pkg` direct import, and parallax depth property-camera
+   offsets, timeline animation metadata reaches `SceneWallpaperPlan`,
+   atlas-frame texture regions are time sampled, property binding counts reach
+   the native runtime, and the completed full-scene boundaries include
    `timeline-animation-runtime`, `property-update-runtime`,
-   `pause-resume-policy-runtime`, and `package-state-persistence`.
+   `pause-resume-policy-runtime`, `package-state-persistence`,
+   `wallpaper-engine-scene-pkg-import`, and
+   `scene-we-spritesheet-atlas-runtime`.
    Next gates:
    wiring mixed video-as-scene layer composition from this explicit bridge boundary,
    complex font shaping/atlas typography, full path rasterization,
