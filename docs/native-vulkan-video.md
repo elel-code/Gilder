@@ -115,13 +115,16 @@ for old renderer, GStreamer, decoded-frame copy, or descriptor-set paths.
 8. FFmpeg read-thread handoff is rendezvous by default rather than a hidden
    second compressed-payload FIFO. H.264/H.265 use the single-packet
    `packet_queue_get` shape; AV1 is the only path that declares packet splitting
-   and it shares the FFmpeg packet backing by byte range.
+   and it shares the FFmpeg packet backing by byte range. The worker now only
+   allocates a pending access-unit queue for codecs that set
+   `FFMPEG_PACKET_SPLITS_ACCESS_UNITS`; H.264/H.265 do not carry an unused
+   hidden `VecDeque`.
 9. Annex-B conversion keeps one reusable scratch buffer. Extra free converted
    payload buffers are not retained after upload, matching FFmpeg's
    packet-unref lifetime and keeping long-source `Private_Dirty` under the
    gate without allocator tuning.
 10. The packet handoff queue can still hold three active packets, but the free
-    Annex-B scratch pool retains only one buffer capped at 160 KiB. This keeps
+    Annex-B scratch pool retains only one buffer capped at 128 KiB. This keeps
     FFmpeg's `av_packet_move_ref` queue depth while avoiding a second hidden
     three-packet retained-payload pool.
 11. Vulkan Video parameter sets now use `VK_KHR_video_maintenance2` inline
@@ -650,9 +653,9 @@ fields together with the report directory.
    callback count without meaningful memory benefit. Video FFmpeg Annex-B
    scratch retains only one small reusable payload buffer and releases 4K-scale
    packet storage after handoff, matching FFmpeg's `av_packet_unref` lifetime
-   more closely. The remaining audio work is outside the direct ready-prefix
-   player: full-scene audio response must consume the same PipeWire-only
-   backend from the scene runtime.
+   more closely. Full-scene audio cues now consume the same FFmpeg/PipeWire-only
+   backend from the scene present runtime; the remaining audio work is the
+   audio-response visual system, not a PulseAudio/ALSA/GStreamer output path.
    Current PipeWire ready-prefix auto smoke:
    `/tmp/gilder-audio-scene-remaining10-auto-smoke` passes
    `--audio-clock-probe --audio-output auto --unmuted --pacing-master audio`,
@@ -732,7 +735,7 @@ fields together with the report directory.
 2. Full scene wallpaper support: the current completed work is a first-class
    Gilder scene document/runtime path plus explicit full-scene boundaries, not
    full Wallpaper Engine scene execution. For progress accounting, full scene
-   is roughly `92%`: package/conversion boundaries, `scene/gscene` format
+   is roughly `94%`: package/conversion boundaries, `scene/gscene` format
    validation, snapshot-time propagation, render clear-color snapshot layers,
    WE `scene.pkg` direct import,
    WE parent-id graph lowering into gscene children,
@@ -751,8 +754,9 @@ fields together with the report directory.
    first-class `video` layer detection, single-video-layer Vulkan Video scene
    composition, clear-background plus video scene composition, scene
    timeline animation snapshotting, property update binding, pause/resume
-   policy, package state/property persistence, and scene audio cues carried
-   through the renderer/runtime boundary are in place; particle systems, full
+   policy, package state/property persistence, renderer-resolved scene audio
+   cues, and native FFmpeg/PipeWire scene audio cue playback are in place;
+   particle systems, full
    WE scene graph execution, arbitrary SceneScript, shader/material graph,
    cursor parallax input plumbing, PipeWire audio response, complex font
    shaping/atlas typography, full path rasterization, and actual mixed
@@ -764,7 +768,7 @@ fields together with the report directory.
    `full_scene` report block with
    `target_runtime=native-vulkan-full-scene`,
    `current_runtime=native-vulkan-scene-runtime`,
-   `progress_estimate_percent=93`,
+   `progress_estimate_percent=94`,
    preserved source-scene metadata paths, completed boundaries, and pending
    full-scene boundaries. Gilder scene is the runtime format, not a
    Wallpaper Engine schema clone: WE's historical fields are treated as an
@@ -834,7 +838,11 @@ fields together with the report directory.
    `--run-scene` for image and color scene probes, and the CLI accepts
    `--scene-time-ms`/`--snapshot-time-ms` so non-zero sampled scene time reaches
    `SceneWallpaperPlan` through the same entry point used by visible
-   runtime smoke. Text layers now lower into deterministic built-in glyph
+   runtime smoke. The same CLI now loads package-owned `.gscene.json` sources
+   directly; `--scene-root` pins the package root when the source is not under
+   the standard `assets/` directory, so converted full-scene packages can enter
+   the native presenter without first being flattened into an image/video-only
+   CLI plan. Text layers now lower into deterministic built-in glyph
    geometry and render through the same solid dynamic-rendering pipeline as
    rectangles, rounded rectangles, ellipses, and simple paths; this gives text
    layers real native coverage without adding a legacy font-renderer
@@ -869,14 +877,19 @@ fields together with the report directory.
    `runtime.full_scene` instead of being inferred at the reporting boundary.
    The property binding path uses the persisted global/output `AppState`
    property store and the same resolver used to build visible scene snapshots.
-   Scene audio cues are preserved in `SceneSnapshotLayer`, carried into
-   `SceneRenderLayer`, counted in `SceneWallpaperPlan`, and surfaced as
-   `scene_audio_cue_count` plus `scene_audio_cue_resource_model_ready` in
-   `runtime.full_scene`; audio response remains a separate pending system.
+   Scene audio cues are preserved in `SceneSnapshotLayer`, resolved into
+   renderer-local `SceneRenderAudioCue` package paths, counted in
+   `SceneWallpaperPlan`, surfaced as `scene_audio_cue_count` plus
+   `scene_audio_cue_resource_model_ready` in `runtime.full_scene`, and played
+   by the scene present runtime through the same FFmpeg audio reader and
+   PipeWire-only output backend used by direct video. `start_silent=true` cues
+   are not auto-started; `playback_mode=loop` enables FFmpeg EOS seek for the
+   requested present duration. Audio response remains a separate pending
+   visual-response system.
    Visible scene present results now include `runtime.full_scene`, with
    `target_runtime=native-vulkan-full-scene`,
    `current_runtime=native-vulkan-scene-runtime`,
-   `progress_estimate_percent=93`, `native_present_route_ready`,
+   `progress_estimate_percent=94`, `native_present_route_ready`,
    `retained_resource_model_ready`, `timeline_snapshot_runtime_ready`,
    `timeline_animation_runtime_ready`, `timeline_animation_count`,
    `timeline_animated_layer_count`, `property_update_runtime_ready`,
@@ -937,7 +950,7 @@ fields together with the report directory.
    Current runtime smoke:
    `WAYLAND_DISPLAY=wayland-1 target/release/gilder-native-vulkan --run-scene --output-name HDMI-A-1 --source artifacts/smoke/scene-heap-smoke.png --fit cover --duration 1 --target-fps 30 --scene-time-ms 1234`
    presents `30` frames at `29.99748264125423` FPS and reports
-   `runtime.full_scene.progress_estimate_percent=93`,
+   `runtime.full_scene.progress_estimate_percent=94`,
    `runtime.full_scene.native_present_route_ready=true`,
    `runtime.full_scene.retained_resource_model_ready=true`,
    `runtime.full_scene.timeline_snapshot_runtime_ready=true`,
