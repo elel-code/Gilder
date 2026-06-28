@@ -1116,9 +1116,12 @@ fields together with the report directory.
    scene layer plus one video layer now routes through the same presenter as
    `clear-background-video-layer-vulkan-video-scene-bridge-ready`; the dynamic
    rendering attachment clear color is carried in each decoded-image draw
-   snapshot. Mixed video scenes with overlays remain explicitly pending under
-   `mixed-video-scene-composition` instead of silently rasterizing or falling
-   back.
+   snapshot. Scene conversion now distinguishes real mixed-video composition
+   from script-controlled video switching: if only one video layer is initially
+   visible, the converted scene records `initial-visible-video-scene-composition`
+   and keeps the Vulkan Video scene path active for the initial state; multiple
+   simultaneously visible video layers still remain explicitly pending under
+   `mixed-video-scene-composition`.
    Current real Workshop scene conversion sample: Steam Workshop item
    `3726503096` (`Beneath The Seventh`) is tagged `3840 x 2160` by Workshop,
    but the package's WE scene/model frame is `2160x1440` and its material
@@ -1199,9 +1202,9 @@ fields together with the report directory.
    are not compatibility
    fallbacks: arbitrary SceneScript/controller lowering remains pending,
    visible shader/effect graph execution for the three blurprecise passes
-   remains pending, mixed video scene composition with overlays remains
-   pending, and cursor/mouse-driven interaction scripts need native lowering
-   rather than a JS VM.
+   remains pending, script-controlled video layer switching remains pending,
+   and cursor/mouse-driven interaction scripts need native lowering rather
+   than a JS VM.
    The runtime now carries the gscene document size (`2160x1440`) into the
    sampled-image present path and applies scene-level `cover` viewport mapping
    before recording geometry for the actual swapchain extent (`2561x1601` in
@@ -1400,11 +1403,12 @@ fields together with the report directory.
    native layers. Next gates:
    The latest focused conversion pass ran
    `cargo test --features native-vulkan-video convert::wallpaper_engine::tests:: -- --nocapture`
-   with `44` passing converter tests and `cargo check --features
+   with `45` passing converter tests and `cargo check --features
    native-vulkan-video`; the 3724575699 reconversion confirms no `.tex`
    runtime files, no util missing-resource warnings, no audio-response system,
-   and only the four real pending boundaries listed above.
-   wiring mixed video-as-scene layer composition from this explicit bridge boundary,
+   initial-visible video scene composition completed, and only the four real
+   pending boundaries listed above.
+   wiring script-controlled video layer switching from this explicit controller boundary,
    complex font shaping/atlas typography,
    full Wallpaper Engine graph execution, WE animation layer blending,
    arbitrary SceneScript runtime, executable shader/effect material graphs,
