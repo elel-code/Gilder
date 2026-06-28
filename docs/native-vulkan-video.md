@@ -845,7 +845,8 @@ fields together with the report directory.
    policy, package state/property persistence, renderer-resolved scene audio
    cues, native FFmpeg/PipeWire scene audio cue playback, and native
    audio-response visual geometry driven by standardized gscene audio
-   property bindings are in place;
+   property bindings, and native idle video-switch controller sampling for
+   `scene.controller.<node>.active` property bindings are in place;
    arbitrary SceneScript, shader/material graph, complex WE particle
    shader/graph parity, real PipeWire spectrum/FFT audio-response input,
    complex font
@@ -1191,7 +1192,15 @@ fields together with the report directory.
    native `properties.controller` metadata plus
    `scene.controller.<node>.active -> target opacity` property bindings, so
    the idle and click video targets are hidden by opacity at startup and can be
-   revealed by the core property-binding runtime without a JS VM. Effect
+   revealed by the core property-binding runtime without a JS VM. The renderer
+   now resolves native `idle-video-switch` controller properties during both
+   initial scene planning and runtime sampler frames; in this sample the idle
+   `fullscreenlayer` becomes active after its `mouse_inactive_sec=70` threshold,
+   while the `composelayer` click controller remains inactive until real
+   pointer input is wired. The reconversion records
+   `scene-idle-controller-input-source` under completed boundaries and keeps
+   `scene-controller-input-source` pending for click/property-driven
+   controllers. Effect
    metadata is explicit: the three still-pending visible `blurprecise` graphs
    remain `runtime: "wallpaper-engine-effect"` with copied effect resources,
    the opacity fade is `runtime: "native-opacity-timeline"`, and the
@@ -1207,9 +1216,9 @@ fields together with the report directory.
    are not compatibility
    fallbacks: arbitrary SceneScript/controller lowering remains pending,
    visible shader/effect graph execution for the three blurprecise passes
-   remains pending, scene controller input source wiring remains pending, and
-   broader cursor/mouse-driven interaction scripts need native lowering rather
-   than a JS VM.
+   remains pending, click/property controller input source wiring remains
+   pending, and broader cursor/mouse-driven interaction scripts need native
+   lowering rather than a JS VM.
    The runtime now carries the gscene document size (`2160x1440`) into the
    sampled-image present path and applies scene-level `cover` viewport mapping
    before recording geometry for the actual swapchain extent (`2561x1601` in
@@ -1401,7 +1410,9 @@ fields together with the report directory.
    `arc-path-flattening-runtime`,
    `compound-path-evenodd-fill-runtime`, and
    `compound-path-nonzero-fill-runtime`; Hyprland/override cursor scene
-   coverage also asserts `cursor-parallax-input-source` completion.
+   coverage asserts `cursor-parallax-input-source` completion, and native
+   idle utility controllers now assert
+   `scene-idle-controller-input-source` completion.
    Full-scene status is still `progress_estimate_percent=99` rather than a
    claimed 100% WE-scene-parity result; `native_runtime_coverage_percent=100`
    means the currently completed native runtime boundaries have no pending
@@ -1412,12 +1423,13 @@ fields together with the report directory.
    native-vulkan-video`; the 3724575699 reconversion confirms no `.tex`
    runtime files, no util missing-resource warnings, no audio-response system,
    initial-visible video scene composition completed, native controller
-   property bindings for idle/click video switching, and only the four real
-   pending boundaries listed above. For this sample, initial playback parity is
-   about `95-96%`; full interactive WE-scene parity is about `90-92%`, with the
-   remaining gap concentrated in effect execution, controller input, and the
+   property bindings for idle/click video switching, completed native idle
+   controller input sampling, and only the four real pending boundaries listed
+   above. For this sample, initial playback parity is about `96-97%`; full
+   interactive WE-scene parity is about `92-93%`, with the remaining gap
+   concentrated in effect execution, click/property controller input, and the
    unreduced SceneScript tail.
-   wiring scene controller input sources for the native idle/click controller bindings,
+   wiring click/property scene controller input sources for native controller bindings,
    complex font shaping/atlas typography,
    full Wallpaper Engine graph execution, WE animation layer blending,
    arbitrary SceneScript runtime, executable shader/effect material graphs,
