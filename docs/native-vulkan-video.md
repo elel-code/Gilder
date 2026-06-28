@@ -793,15 +793,17 @@ fields together with the report directory.
    path tessellation, cubic/smooth-cubic/quadratic/smooth-quadratic path
    flattening, SVG elliptical arc path flattening, compound even-odd path
    fill, stroke geometry, deterministic text glyph geometry,
+   native deterministic particle emitter expansion into solid-quad geometry,
    first-class `video` layer detection, single-video-layer Vulkan Video scene
    composition, clear-background plus video scene composition, scene
    timeline animation snapshotting plus per-frame fixed-topology geometry
    updates during native present, property update binding, pause/resume
    policy, package state/property persistence, renderer-resolved scene audio
    cues, and native FFmpeg/PipeWire scene audio cue playback are in place;
-   particle systems, arbitrary SceneScript, shader/material graph,
-   PipeWire audio response, complex font shaping/atlas typography,
-   explicit nonzero path fill-rule selection, and actual mixed
+   arbitrary SceneScript, shader/material graph, complex WE particle
+   shader/graph parity, PipeWire audio response, complex font
+   shaping/atlas typography, explicit nonzero path fill-rule selection,
+   and actual mixed
    video-as-scene composition remain open. Wallpaper Engine scene conversions
    now write `assets/*.gscene.json`
    documents with `source`, `size`, `render`, `camera`, `import`,
@@ -822,7 +824,10 @@ fields together with the report directory.
    Matched WE parent ids are lowered into real gscene `children`, so the core
    snapshot path now composes parent/child transform and opacity as a completed
    native scene graph runtime boundary instead of only preserving parent ids as
-   metadata. `native_lowering.fallback` was removed from the gscene runtime
+   metadata. Parent rotation is applied to child and particle positions during
+   snapshot flattening, so nested rotated groups no longer leave native layers
+   offset from the scene-space transform hierarchy. `native_lowering.fallback`
+   was removed from the gscene runtime
    schema: package preview images may still exist for UI metadata, but they are
    not referenced as scene resources and are not substituted as runtime nodes.
    `render.clear_color` with
@@ -835,10 +840,20 @@ fields together with the report directory.
    legacy visibility path. WE `shape`/`solid` objects now lower directly into
    gscene `rectangle`/`ellipse` nodes with color, size, and `corner_radius`,
    so ordinary vector shape layers enter the same native solid-geometry
-   runtime instead of staying as source metadata. Explicit source keyframe
-   tracks for supported transform/opacity properties now lower into gscene
-   `timelines`, including vector `origin`/`scale` split into native `x`/`y`
-   and `scale-x`/`scale-y` channels, so the existing core timeline runtime
+   runtime instead of staying as source metadata. Native gscene
+   `particle-emitter` nodes now expand deterministically at snapshot time from
+   `properties.particle` into stable rectangle/ellipse particle layers with
+   bounded `count`, seeded spawn phase, lifetime, rate/count, speed, size,
+   spread, gravity, fade, and emitter area; WE independent particle objects
+   lower `particle`/`emitter` plus
+   `instanceoverride.count/rate/speed/size/lifetime` into those fields. The
+   current WE field reference for this mapping is
+   `references/linux-wallpaperengine/src/scene/loader/object.rs`, whose
+   `Object` includes `particle` and whose `Instanceoverride` carries
+   `alpha`, `speed`, `size`, `lifetime`, `count`, and `rate`. Explicit source
+   keyframe tracks for supported transform/opacity properties now lower into
+   gscene `timelines`, including vector `origin`/`scale` split into native
+   `x`/`y` and `scale-x`/`scale-y` channels, so the existing core timeline runtime
    executes converted motion instead of leaving it only in provenance. The
    same channel now covers geometry fields (`width`, `height`,
    `corner-radius`), and WE `{script: ..., value: ...}` wrappers are unwrapped
@@ -985,19 +1000,19 @@ fields together with the report directory.
    `3726503096` (`Beneath The Seventh`) is tagged `3840 x 2160` by Workshop,
    but the package's WE scene/model frame is `2160x1440` and its material
    texture is a `6480x5760` atlas (`3x4`, 12 frames). The native conversion at
-   `/tmp/gilder-we-3726503096-output-current` now starts from the original
+   `/tmp/gilder-we-3726503096-output-bc7` now starts from the original
    Workshop directory, parses `scene.pkg` `PKGV0023` directly, and writes
-   `assets/scene-resources/scene/resource-4-img-5944-atlas.png` as the native
-   sampled-image atlas resource. The gscene node `resource` is
+   `assets/scene-resources/scene/resource-4-img-5944-atlas.gtex` as the native
+   BC7 sampled-image atlas resource. The gscene node `resource` is
    `resource-4-img-5944-atlas`; `properties.spritesheet` records atlas
    `6480x5760`, frame `2160x1440`, `columns=3`, `rows=4`,
    `frame_count=12`, `fps=12.0`, and `loop=true`; the original `.tex` remains
    as `resource-3-img-5944` provenance. The conversion report records
-   `scene-we-package-import`, `scene-we-tex-rgba-frame-decode`, and
+   `scene-we-package-import`, `scene-we-tex-bc7-gpu-texture`, and
    `scene-we-spritesheet-atlas-runtime`, so this sample now uses the completed
    atlas runtime path. The 6 second native scene smoke without fixed
    `--scene-time-ms`
-   `WAYLAND_DISPLAY=wayland-1 XDG_RUNTIME_DIR=/run/user/1000 target/debug/gilder-native-vulkan --run-scene --output-name HDMI-A-1 --source /tmp/gilder-we-3726503096-output-current/assets/scene.gscene.json --scene-root /tmp/gilder-we-3726503096-output-current --fit cover --duration 6 --target-fps 60`
+   `WAYLAND_DISPLAY=wayland-1 XDG_RUNTIME_DIR=/run/user/1000 target/debug/gilder-native-vulkan --run-scene --output-name HDMI-A-1 --source /tmp/gilder-we-3726503096-output-bc7/assets/scene.gscene.json --scene-root /tmp/gilder-we-3726503096-output-bc7 --fit cover --duration 6 --target-fps 60`
    presents through `scene_present_route=sampled-image`, `frames_presented=360`,
    `average_present_fps=59.9992342697725`,
    `draw_pass_backend_status=clear-background-sampled-image-recording-ready`,
@@ -1022,6 +1037,10 @@ fields together with the report directory.
    `rows`, `fps`, and `loop_playback`; animated atlas regions now use a
    per-frame host-visible vertex-buffer ring and update only the current frame
    slot's UVs from runtime elapsed time after that slot fence has completed.
+   Atlas-only scenes with no explicit timeline channels are also marked as
+   time-sampled native scene state when any layer carries an animated
+   `texture_region`, so sampled-image spritesheet wallpapers do not freeze on
+   the initial frame.
    Current dynamic timeline scene smoke after rebuilding the native CLI:
    `WAYLAND_DISPLAY=wayland-1 XDG_RUNTIME_DIR=/run/user/1000 target/debug/gilder-native-vulkan --json --run-scene --output-name HDMI-A-1 --source /tmp/gilder-dynamic-timeline.gscene.json --fit cover --duration 2 --target-fps 60`
    presents through `scene_present_route=solid-quad`, `frames_presented=120`,
@@ -1036,6 +1055,18 @@ fields together with the report directory.
    present elapsed time and written into the current frame slot's vertex buffer;
    layer/resource topology changes still remain explicit unsupported scene
    graph changes instead of being silently patched into an old path.
+   Current native particle scene smoke:
+   `WAYLAND_DISPLAY=wayland-1 XDG_RUNTIME_DIR=/run/user/1000 target/debug/gilder-native-vulkan --json --run-scene --output-name HDMI-A-1 --source /tmp/gilder-particles.gscene.json --fit cover --duration 2 --target-fps 60`
+   presents through `scene_present_route=solid-quad`, `frames_presented=120`,
+   `average_present_fps=59.99593587530381`,
+   `runtime.full_scene.scene_particle_system_ready=true`,
+   `particle_runtime_layer_count=96`, completed
+   `native-particle-system-runtime`, `unsupported_layer_count=0`,
+   `present.geometry.upload_model=per-frame host-visible solid-quad geometry buffers retained across present frames`,
+   `vertex_buffer_bytes=112896`, `index_count=13824`, and
+   `descriptor_set_count=0`. Particle systems are source-backed time-sampled
+   scene state, so native present enables the same dynamic geometry sampler
+   used by timelines even when no explicit timeline channels are present.
    Sized `scene-render-clear-color` layers are treated as render
    clear-background layers in the native draw pass, not as normal geometry, so
    the WE clear color composes with the atlas image without introducing a
@@ -1135,8 +1166,10 @@ fields together with the report directory.
    keyframe timeline lowering into native timeline snapshot values,
    geometry field timeline/property animation, script/value wrapper lowering
    without a JS engine, deterministic numeric SceneScript expression lowering,
-   WE `.tex` RGBA/LZ4 first-frame or spritesheet-atlas decoding to a renderable
-   PNG resource, `scene.pkg` direct import, and parallax depth property-camera
+   native gscene particle emitter expansion into deterministic solid geometry,
+   WE `.tex` RGBA/LZ4 first-frame or spritesheet-atlas conversion to native
+   BC7 `.gtex` sampled-image resources, authoritative `scene.pkg` direct import,
+   and parallax depth property-camera
    offsets, timeline animation metadata reaches `SceneWallpaperPlan`,
    source-backed `SceneWallpaperRuntimeSampler` resamples timeline layers,
    atlas-frame texture regions are time sampled, property binding counts reach
@@ -1144,6 +1177,7 @@ fields together with the report directory.
    `timeline-animation-runtime`, `per-frame-timeline-geometry-runtime`,
    `property-update-runtime`,
    `pause-resume-policy-runtime`, `package-state-persistence`,
+   `native-particle-system-runtime`,
    `wallpaper-engine-scene-pkg-import`,
    `scene-we-spritesheet-atlas-runtime`, `curve-path-flattening-runtime`,
    `arc-path-flattening-runtime`, and
