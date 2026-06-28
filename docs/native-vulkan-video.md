@@ -439,7 +439,8 @@ elapsed time was in `vkQueuePresentKHR`.
   added back here.
 - `src/renderer/scene_runtime.rs`: scene property resolution, manifest/render
   property numeric defaults, native controller active-state sampling, idle
-  fade-ramp sampling, and deterministic audio-response property values.
+  fade-ramp sampling, deterministic audio-response property values, and
+  `SceneWallpaperRuntimeSampler` source-backed runtime frame resampling.
 - `src/renderer/native_vulkan.rs`: facade, shared codec parsers, snapshot
   construction, and public native Vulkan contract types.
 - `src/renderer/native_vulkan/video/`: FFmpeg demux/packet handoff, codec
