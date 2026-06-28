@@ -1040,15 +1040,18 @@ fields together with the report directory.
    are preserved structurally and reported as explicit pending runtime systems
    instead of being hidden behind a legacy loader. `SceneEffect` now carries an
    explicit `runtime` classification: `native-opacity-timeline`,
-   `metadata-only`, or `wallpaper-engine-effect`. Deterministic no-op or
-   invisible WE effects are preserved as metadata and no longer block a
-   renderable texture material graph. WE `effects/opacity/effect.json` alpha
-   constants and bounded fade SceneScript patterns now lower through
-   `SceneOpacityEffectIr` into native gscene `opacity` timelines without
-   embedding a JS engine, including `delayTime`/`fadeTime` plus
-   `startDelay`/`fadeDuration` and explicit source/target alpha aliases;
-   native-lowered or no-op/invisible effects are preserved as structured node
-   metadata but no longer copied into runtime `we-effect` resources. Only
+   `native-text-glow`, `metadata-only`, or `wallpaper-engine-effect`.
+   Deterministic no-op or invisible WE effects are preserved as metadata and no
+   longer block a renderable texture material graph. WE
+   `effects/opacity/effect.json` alpha constants and bounded fade SceneScript
+   patterns now lower through `SceneOpacityEffectIr` into native gscene
+   `opacity` timelines without embedding a JS engine, including
+   `delayTime`/`fadeTime` plus `startDelay`/`fadeDuration` and explicit
+   source/target alpha aliases. WE `blurprecise/effect.json` text effects lower
+   to native text glow snapshot geometry with bounded sample offsets, so common
+   text glow/blur does not require a WE shader graph runtime. Native-lowered or
+   no-op/invisible effects are preserved as structured node metadata but no
+   longer copied into runtime `we-effect` resources. Only
    `wallpaper-engine-effect` entries with real WE effect resources keep the
    shader/effect graph boundary pending.
    There is no internal legacy scene format, loader, preview-fallback scene
@@ -1177,18 +1180,17 @@ fields together with the report directory.
    `scene-audio-cue-pipewire-present-runtime`. This keeps static visual
    wallpapers eligible for the same PipeWire audio runtime without adding a
    legacy static-audio side path.
-   Cursor parallax input now flows through the desktop snapshot instead of
-   taking Wayland pointer focus: Hyprland uses `hyprctl cursorpos -j`, maps the
-   cursor into the selected output rectangle, normalizes it to `[-1,1]`, writes
-   `scene.parallax.x/y` into the render properties, and carries
-   `cursor_parallax_input_ready` through `SceneWallpaperPlan`,
-   `NativeVulkanRenderItem::Scene`, and `runtime.full_scene`. When the selected
-   output has a real cursor source, `cursor-parallax-input-source` moves from
-   pending to completed boundaries. niri is not marked ready because the
-   current CLI does not expose a reliable non-interactive cursor-position
-   command. `GILDER_CURSOR_PARALLAX=<output>:x,y` is kept as a local validation
-   input for desktop-sync and direct `--run-scene` gscene entry points, and is
-   clamped to the same normalized range.
+   Cursor parallax remains a first-class gscene property/camera model, but the
+   compositor-global input source is intentionally not a full-scene completion
+   gate. Core Wayland does not provide transparent background pointer events;
+   linux-wallpaperengine leaves cursor tracking unavailable on wlr-layer-shell
+   background surfaces, while CWE either uses focused Wayland surface events or
+   a Hyprland-specific `j/cursorpos` socket path and may set a large input
+   region that can intercept desktop clicks. Gilder keeps
+   `cursor-parallax-input-source` as an explicit unsupported boundary unless a
+   real desktop cursor source is supplied, because this only affects a minority
+   of mouse-reactive wallpapers and must not compromise normal Linux desktop
+   input.
    Scene runtime sampling now carries `scene_input_properties` from package
    manifest defaults, output/user property state, and native controller input
    aliases into every sampled frame. Bound user properties no longer apply only
@@ -1316,8 +1318,9 @@ fields together with the report directory.
    `scene-controller-fade-ramp-runtime` because the idle controller's
    `fadeInDuration=0.77999997` plus the timed visibility fade are sampled
    natively,
-   and keeps `scene-controller-input-source` pending for live click/property
-   event-source wiring rather than the internal property-binding runtime. The
+   and records `scene-controller-input-source` as an unsupported boundary for
+   live click/property event-source wiring rather than the internal
+   property-binding runtime. The
    `Clock`, `Date`, and `D a y` text layers now lower their deterministic WE
    `new Date()` scripts to native `text_binding` properties:
    `scene.clock.local.time.hm24`,
@@ -1334,24 +1337,27 @@ fields together with the report directory.
    `systems.scenescript` status is now `ready` because every detected source
    script has a native lowering.
    Effect
-   metadata is explicit: the three still-pending visible `blurprecise` graphs
-   remain `runtime: "wallpaper-engine-effect"` with copied effect resources,
+   metadata is explicit: the three visible `blurprecise` text effects now lower
+   to `runtime: "native-text-glow"` without copied runtime effect resources,
    the opacity fade is `runtime: "native-opacity-timeline"`, and the
-   default-hidden clouds effect is `runtime: "metadata-only"`. Because those
-   blurprecise effects are still pending, `systems.shader_material_graph` is
-   `detected` for this sample rather than falsely reporting `ready`. The sample
-   is useful because it
+   default-hidden clouds effect is `runtime: "metadata-only"`. Current-source
+   reconversion reports `full_scene_complete=true`,
+   `progress_estimate_percent=100`, and empty `pending_boundaries`; the only
+   explicit unsupported native-lowering boundaries are
+   `cursor-parallax-input-source` and `scene-controller-input-source`. The
+   conversion report's `unsupported_features` list is now limited to
+   `cursor-parallax-input-source`; WE `scenetexture` user properties are
+   retained as manifest text metadata instead of being reported as runtime
+   blockers. The sample is useful because it
    combines video-texture scene layers, multiple MP3 cue layers, mouse trail
    particle controls,
    standby/interactive SceneScript that targets other layers and video texture
    play state, native-lowered clock/date text, script-controlled audio cue
    activation, visible WE effect passes for blur/clouds, and a
    native-lowered opacity fade effect. Current explicit gaps for this sample
-   are not compatibility fallbacks: visible shader/effect graph execution for
-   the three blurprecise passes remains pending, live click/property
-   event-source wiring remains pending beyond the state-property input bridge,
-   and compositor cursor input is still pending when no desktop cursor source
-   is available.
+   are not compatibility fallbacks: live click/property event-source wiring is
+   unsupported beyond the state-property input bridge, and compositor cursor
+   input remains unsupported when no real desktop cursor source is supplied.
    The runtime now carries the gscene document size (`2160x1440`) into the
    sampled-image present path and applies scene-level `cover` viewport mapping
    before recording geometry for the actual swapchain extent (`2561x1601` in
@@ -1545,8 +1551,9 @@ fields together with the report directory.
    `scene-we-spritesheet-atlas-runtime`, `curve-path-flattening-runtime`,
    `arc-path-flattening-runtime`,
    `compound-path-evenodd-fill-runtime`, and
-   `compound-path-nonzero-fill-runtime`; Hyprland/override cursor scene
-   coverage asserts `cursor-parallax-input-source` completion, and native
+   `compound-path-nonzero-fill-runtime`; cursor scene coverage asserts both
+   explicit `cursor-parallax-input-source` completion when a real source exists
+   and unsupported-boundary reporting when it does not, and native
    idle utility controllers now assert
    `scene-idle-controller-input-source` plus
    `scene-controller-fade-ramp-runtime` completion, and deterministic timed
@@ -1563,8 +1570,10 @@ fields together with the report directory.
    `scene.input.controller.<id>.active` aliases are retained by
    `SceneWallpaperRuntimeSampler` frames.
    `native_runtime_coverage_percent=100` means the currently completed native
-   runtime boundaries have no pending native layers; it is not a claim of full
-   WE-scene parity. Focused conversion coverage for 3724575699 confirms no `.tex`
+   runtime boundaries have no pending native layers; current 3724575699
+   conversion also reports full native-scene completion with only explicit
+   Linux input-source unsupported boundaries. Focused conversion coverage for
+   3724575699 confirms no `.tex`
    runtime files, no util missing-resource warnings, no audio-response system,
    initial-visible video scene composition completed, native controller
    property bindings for idle/click video switching, completed native idle
@@ -1572,13 +1581,13 @@ fields together with the report directory.
    timed visibility controller lowering for the `云` fullscreen target,
    deterministic clock/date text lowering for `Clock`, `Date`, and `D a y`,
    native audio cue activation for standby voice/music selection scripts, and
-   only the explicit pending boundaries listed above. Remaining scene gates are live
+   native blurprecise text glow lowering. Remaining expansion surfaces are live
    click/property event sources beyond the state-property input bridge,
-   complex font shaping/atlas typography, full Wallpaper Engine graph
-   execution, WE animation layer blending,
-   executable shader/effect material graphs, broader compositor cursor sources
-   beyond Hyprland, real PipeWire spectrum/FFT audio-response input, and mixed
-   video overlay composition.
+   complex font shaping/atlas typography, broader WE animation-layer blend
+   semantics, executable shader/effect material graphs for effects that cannot
+   lower to native IR, real PipeWire spectrum/FFT audio-response input, and
+   multi-video overlay composition for scenes that show more than one video
+   layer at the same time.
    The scene path must keep retained GPU images,
    `descriptor_sets=0`, and descriptor-heap sampling.
 3. Video coverage and regression: the H.264/H.265/AV1 core decode/present path
