@@ -823,9 +823,10 @@ fields together with the report directory.
    ready-prefix codecs use the same audio-clock evidence fields.
 2. Full scene wallpaper support: the current completed work is a first-class
    Gilder scene document/runtime path plus explicit full-scene boundaries, not
-   full Wallpaper Engine scene execution. For progress accounting, full scene
-   is roughly `99%`: package/conversion boundaries, `scene/gscene` format
-   validation, snapshot-time propagation, render clear-color snapshot layers,
+   full Wallpaper Engine scene execution. Status is tracked by the completed
+   and pending native boundary lists:
+   package/conversion boundaries, `scene/gscene` format validation,
+   snapshot-time propagation, render clear-color snapshot layers,
    WE `scene.pkg` direct import,
    WE parent-id graph lowering into gscene children,
    native scene graph transform/opacity execution,
@@ -849,8 +850,9 @@ fields together with the report directory.
    composition, clear-background plus video scene composition, scene
    timeline animation snapshotting plus per-frame fixed-topology geometry
    updates during native present, property update binding, pause/resume
-   policy, package state/property persistence, renderer-resolved scene audio
-   cues, native FFmpeg/PipeWire scene audio cue playback, and native
+   policy, package state/property persistence, retained scene input properties
+   for bound user properties and native controller aliases, renderer-resolved
+   scene audio cues, native FFmpeg/PipeWire scene audio cue playback, and native
    audio-response visual geometry driven by standardized gscene audio
    property bindings, and native idle video-switch controller sampling for
    `scene.controller.<node>.active` property bindings including fade-in
@@ -868,9 +870,10 @@ fields together with the report directory.
    `full_scene` report block with
    `target_runtime=native-vulkan-full-scene`,
    `current_runtime=native-vulkan-scene-runtime`,
-   `progress_estimate_percent=99`,
+   `progress_estimate_percent=99` as report-only telemetry,
    preserved source-scene metadata paths, completed boundaries, and pending
-   full-scene boundaries. Converted scene entries no longer inject a default
+   full-scene boundaries. Current gating uses the explicit boundary lists.
+   Converted scene entries no longer inject a default
    `max_fps: 60`; scene FPS is governed by explicit manifest/user policy caps
    and present pacing, so real-time scene rendering is not artificially limited
    by video ready-prefix/playback frame policy. Gilder scene is the runtime
@@ -1120,10 +1123,16 @@ fields together with the report directory.
    command. `GILDER_CURSOR_PARALLAX=<output>:x,y` is kept as a local validation
    input for desktop-sync and direct `--run-scene` gscene entry points, and is
    clamped to the same normalized range.
+   Scene runtime sampling now carries `scene_input_properties` from package
+   manifest defaults, output/user property state, and native controller input
+   aliases into every sampled frame. Bound user properties no longer apply only
+   to the initial scene plan; `scene.input.controller.<id>.active` and
+   target-node aliases resolve to the lowered `scene.controller.<id>.active`
+   properties used by native controller bindings.
    Visible scene present results now include `runtime.full_scene`, with
    `target_runtime=native-vulkan-full-scene`,
    `current_runtime=native-vulkan-scene-runtime`,
-   `progress_estimate_percent=99`, `native_present_route_ready`,
+   report-only `progress_estimate_percent=99`, `native_present_route_ready`,
    `retained_resource_model_ready`, `timeline_snapshot_runtime_ready`,
    `timeline_animation_runtime_ready`, fixed-topology timeline geometry is
    resampled on each native present frame, `timeline_animation_count`,
@@ -1219,17 +1228,21 @@ fields together with the report directory.
    the idle and click video targets are hidden by opacity at startup and can be
    revealed by the core property-binding runtime without a JS VM. The renderer
    now resolves native `idle-video-switch` controller properties during both
-   initial scene planning and runtime sampler frames; in this sample the idle
-   `fullscreenlayer` becomes active after its `mouse_inactive_sec=70` threshold,
-   while the `composelayer` click controller remains inactive until real
-   pointer input is wired. The reconversion records
+   initial scene planning and runtime sampler frames, and runtime sampler
+   frames retain bound user/output properties plus
+   `scene.input.controller.<id>.active` aliases for click/property controller
+   state. In this sample the idle `fullscreenlayer` becomes active after its
+   `mouse_inactive_sec=70` threshold, while the `composelayer` click controller
+   remains inactive until an explicit native scene input property or real
+   pointer-event source activates it. The reconversion records
    `native-scene-controller-idle-input-source` and
    `native-scene-controller-external-input-source-required` as IR-derived
    conversion features, moves `scene-idle-controller-input-source` under
    completed boundaries, records `scene-controller-fade-ramp-runtime` because
    the idle controller's `fadeInDuration=0.77999997` is now sampled natively,
-   and keeps `scene-controller-input-source` pending for click/property-driven
-   controllers. Effect
+   and keeps `scene-controller-input-source` pending for live click/property
+   event-source wiring rather than the internal property-binding runtime.
+   Effect
    metadata is explicit: the three still-pending visible `blurprecise` graphs
    remain `runtime: "wallpaper-engine-effect"` with copied effect resources,
    the opacity fade is `runtime: "native-opacity-timeline"`, and the
@@ -1245,9 +1258,9 @@ fields together with the report directory.
    are not compatibility
    fallbacks: arbitrary SceneScript/controller lowering remains pending,
    visible shader/effect graph execution for the three blurprecise passes
-   remains pending, click/property controller input source wiring remains
-   pending, and broader cursor/mouse-driven interaction scripts need native
-   lowering rather than a JS VM.
+   remains pending, live click/property event-source wiring remains pending
+   beyond the state-property input bridge, and broader cursor/mouse-driven
+   interaction scripts need native lowering rather than a JS VM.
    The runtime now carries the gscene document size (`2160x1440`) into the
    sampled-image present path and applies scene-level `cover` viewport mapping
    before recording geometry for the actual swapchain extent (`2561x1601` in
@@ -1266,7 +1279,7 @@ fields together with the report directory.
    `WAYLAND_DISPLAY=wayland-1 XDG_RUNTIME_DIR=/run/user/1000 target/debug/gilder-native-vulkan --json --run-scene --output-name HDMI-A-1 --source /tmp/gilder-dynamic-timeline.gscene.json --fit cover --duration 2 --target-fps 60`
    presents through `scene_present_route=solid-quad`, `frames_presented=120`,
    `average_present_fps=59.99628407014983`,
-   `runtime.full_scene.progress_estimate_percent=99`, completed
+   report-only `runtime.full_scene.progress_estimate_percent=99`, completed
    `per-frame-timeline-geometry-runtime`,
    `timeline_animation_count=2`, `timeline_animated_layer_count=1`,
    `present.geometry.upload_model=persistently mapped per-frame host-visible solid-quad vertex buffers reused by frame slot`,
@@ -1350,7 +1363,7 @@ fields together with the report directory.
    Current runtime smoke:
    `WAYLAND_DISPLAY=wayland-1 target/release/gilder-native-vulkan --run-scene --output-name HDMI-A-1 --source artifacts/smoke/scene-heap-smoke.png --fit cover --duration 1 --target-fps 30 --scene-time-ms 1234`
    presents `30` frames at `29.99748264125423` FPS and reports
-   `runtime.full_scene.progress_estimate_percent=99`,
+   report-only `runtime.full_scene.progress_estimate_percent=99`,
    `runtime.full_scene.native_present_route_ready=true`,
    `runtime.full_scene.retained_resource_model_ready=true`,
    `runtime.full_scene.timeline_snapshot_runtime_ready=true`,
@@ -1409,12 +1422,9 @@ fields together with the report directory.
    `native_runtime_coverage_percent=100`, presented `4` H.265 Main8 frames,
    `descriptor_model=VK_EXT_descriptor_heap`, `all_zero_copy_presented=true`,
    and decoded-image draw `clear_color=[0.062745101749897,0.125490203499794,0.1882352977991104,1.0]`.
-   Current regression coverage:
-   `cargo test --features native-vulkan-video -- --nocapture`
-   passes `585` lib tests, `8` native-vulkan CLI tests, `5` gilderctl tests,
-   and `16` gilderd tests. The added renderer/runtime coverage asserts gscene package
-   validation, clean WE scene-to-gscene conversion, WE model/material texture
-   provenance, renderable material image texture resource resolution, WE parent
+   Current focused regression coverage asserts gscene package validation, clean
+   WE scene-to-gscene conversion, WE model/material texture provenance,
+   renderable material image texture resource resolution, WE parent
    graph lowering into gscene children, render clear-color snapshot layers,
    WE text wrapper conversion, visible property binding lowering, WE
    shape/solid/radius lowering into native snapshot nodes, explicit WE
@@ -1442,29 +1452,27 @@ fields together with the report directory.
    coverage asserts `cursor-parallax-input-source` completion, and native
    idle utility controllers now assert
    `scene-idle-controller-input-source` plus
-   `scene-controller-fade-ramp-runtime` completion.
-   Full-scene status is still `progress_estimate_percent=99` rather than a
-   claimed 100% WE-scene-parity result; `native_runtime_coverage_percent=100`
-   means the currently completed native runtime boundaries have no pending
-   native layers. Next gates:
-   The latest focused conversion pass ran
+   `scene-controller-fade-ramp-runtime` completion. Renderer coverage now also
+   asserts that manifest/output property values and
+   `scene.input.controller.<id>.active` aliases are retained by
+   `SceneWallpaperRuntimeSampler` frames.
+   `native_runtime_coverage_percent=100` means the currently completed native
+   runtime boundaries have no pending native layers; it is not a claim of full
+   WE-scene parity. The latest focused conversion pass ran
    `cargo test --features native-vulkan-video convert::wallpaper_engine::tests:: -- --nocapture`
    with `45` passing converter tests and `cargo check --features
    native-vulkan-video`; the 3724575699 reconversion confirms no `.tex`
    runtime files, no util missing-resource warnings, no audio-response system,
    initial-visible video scene composition completed, native controller
    property bindings for idle/click video switching, completed native idle
-   controller input sampling, and only the four real pending boundaries listed
-   above. For this sample, initial playback parity is about `96-97%`; full
-   interactive WE-scene parity is about `92-93%`, with the remaining gap
-   concentrated in effect execution, click/property controller input, and the
-   unreduced SceneScript tail.
-   wiring click/property scene controller input sources for native controller bindings,
-   complex font shaping/atlas typography,
-   full Wallpaper Engine graph execution, WE animation layer blending,
-   arbitrary SceneScript runtime, executable shader/effect material graphs,
-   broader compositor cursor sources beyond Hyprland, real PipeWire
-   spectrum/FFT audio-response input, and mixed video overlay composition.
+   controller input sampling, native idle fade-ramp sampling, and only the
+   explicit pending boundaries listed above. Remaining scene gates are live
+   click/property event sources beyond the state-property input bridge,
+   complex font shaping/atlas typography, full Wallpaper Engine graph
+   execution, WE animation layer blending, arbitrary SceneScript runtime,
+   executable shader/effect material graphs, broader compositor cursor sources
+   beyond Hyprland, real PipeWire spectrum/FFT audio-response input, and mixed
+   video overlay composition.
    The scene path must keep retained GPU images,
    `descriptor_sets=0`, and descriptor-heap sampling.
 3. Video coverage and regression: the H.264/H.265/AV1 core decode/present path
