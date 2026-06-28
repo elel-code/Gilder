@@ -982,7 +982,11 @@ fields together with the report directory.
    reveal/fade/hide scripts execute through the native timeline runtime
    without a JS VM. Built-in fullscreen utility target layers with renderable
    signals lower to native viewport-sized rectangles using the scene
-   `orthogonalprojection` when they do not carry an explicit size.
+   `orthogonalprojection` when they do not carry an explicit size. Deterministic
+   WE clock/date text scripts based on `new Date()` now lower to native
+   `properties.text_binding` entries for clock time, vertical date, and vertical
+   weekday text; the runtime resolves those bindings through the scene sampler's
+   text resolver instead of preserving a static `value` or executing script.
    Deterministic numeric SceneScript expressions now lower through
    `SceneNumericPropertyBindingIr`, which owns the linear expression parser and
    emits native `scale`/`offset` gscene property bindings. Runtime sampling
@@ -1308,7 +1312,14 @@ fields together with the report directory.
    `fadeInDuration=0.77999997` plus the timed visibility fade are sampled
    natively,
    and keeps `scene-controller-input-source` pending for live click/property
-   event-source wiring rather than the internal property-binding runtime.
+   event-source wiring rather than the internal property-binding runtime. The
+   `Clock`, `Date`, and `D a y` text layers now lower their deterministic WE
+   `new Date()` scripts to native `text_binding` properties:
+   `scene.clock.local.time.hm24`,
+   `scene.clock.local.we-date.vertical-month-abbrev`, and
+   `scene.clock.local.we-day.vertical-weekday-abbrev-upper`; runtime snapshots
+   resolve live text from the sampler rather than freezing the imported
+   fallback `value`.
    Effect
    metadata is explicit: the three still-pending visible `blurprecise` graphs
    remain `runtime: "wallpaper-engine-effect"` with copied effect resources,
@@ -1320,7 +1331,8 @@ fields together with the report directory.
    combines video-texture scene layers, multiple MP3 cue layers, mouse trail
    particle controls,
    standby/interactive SceneScript that targets other layers and video texture
-   play state, clock text, visible WE effect passes for blur/clouds, and a
+   play state, native-lowered clock/date text, visible WE effect passes for
+   blur/clouds, and a
    native-lowered opacity fade effect. Current explicit gaps for this sample
    are not compatibility
    fallbacks: arbitrary SceneScript lowering remains pending,
@@ -1527,7 +1539,9 @@ fields together with the report directory.
    `scene-idle-controller-input-source` plus
    `scene-controller-fade-ramp-runtime` completion, and deterministic timed
    visibility controller conversion asserts target-node opacity timelines plus
-   runtime snapshot sampling at reveal/fade/hide time points. Renderer coverage now also
+   runtime snapshot sampling at reveal/fade/hide time points. Deterministic WE
+   clock/date text conversion asserts native `text_binding` output and runtime
+   snapshot text replacement through the scene text resolver. Renderer coverage now also
    asserts that manifest/output property values and
    `scene.input.controller.<id>.active` aliases are retained by
    `SceneWallpaperRuntimeSampler` frames.
@@ -1538,7 +1552,8 @@ fields together with the report directory.
    initial-visible video scene composition completed, native controller
    property bindings for idle/click video switching, completed native idle
    controller input sampling, native idle fade-ramp sampling, deterministic
-   timed visibility controller lowering for the `云` fullscreen target, and
+   timed visibility controller lowering for the `云` fullscreen target,
+   deterministic clock/date text lowering for `Clock`, `Date`, and `D a y`, and
    only the explicit pending boundaries listed above. Remaining scene gates are live
    click/property event sources beyond the state-property input bridge,
    complex font shaping/atlas typography, full Wallpaper Engine graph
