@@ -919,9 +919,12 @@ fields together with the report directory.
    gscene `timelines`, including vector `origin`/`scale` split into native
    `x`/`y` and `scale-x`/`scale-y` channels, so the existing core timeline runtime
    executes converted motion instead of leaving it only in provenance. The
-   same channel now covers geometry fields (`width`, `height`,
-   `corner-radius`), and WE `{script: ..., value: ...}` wrappers are unwrapped
-   to deterministic gscene defaults without introducing a JS engine. User-bound
+   same `SceneTimelineIr` path now lowers deterministic WE `animationlayers`
+   keyframes into executable gscene timelines; only complex blend/rate layer
+   semantics remain preserved as explicit pending metadata. The same channel
+   now covers geometry fields (`width`, `height`, `corner-radius`), and WE
+   `{script: ..., value: ...}` wrappers are unwrapped to deterministic gscene
+   defaults without introducing a JS engine. User-bound
    scalar wrappers for transform, opacity, size, and radius lower into
    `property_bindings`; deterministic numeric SceneScript expressions over one
    user property, `value`, constants, parentheses, and `+ - * /` now compile
@@ -965,11 +968,13 @@ fields together with the report directory.
    The converter split follows the same-name module root plus same-name
    directory rule (`wallpaper_engine.rs` with `wallpaper_engine/tex.rs`,
    `wallpaper_engine/gtex.rs`, `wallpaper_engine/effect.rs`,
-   `wallpaper_engine/ir.rs`, `wallpaper_engine/ir/controller.rs`,
-   `wallpaper_engine/ir/effect.rs`, and `wallpaper_engine/ir/timeline.rs`);
+   `wallpaper_engine/ir.rs`, `wallpaper_engine/ir/animation.rs`,
+   `wallpaper_engine/ir/controller.rs`, `wallpaper_engine/ir/effect.rs`, and
+   `wallpaper_engine/ir/timeline.rs`);
    `mod.rs` is not used for new scene-conversion code. `ir.rs` stays the
    SceneScript numeric/property-binding IR root, controller state-machine
-   lowering lives in `ir/controller.rs`, WE opacity effect normalization lives
+   lowering lives in `ir/controller.rs`, deterministic animation layer
+   expansion lives in `ir/animation.rs`, WE opacity effect normalization lives
    in `ir/effect.rs`, and explicit keyframe/timeline normalization lives in
    `ir/timeline.rs`.
    WE built-in utility models such as `models/util/fullscreenlayer.json` and
@@ -1435,7 +1440,8 @@ fields together with the report directory.
    graph lowering into gscene children, render clear-color snapshot layers,
    WE text wrapper conversion, visible property binding lowering, WE
    shape/solid/radius lowering into native snapshot nodes, explicit WE
-   keyframe timeline lowering into native timeline snapshot values,
+   keyframe timeline lowering and deterministic WE animation-layer keyframe
+   lowering into native timeline snapshot values,
    geometry field timeline/property animation, script/value wrapper lowering
    without a JS engine, deterministic numeric SceneScript expression lowering,
    bounded opacity effect lowering into native gscene timelines,
