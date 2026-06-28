@@ -434,6 +434,12 @@ elapsed time was in `vkQueuePresentKHR`.
 
 ## Code Layout
 
+- `src/renderer.rs`: top-level renderer planning orchestration and shared
+  plan types. Scene-specific runtime property/controller code should not be
+  added back here.
+- `src/renderer/scene_runtime.rs`: scene property resolution, manifest/render
+  property numeric defaults, native controller active-state sampling, idle
+  fade-ramp sampling, and deterministic audio-response property values.
 - `src/renderer/native_vulkan.rs`: facade, shared codec parsers, snapshot
   construction, and public native Vulkan contract types.
 - `src/renderer/native_vulkan/video/`: FFmpeg demux/packet handoff, codec
@@ -846,7 +852,8 @@ fields together with the report directory.
    cues, native FFmpeg/PipeWire scene audio cue playback, and native
    audio-response visual geometry driven by standardized gscene audio
    property bindings, and native idle video-switch controller sampling for
-   `scene.controller.<node>.active` property bindings are in place;
+   `scene.controller.<node>.active` property bindings including fade-in
+   opacity ramps are in place;
    arbitrary SceneScript, shader/material graph, complex WE particle
    shader/graph parity, real PipeWire spectrum/FFT audio-response input,
    complex font
@@ -929,8 +936,11 @@ fields together with the report directory.
    with a typed controller kind, target layer, native active property,
    default-hide policy, and copied controller settings; only then are gscene
    `properties.controller` metadata, opacity `property_bindings`, and
-   completed/pending input-source features emitted. This IR is not a runtime
-   compatibility layer and is not serialized as a public wallpaper format; it
+   completed/pending input-source and fade-ramp features emitted. Runtime
+   sampling consumes the lowered native controller settings, so
+   `fadeInDuration` on idle controllers becomes a sampled opacity ramp rather
+   than an instant 0/1 switch. This IR is not a runtime compatibility layer and
+   is not serialized as a public wallpaper format; it
    is the converter-owned normalization step that future SceneScript,
    animation-layer, and effect-graph lowering should target before writing
    clean gscene.
@@ -1213,8 +1223,10 @@ fields together with the report directory.
    `native-scene-controller-idle-input-source` and
    `native-scene-controller-external-input-source-required` as IR-derived
    conversion features, moves `scene-idle-controller-input-source` under
-   completed boundaries, and keeps `scene-controller-input-source` pending for
-   click/property-driven controllers. Effect
+   completed boundaries, records `scene-controller-fade-ramp-runtime` because
+   the idle controller's `fadeInDuration=0.77999997` is now sampled natively,
+   and keeps `scene-controller-input-source` pending for click/property-driven
+   controllers. Effect
    metadata is explicit: the three still-pending visible `blurprecise` graphs
    remain `runtime: "wallpaper-engine-effect"` with copied effect resources,
    the opacity fade is `runtime: "native-opacity-timeline"`, and the
@@ -1426,7 +1438,8 @@ fields together with the report directory.
    `compound-path-nonzero-fill-runtime`; Hyprland/override cursor scene
    coverage asserts `cursor-parallax-input-source` completion, and native
    idle utility controllers now assert
-   `scene-idle-controller-input-source` completion.
+   `scene-idle-controller-input-source` plus
+   `scene-controller-fade-ramp-runtime` completion.
    Full-scene status is still `progress_estimate_percent=99` rather than a
    claimed 100% WE-scene-parity result; `native_runtime_coverage_percent=100`
    means the currently completed native runtime boundaries have no pending
