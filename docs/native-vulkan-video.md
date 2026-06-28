@@ -914,7 +914,16 @@ fields together with the report directory.
    user property, `value`, constants, parentheses, and `+ - * /` now compile
    into the same native `scale`/`offset` binding model. Arbitrary JS-like
    SceneScript remains explicit pending work instead of being executed by a
-   compatibility VM. Parallax now has a gscene runtime model:
+   compatibility VM. The intended full SceneScript direction is native
+   lowering, not embedding a JS engine: common `engine.frametime`,
+   `engine.setTimeout`, `visible`/`alpha`, `play`/`pause`/`stop`, user property
+   changes, idle timers, mouse/cursor input, and audio-spectrum inputs should
+   lower into first-class gscene controllers/state machines and a bounded
+   scene input model. Scripts that cannot be reduced to direct property
+   bindings should produce a restricted scene IR such as `on-idle -> reveal
+   layer -> play video/audio -> fade -> hide`, with unresolved source scripts
+   kept as explicit pending systems rather than compatibility runtime code.
+   Parallax now has a gscene runtime model:
    `render.parallax.amount` plus node `parallax_depth` consumes
    `scene.parallax.x/y` property values to offset snapshot transforms.
    The converter now understands WE `object.image` as a model JSON entry
@@ -922,20 +931,41 @@ fields together with the report directory.
    copies model/material/effect/audio/texture assets into the gscene resource
    graph, and assigns `node.resource` only to a native sampled-image resource.
    Standard WE `TEXV0005/TEXB0004` RGBA `.tex` material textures are decoded
-   through their LZ4 block payload. Non-spritesheet textures are cropped to the
+   through their LZ4 block payload, and WE `.tex` video payloads with MP4/WebM
+   container signatures are extracted as first-class gscene `video` resources
+   instead of being copied as runtime `texture` compatibility assets.
+   The converter split follows the same-name module root plus same-name
+   directory rule (`wallpaper_engine.rs` with `wallpaper_engine/tex.rs`,
+   `wallpaper_engine/gtex.rs`, and `wallpaper_engine/effect.rs`); `mod.rs` is
+   not used for new scene-conversion code.
+   WE built-in utility models such as `models/util/fullscreenlayer.json` and
+   `models/util/composelayer.json` are now recognized as first-class native
+   utility script layers in provenance instead of being treated as missing
+   project files. Pure WE sound objects lower to `type: "audio"` gscene cue
+   nodes and are skipped by visual Vulkan draw planning; they no longer inflate
+   audio-response detection or material graph status.
+   Non-spritesheet textures are cropped to the
    model's first frame when the model width/height divides the atlas; WE
    `SPRITESHEET` materials instead write the full atlas as a generated native
    BC7 `.gtex` image resource and attach `properties.spritesheet`
    (`atlas-grid`, atlas size, frame size, columns/rows, frame count, FPS, loop
    flag) to the gscene node. The original `.tex` remains as provenance, while
-   the runtime-facing sampled image is the generated `.gtex`. Runtime `_rt_`
+   the runtime-facing sampled image/video is the generated `.gtex` or extracted
+   video file. Runtime `_rt_`
    textures, custom shaders,
    arbitrary SceneScript, executable effect graphs, and audio-response systems
    are preserved structurally and reported as explicit pending runtime systems
-   instead of being hidden behind a legacy loader. Deterministic no-op or
+   instead of being hidden behind a legacy loader. `SceneEffect` now carries an
+   explicit `runtime` classification: `native-opacity-timeline`,
+   `metadata-only`, or `wallpaper-engine-effect`. Deterministic no-op or
    invisible WE effects are preserved as metadata and no longer block a
-   renderable texture material graph; visible pass/effect inputs still remain
-   an explicit runtime boundary.
+   renderable texture material graph. WE `effects/opacity/effect.json` alpha
+   constants and the common bounded `delayTime`/`fadeTime` SceneScript pattern
+   lower into native gscene `opacity` timelines without embedding a JS engine;
+   native-lowered or no-op/invisible effects are preserved as structured node
+   metadata but no longer copied into runtime `we-effect` resources. Only
+   `wallpaper-engine-effect` entries with real WE effect resources keep the
+   shader/effect graph boundary pending.
    There is no internal legacy scene format, loader, preview-fallback scene
    node, or lowering bridge; old `layers` fixture data was replaced by
    `nodes/resources` gscene documents. Static wallpapers now lower into a
@@ -1134,6 +1164,44 @@ fields together with the report directory.
    `present_ids_head`/`present_ids_tail`,
    `scene_resource_model=retained-sampled-images-descriptor-heap`, and
    `vertex_buffer_count=2`.
+   Additional real Workshop full-scene stress sample: Steam Workshop item
+   `3724575699`
+   (`Arknights-萌萌香/遥-常世之幻【可交互/待机动画】`) can be downloaded
+   with the cached Steam user `wykszsd0`. It is a standard packaged scene, not
+   a loose source tree: the Workshop directory contains `project.json`,
+   `preview.gif`, and a `302328013` byte `scene.pkg`. Current-source
+   conversion to `/tmp/gilder-we-3724575699-output` writes a first-class
+   `assets/scene.gscene.json` entry with no injected `max_fps`, imports
+   `scene.pkg` `PKGV0023` with 34 entries, extracts the three large
+   3840x2160 WE material `.tex` video payloads into native `.mp4` scene
+   resources (`resource-3-2-video.mp4`, `resource-6-1-video.mp4`, and
+   `resource-9-f4-video.mp4`), emits no runtime `.tex` resource files, and
+   records `scene-we-opacity-effect-timeline`,
+   `scene-we-tex-video-layer-runtime`, `scene-we-material-graph-runtime`,
+   `wallpaper-engine-util-model-lowering`,
+   `scene-we-noop-effect-preserved`, `audio-policy`, and ready native
+   particles. The converted scene recognizes the three built-in
+   `models/util/*layer.json` references as native utility script layers instead
+   of missing resources, lowers pure sound objects to first-class `audio` cue
+   nodes, and detects no `audio-response` system for this sample. Effect
+   metadata is explicit: the three still-pending visible `blurprecise` graphs
+   remain `runtime: "wallpaper-engine-effect"` with copied effect resources,
+   the opacity fade is `runtime: "native-opacity-timeline"`, and the
+   default-hidden clouds effect is `runtime: "metadata-only"`. Because those
+   blurprecise effects are still pending, `systems.shader_material_graph` is
+   `detected` for this sample rather than falsely reporting `ready`. The sample
+   is useful because it
+   combines video-texture scene layers, multiple MP3 cue layers, mouse trail
+   particle controls,
+   standby/interactive SceneScript that targets other layers and video texture
+   play state, clock text, visible WE effect passes for blur/clouds, and a
+   native-lowered opacity fade effect. Current explicit gaps for this sample
+   are not compatibility
+   fallbacks: arbitrary SceneScript/controller lowering remains pending,
+   visible shader/effect graph execution for the three blurprecise passes
+   remains pending, mixed video scene composition with overlays remains
+   pending, and cursor/mouse-driven interaction scripts need native lowering
+   rather than a JS VM.
    The runtime now carries the gscene document size (`2160x1440`) into the
    sampled-image present path and applies scene-level `cover` viewport mapping
    before recording geometry for the actual swapchain extent (`2561x1601` in
@@ -1307,6 +1375,7 @@ fields together with the report directory.
    keyframe timeline lowering into native timeline snapshot values,
    geometry field timeline/property animation, script/value wrapper lowering
    without a JS engine, deterministic numeric SceneScript expression lowering,
+   bounded opacity effect lowering into native gscene timelines,
    native gscene particle emitter expansion into deterministic solid geometry,
    WE `.tex` RGBA/LZ4 first-frame or spritesheet-atlas conversion to native
    BC7 `.gtex` sampled-image resources, authoritative `scene.pkg` direct import,
@@ -1329,6 +1398,12 @@ fields together with the report directory.
    claimed 100% WE-scene-parity result; `native_runtime_coverage_percent=100`
    means the currently completed native runtime boundaries have no pending
    native layers. Next gates:
+   The latest focused conversion pass ran
+   `cargo test --features native-vulkan-video convert::wallpaper_engine::tests:: -- --nocapture`
+   with `44` passing converter tests and `cargo check --features
+   native-vulkan-video`; the 3724575699 reconversion confirms no `.tex`
+   runtime files, no util missing-resource warnings, no audio-response system,
+   and only the four real pending boundaries listed above.
    wiring mixed video-as-scene layer composition from this explicit bridge boundary,
    complex font shaping/atlas typography,
    full Wallpaper Engine graph execution, WE animation layer blending,
