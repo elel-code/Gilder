@@ -932,19 +932,21 @@ fields together with the report directory.
    bindings should produce a restricted scene IR such as `on-idle -> reveal
    layer -> play video/audio -> fade -> hide`, with unresolved source scripts
    kept as explicit pending systems rather than compatibility runtime code.
-   The converter now has an internal IR boundary for native scene controller
-   lowering: WE utility scripts are first normalized into `SceneControllerIr`
-   with a typed controller kind, target layer, native active property,
+   The converter now has an internal IR boundary for native scene lowering.
+   WE utility scripts are first normalized into `SceneControllerIr` with a
+   typed controller kind, target layer, native active property,
    default-hide policy, and copied controller settings; only then are gscene
    `properties.controller` metadata, opacity `property_bindings`, and
-   completed/pending input-source and fade-ramp features emitted. Runtime
-   sampling consumes the lowered native controller settings, so
-   `fadeInDuration` on idle controllers becomes a sampled opacity ramp rather
-   than an instant 0/1 switch. This IR is not a runtime compatibility layer and
-   is not serialized as a public wallpaper format; it
-   is the converter-owned normalization step that future SceneScript,
-   animation-layer, and effect-graph lowering should target before writing
-   clean gscene.
+   completed/pending input-source and fade-ramp features emitted. Deterministic
+   numeric SceneScript expressions now lower through
+   `SceneNumericPropertyBindingIr`, which owns the linear expression parser and
+   emits native `scale`/`offset` gscene property bindings. Runtime sampling
+   consumes the lowered native controller settings, so `fadeInDuration` on idle
+   controllers becomes a sampled opacity ramp rather than an instant 0/1
+   switch. This IR is not a runtime compatibility layer and is not serialized
+   as a public wallpaper format; it is the converter-owned normalization step
+   that future SceneScript, animation-layer, and effect-graph lowering should
+   target before writing clean gscene.
    Parallax now has a gscene runtime model:
    `render.parallax.amount` plus node `parallax_depth` consumes
    `scene.parallax.x/y` property values to offset snapshot transforms.
