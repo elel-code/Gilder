@@ -744,9 +744,10 @@ fields together with the report directory.
    callback count without meaningful memory benefit. Video FFmpeg Annex-B
    scratch retains only one small reusable payload buffer and releases 4K-scale
    packet storage after handoff, matching FFmpeg's `av_packet_unref` lifetime
-   more closely. Full-scene audio cues now consume the same FFmpeg/PipeWire-only
-   backend from the scene present runtime; the remaining audio work is the
-   audio-response visual system, not a PulseAudio/ALSA/GStreamer output path.
+   more closely. Full-scene audio output integration is complete on the same
+   FFmpeg/PipeWire-only backend used by direct video; audio-response remains a
+   separate visual input system, not an alternate PulseAudio/ALSA/GStreamer
+   output path.
    Current PipeWire ready-prefix auto smoke:
    `/tmp/gilder-audio-scene-remaining10-auto-smoke` passes
    `--audio-clock-probe --audio-output auto --unmuted --pacing-master audio`,
@@ -794,6 +795,15 @@ fields together with the report directory.
    `Private_Dirty` gate at `24688 KiB`; the remaining work is further source
    lifetime reduction, not black-screen recovery or script-side allocator
    tuning.
+   Direct video audio was revalidated against the same `3454093707`
+   `Mercy_Full_Audio.mp4` source through
+   `--run-video --audio-clock-probe --audio-output auto --unmuted` for 6 s:
+   `presented_frame_count=360`, `decoded_image_zero_copy_presented=true`,
+   `audio_output_backend=pipewire-s16le`,
+   `audio_output_stream_state=streaming`, `audio_output_stream_ready=true`,
+   `audio_output_frames=282`, `audio_output_bytes=1155072`,
+   `audio_video_sync.ready=true`, drift `15999999 ns`, and zero xruns,
+   buffer errors, or timeout errors.
    Current H.264 generated-source loop-audio smoke:
    `/tmp/gilder-vulkan-h264-ready-prefix-video.JfquFZ` passes
    `--audio-clock-probe --pacing-master audio`, reports
@@ -1188,11 +1198,22 @@ fields together with the report directory.
    Static Wallpaper Engine image projects with real audio files are not
    converted to a no-audio static-image package: the converter writes a
    first-class `scene` manifest with one static image node plus gscene audio
-   cues, sets `runtime.allow_audio=true`, copies the audio into `assets/`, and
-   marks `static-image-audio-scene` plus
+   cues, converts the visual image offline to native BC7 `.gtex`, sets
+   `runtime.allow_audio=true`, copies the audio into `assets/`, and marks
+   `static-image-bc7-gtex-conversion`, `static-image-audio-scene` plus
    `scene-audio-cue-pipewire-present-runtime`. This keeps static visual
    wallpapers eligible for the same PipeWire audio runtime without adding a
    legacy static-audio side path.
+   Current scene-audio runtime smoke converts a static image project whose
+   `audio` field references `Mercy_Full_Audio.mp4`; the converted gscene uses
+   `assets/wallpaper.gtex` plus `assets/audio-cue-0.mp4`. Running
+   `--run-scene --audio-output auto --unmuted` for 6 s reports
+   `scene_present_route=sampled-image`, `full_scene_complete=true`,
+   coverage `100`, one scene audio cue, `audio_output_backend=pipewire-s16le`,
+   `audio_output_stream_state=streaming`,
+   `audio_output_stream_ready=true`, `audio_output_frames=282`,
+   `audio_output_bytes=1155072`, `playback_target_reached=true`, and zero
+   xruns, buffer errors, or timeout errors.
    Cursor parallax remains a first-class gscene property/camera model, but the
    compositor-global input source is intentionally not a full-scene completion
    gate. Core Wayland does not provide transparent background pointer events;
@@ -1231,12 +1252,15 @@ fields together with the report directory.
    scene layer plus one video layer now routes through the same presenter as
    `clear-background-video-layer-vulkan-video-scene-bridge-ready`; the dynamic
    rendering attachment clear color is carried in each decoded-image draw
-   snapshot. Scene conversion now distinguishes real mixed-video composition
-   from script-controlled video switching: if only one video layer is initially
-   visible, the converted scene records `initial-visible-video-scene-composition`
-   and keeps the Vulkan Video scene path active for the initial state; multiple
-   simultaneously visible video layers still remain explicitly pending under
-   `mixed-video-scene-composition`.
+   snapshot. Single-video scenes can also carry sampled-image and solid scene
+   overlay resources into the decoded-image dynamic rendering pass, where the
+   video plane draw is followed by `cmd_draw_scene_overlay_inside_video_rendering`
+   before present. Scene conversion now distinguishes real mixed-video
+   composition from script-controlled video switching: if only one video layer
+   is initially visible, the converted scene records
+   `initial-visible-video-scene-composition` and keeps the Vulkan Video scene
+   path active for the initial state; multiple simultaneously visible video
+   layers still remain explicitly pending under `mixed-video-scene-composition`.
    Current real Workshop scene conversion sample: Steam Workshop item
    `3726503096` (`Beneath The Seventh`) is tagged `3840 x 2160` by Workshop,
    but the package's WE scene/model frame is `2160x1440` and its material
@@ -1352,6 +1376,17 @@ fields together with the report directory.
    gscene `audio[].active_conditions`. This records
    `scene-audio-controller-runtime` and
    `wallpaper-engine-detected-scenescript-native-lowering`; the sample's
+   6 s native runtime smoke at
+   `/tmp/gilder-we-3724575699-native-ready-clean/assets/scene.gscene.json`
+   now reports `scene_present_route=video`,
+   `draw_pass_backend_status=video-layer-vulkan-video-scene-bridge-ready`,
+   `full_scene_complete=true`, `native_runtime_coverage_percent=100`, empty
+   pending boundaries, `present_backend=vulkanalia-decoded-image-dynamic-rendering-present`,
+   no H.264 present error, `presented_frame_count=360`,
+   `decoded_image_zero_copy_presented=true`, and latest draw command order
+   containing `cmd_draw_scene_overlay_inside_video_rendering` after the video
+   plane draw. This is native Vulkan Video plus scene overlay composition, not
+   a clear placeholder or CPU/video fallback.
    `systems.scenescript` status is now `ready` because every detected source
    script has a native lowering.
    Effect
