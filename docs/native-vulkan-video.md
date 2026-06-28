@@ -970,12 +970,20 @@ fields together with the report directory.
    layer -> play video/audio -> fade -> hide`, with unresolved source scripts
    kept as explicit pending systems rather than compatibility runtime code.
    The converter now has an internal IR boundary for native scene lowering.
-   WE utility scripts are first normalized into `SceneControllerIr` with a
-   typed controller kind, target layer, native active property,
+   WE utility/control scripts are first normalized into `SceneControllerIr`
+   with a typed controller kind, target layer, native active property,
    default-hide policy, and copied controller settings; only then are gscene
-   `properties.controller` metadata, opacity `property_bindings`, and
-   completed/pending input-source and fade-ramp features emitted. Deterministic
-   numeric SceneScript expressions now lower through
+   `properties.controller` metadata emitted. Idle/click/property controllers
+   lower to opacity `property_bindings` plus completed/pending input-source
+   and fade-ramp features. Deterministic timed visibility controllers using
+   `targetLayerName`, `enableAutoControl`, `startDelay`, `showDuration`,
+   `hideOnStart`, `fadeDuration`, `loopControl`, and `loopInterval` lower
+   directly to target-node opacity timelines, so `engine.setTimeout`-style
+   reveal/fade/hide scripts execute through the native timeline runtime
+   without a JS VM. Built-in fullscreen utility target layers with renderable
+   signals lower to native viewport-sized rectangles using the scene
+   `orthogonalprojection` when they do not carry an explicit size.
+   Deterministic numeric SceneScript expressions now lower through
    `SceneNumericPropertyBindingIr`, which owns the linear expression parser and
    emits native `scale`/`offset` gscene property bindings. Runtime sampling
    consumes the lowered native controller settings, so `fadeInDuration` on idle
@@ -1266,10 +1274,11 @@ fields together with the report directory.
    `scene-we-tex-video-layer-runtime`, `scene-we-material-graph-runtime`,
    `wallpaper-engine-util-model-lowering`,
    `scene-we-noop-effect-preserved`, `audio-policy`, and ready native
-   particles. The converted scene recognizes the three built-in
-   `models/util/*layer.json` references as native utility script layers instead
-   of missing resources, lowers pure sound objects to first-class `audio` cue
-   nodes, and detects no `audio-response` system for this sample. The two WE
+   particles. The converted scene recognizes the built-in
+   `models/util/*layer.json` references as native utility controllers or
+   native viewport-sized utility target rectangles instead of missing
+   resources, lowers pure sound objects to first-class `audio` cue nodes, and
+   detects no `audio-response` system for this sample. The two WE
    utility controllers with `scriptproperties.targetLayerId` now lower to
    native `SceneControllerIr` first, then to
    native `properties.controller` metadata plus
@@ -1283,12 +1292,21 @@ fields together with the report directory.
    state. In this sample the idle `fullscreenlayer` becomes active after its
    `mouse_inactive_sec=70` threshold, while the `composelayer` click controller
    remains inactive until an explicit native scene input property or real
-   pointer-event source activates it. The reconversion records
+   pointer-event source activates it. The `入场云雾` control layer with
+   `scriptproperties.targetLayerName = "云"` now lowers as a deterministic
+   timed-visibility controller: the target `云` fullscreen layer is a
+   3840x2160 native rectangle, starts at opacity `0`, fades to `1` at `610ms`,
+   stays visible until `37610ms`, and fades out by `38220ms` through a native
+   gscene timeline. The reconversion records
    `native-scene-controller-idle-input-source` and
    `native-scene-controller-external-input-source-required` as IR-derived
-   conversion features, moves `scene-idle-controller-input-source` under
-   completed boundaries, records `scene-controller-fade-ramp-runtime` because
-   the idle controller's `fadeInDuration=0.77999997` is now sampled natively,
+   conversion features, records `scene-we-timed-visibility-controller` and
+   `native-scene-controller-timed-visibility`, moves
+   `scene-idle-controller-input-source` under completed boundaries, records
+   `wallpaper-engine-timed-visibility-controller-lowering`, and records
+   `scene-controller-fade-ramp-runtime` because the idle controller's
+   `fadeInDuration=0.77999997` plus the timed visibility fade are sampled
+   natively,
    and keeps `scene-controller-input-source` pending for live click/property
    event-source wiring rather than the internal property-binding runtime.
    Effect
@@ -1305,7 +1323,7 @@ fields together with the report directory.
    play state, clock text, visible WE effect passes for blur/clouds, and a
    native-lowered opacity fade effect. Current explicit gaps for this sample
    are not compatibility
-   fallbacks: arbitrary SceneScript/controller lowering remains pending,
+   fallbacks: arbitrary SceneScript lowering remains pending,
    visible shader/effect graph execution for the three blurprecise passes
    remains pending, live click/property event-source wiring remains pending
    beyond the state-property input bridge, and broader cursor/mouse-driven
@@ -1507,7 +1525,9 @@ fields together with the report directory.
    coverage asserts `cursor-parallax-input-source` completion, and native
    idle utility controllers now assert
    `scene-idle-controller-input-source` plus
-   `scene-controller-fade-ramp-runtime` completion. Renderer coverage now also
+   `scene-controller-fade-ramp-runtime` completion, and deterministic timed
+   visibility controller conversion asserts target-node opacity timelines plus
+   runtime snapshot sampling at reveal/fade/hide time points. Renderer coverage now also
    asserts that manifest/output property values and
    `scene.input.controller.<id>.active` aliases are retained by
    `SceneWallpaperRuntimeSampler` frames.
@@ -1517,8 +1537,9 @@ fields together with the report directory.
    runtime files, no util missing-resource warnings, no audio-response system,
    initial-visible video scene composition completed, native controller
    property bindings for idle/click video switching, completed native idle
-   controller input sampling, native idle fade-ramp sampling, and only the
-   explicit pending boundaries listed above. Remaining scene gates are live
+   controller input sampling, native idle fade-ramp sampling, deterministic
+   timed visibility controller lowering for the `云` fullscreen target, and
+   only the explicit pending boundaries listed above. Remaining scene gates are live
    click/property event sources beyond the state-property input bridge,
    complex font shaping/atlas typography, full Wallpaper Engine graph
    execution, WE animation layer blending, arbitrary SceneScript runtime,
