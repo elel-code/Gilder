@@ -847,7 +847,8 @@ fields together with the report directory.
    path tessellation, cubic/smooth-cubic/quadratic/smooth-quadratic path
    flattening, SVG elliptical arc path flattening, compound even-odd path
    fill, stroke geometry, deterministic text glyph geometry,
-   native deterministic particle emitter expansion into solid-quad geometry,
+   native deterministic particle emitter expansion into solid or sampled-image
+   sprite geometry,
    first-class `video` layer detection, single-video-layer Vulkan Video scene
    composition, clear-background plus video scene composition, scene
    timeline animation snapshotting plus per-frame fixed-topology geometry
@@ -922,6 +923,12 @@ fields together with the report directory.
    gravity, renderer fade metadata, and CWE-backed defaults become gscene
    particle properties before object fields override them and
    `instanceoverride` applies WE count/rate/speed/size/lifetime multipliers.
+   Particle `material` definitions now reuse the WE material texture lowering
+   path, copy the material/texture resources into gscene, attach the renderable
+   texture resource to the particle-emitter node, and make emitted particle
+   layers enter the sampled-image scene path when a material texture is
+   available; particles without a material texture remain deterministic
+   solid geometry.
    The current WE field references for this mapping are
    `references/linux-wallpaperengine/src/scene/loader/object.rs`, whose
    `Object` includes `particle` and whose `Instanceoverride` carries
@@ -1088,7 +1095,11 @@ fields together with the report directory.
    in-flight vertex buffer. Dynamic sampled/solid geometry now shares one
    lightweight sampled frame per elapsed timestamp, reuses sampler-owned
    snapshot/render-layer scratch buffers, and bypasses full runtime snapshot
-   construction in the per-frame path. Solid-only dynamic scenes now lower
+   construction in the per-frame path. Sampled-image draw planning now
+   deduplicates identical source paths before assigning descriptor/image
+   resource indices, so many sprite particles using the same material texture
+   keep one retained sampled resource instead of one resource per emitted
+   particle. Solid-only dynamic scenes now lower
    render layers directly into Vulkan solid geometry instead of building the
    diagnostic draw-plan/pass-plan payload first; dynamic sampled/mixed scenes
    now do the same direct render-layer lowering for sampled-image quads and
@@ -1464,7 +1475,10 @@ fields together with the report directory.
    geometry field timeline/property animation, script/value wrapper lowering
    without a JS engine, deterministic numeric SceneScript expression lowering,
    bounded opacity effect lowering into native gscene timelines,
-   native gscene particle emitter expansion into deterministic solid geometry,
+   native gscene particle emitter expansion into deterministic solid geometry
+   and sampled-image sprite layers when a WE particle material resolves to a
+   texture resource, sampled-image source deduplication for repeated sprite
+   resources,
    WE `.tex` RGBA/LZ4 first-frame or spritesheet-atlas conversion to native
    BC7 `.gtex` sampled-image resources, authoritative `scene.pkg` direct import,
    and parallax depth property-camera
@@ -1476,6 +1490,7 @@ fields together with the report directory.
    `property-update-runtime`,
    `pause-resume-policy-runtime`, `package-state-persistence`,
    `native-particle-system-runtime`,
+   `scene-we-particle-material-runtime`,
    `wallpaper-engine-scene-pkg-import`,
    `scene-we-spritesheet-atlas-runtime`, `curve-path-flattening-runtime`,
    `arc-path-flattening-runtime`,
