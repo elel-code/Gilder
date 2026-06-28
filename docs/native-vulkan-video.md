@@ -1162,8 +1162,13 @@ fields together with the report directory.
    by the scene present runtime through the same FFmpeg audio reader and
    PipeWire-only output backend used by direct video. `start_silent=true` cues
    are not auto-started; `playback_mode=loop` enables FFmpeg EOS seek for the
-   requested present duration. Audio response remains a separate pending
-   visual-response system.
+   requested present duration. The stable gscene format now carries native
+   `audio[].active_conditions` entries, each with a numeric `property` and
+   optional `equals` value. Snapshot sampling resolves those conditions through
+   the same property/controller resolver as visual bindings and exposes only
+   active cues to the PipeWire scene audio worker; Wallpaper Engine script
+   details stay in converter IR and are not runtime fields. Audio response
+   remains a separate pending visual-response system.
    Static Wallpaper Engine image projects with real audio files are not
    converted to a no-audio static-image package: the converter writes a
    first-class `scene` manifest with one static image node plus gscene audio
@@ -1319,7 +1324,15 @@ fields together with the report directory.
    `scene.clock.local.we-date.vertical-month-abbrev`, and
    `scene.clock.local.we-day.vertical-weekday-abbrev-upper`; runtime snapshots
    resolve live text from the sampler rather than freezing the imported
-   fallback `value`.
+   fallback `value`. The standby voice script and music-selection script now
+   lower to native scene audio controllers: standby voice cues activate only
+   when the idle video controller is active and `bbrstandbyvoiceswitch` is
+   truthy, while the music cues activate from the `music` choice property via
+   gscene `audio[].active_conditions`. This records
+   `scene-audio-controller-runtime` and
+   `wallpaper-engine-detected-scenescript-native-lowering`; the sample's
+   `systems.scenescript` status is now `ready` because every detected source
+   script has a native lowering.
    Effect
    metadata is explicit: the three still-pending visible `blurprecise` graphs
    remain `runtime: "wallpaper-engine-effect"` with copied effect resources,
@@ -1331,15 +1344,14 @@ fields together with the report directory.
    combines video-texture scene layers, multiple MP3 cue layers, mouse trail
    particle controls,
    standby/interactive SceneScript that targets other layers and video texture
-   play state, native-lowered clock/date text, visible WE effect passes for
-   blur/clouds, and a
+   play state, native-lowered clock/date text, script-controlled audio cue
+   activation, visible WE effect passes for blur/clouds, and a
    native-lowered opacity fade effect. Current explicit gaps for this sample
-   are not compatibility
-   fallbacks: arbitrary SceneScript lowering remains pending,
-   visible shader/effect graph execution for the three blurprecise passes
-   remains pending, live click/property event-source wiring remains pending
-   beyond the state-property input bridge, and broader cursor/mouse-driven
-   interaction scripts need native lowering rather than a JS VM.
+   are not compatibility fallbacks: visible shader/effect graph execution for
+   the three blurprecise passes remains pending, live click/property
+   event-source wiring remains pending beyond the state-property input bridge,
+   and compositor cursor input is still pending when no desktop cursor source
+   is available.
    The runtime now carries the gscene document size (`2160x1440`) into the
    sampled-image present path and applies scene-level `cover` viewport mapping
    before recording geometry for the actual swapchain extent (`2561x1601` in
@@ -1541,7 +1553,12 @@ fields together with the report directory.
    visibility controller conversion asserts target-node opacity timelines plus
    runtime snapshot sampling at reveal/fade/hide time points. Deterministic WE
    clock/date text conversion asserts native `text_binding` output and runtime
-   snapshot text replacement through the scene text resolver. Renderer coverage now also
+   snapshot text replacement through the scene text resolver. Native audio
+   controller conversion asserts gscene `audio[].active_conditions`, snapshot
+   filtering of inactive cues, manifest/render property defaults for conditional
+   audio, and completion of
+   `wallpaper-engine-detected-scenescript-native-lowering` when all detected
+   source scripts lower to native IR. Renderer coverage now also
    asserts that manifest/output property values and
    `scene.input.controller.<id>.active` aliases are retained by
    `SceneWallpaperRuntimeSampler` frames.
@@ -1553,11 +1570,12 @@ fields together with the report directory.
    property bindings for idle/click video switching, completed native idle
    controller input sampling, native idle fade-ramp sampling, deterministic
    timed visibility controller lowering for the `云` fullscreen target,
-   deterministic clock/date text lowering for `Clock`, `Date`, and `D a y`, and
+   deterministic clock/date text lowering for `Clock`, `Date`, and `D a y`,
+   native audio cue activation for standby voice/music selection scripts, and
    only the explicit pending boundaries listed above. Remaining scene gates are live
    click/property event sources beyond the state-property input bridge,
    complex font shaping/atlas typography, full Wallpaper Engine graph
-   execution, WE animation layer blending, arbitrary SceneScript runtime,
+   execution, WE animation layer blending,
    executable shader/effect material graphs, broader compositor cursor sources
    beyond Hyprland, real PipeWire spectrum/FFT audio-response input, and mixed
    video overlay composition.
