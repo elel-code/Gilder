@@ -773,7 +773,7 @@ fields together with the report directory.
 2. Full scene wallpaper support: the current completed work is a first-class
    Gilder scene document/runtime path plus explicit full-scene boundaries, not
    full Wallpaper Engine scene execution. For progress accounting, full scene
-   is roughly `97%`: package/conversion boundaries, `scene/gscene` format
+   is roughly `98%`: package/conversion boundaries, `scene/gscene` format
    validation, snapshot-time propagation, render clear-color snapshot layers,
    WE `scene.pkg` direct import,
    WE parent-id graph lowering into gscene children,
@@ -791,8 +791,8 @@ fields together with the report directory.
    retained resource status, clear-background composition, native runtime
    layer-coverage accounting, rounded-rectangle tessellation, simple/concave
    path tessellation, cubic/smooth-cubic/quadratic/smooth-quadratic path
-   flattening, SVG elliptical arc path flattening, stroke geometry,
-   deterministic text glyph geometry,
+   flattening, SVG elliptical arc path flattening, compound even-odd path
+   fill, stroke geometry, deterministic text glyph geometry,
    first-class `video` layer detection, single-video-layer Vulkan Video scene
    composition, clear-background plus video scene composition, scene
    timeline animation snapshotting, property update binding, pause/resume
@@ -800,8 +800,8 @@ fields together with the report directory.
    cues, and native FFmpeg/PipeWire scene audio cue playback are in place;
    particle systems, arbitrary SceneScript, shader/material graph,
    PipeWire audio response, complex font shaping/atlas typography,
-   multi-subpath/fill-rule path rasterization, and actual mixed video-as-scene
-   composition remain open. Wallpaper Engine scene conversions
+   explicit nonzero path fill-rule selection, and actual mixed
+   video-as-scene composition remain open. Wallpaper Engine scene conversions
    now write `assets/*.gscene.json`
    documents with `source`, `size`, `render`, `camera`, `import`,
    `resources`, `nodes`, `systems`, `native_lowering`, and
@@ -809,7 +809,7 @@ fields together with the report directory.
    `full_scene` report block with
    `target_runtime=native-vulkan-full-scene`,
    `current_runtime=native-vulkan-scene-runtime`,
-   `progress_estimate_percent=97`,
+   `progress_estimate_percent=98`,
    preserved source-scene metadata paths, completed boundaries, and pending
    full-scene boundaries. Gilder scene is the runtime format, not a
    Wallpaper Engine schema clone: WE's historical fields are treated as an
@@ -898,8 +898,10 @@ fields together with the report directory.
    polylines; arcs flatten from SVG center-parameterized geometry with 8
    segments per quadrant, scaled radii, rotation, and large-arc/sweep flags.
    The resulting native points feed the existing fill/stroke tessellation
-   path, so common Wallpaper Engine/SVG curve and arc shapes render as solid
-   Vulkan geometry instead of staying as unsupported path metadata.
+   path. Multi-subpath paths now enter a deterministic even-odd scanline fill
+   that emits native trapezoid/quad geometry, so common Wallpaper Engine/SVG
+   curve, arc, and compound-hole shapes render as solid Vulkan geometry instead
+   of staying as unsupported path metadata.
    Scene sampled-image uploads now use Vulkan 1.4
    `hostImageCopy`, so static scene image upload has no staging buffer, upload
    queue submit, or upload fence. Scene runtime and `SceneWallpaperPlan`
@@ -922,6 +924,7 @@ fields together with the report directory.
    `sampled_image_native_layer_count`, `solid_geometry_layer_count`,
    `rounded_rectangle_layer_count`, `tessellated_path_layer_count`,
    `curve_path_layer_count`, `arc_path_layer_count`,
+   `compound_path_layer_count`,
    `text_geometry_layer_count`, and
    `stroke_geometry_layer_count`, so scene
    progress is tied to actual layer
@@ -956,7 +959,7 @@ fields together with the report directory.
    Visible scene present results now include `runtime.full_scene`, with
    `target_runtime=native-vulkan-full-scene`,
    `current_runtime=native-vulkan-scene-runtime`,
-   `progress_estimate_percent=97`, `native_present_route_ready`,
+   `progress_estimate_percent=98`, `native_present_route_ready`,
    `retained_resource_model_ready`, `timeline_snapshot_runtime_ready`,
    `timeline_animation_runtime_ready`, `timeline_animation_count`,
    `timeline_animated_layer_count`, `property_update_runtime_ready`,
@@ -1050,7 +1053,7 @@ fields together with the report directory.
    Current runtime smoke:
    `WAYLAND_DISPLAY=wayland-1 target/release/gilder-native-vulkan --run-scene --output-name HDMI-A-1 --source artifacts/smoke/scene-heap-smoke.png --fit cover --duration 1 --target-fps 30 --scene-time-ms 1234`
    presents `30` frames at `29.99748264125423` FPS and reports
-   `runtime.full_scene.progress_estimate_percent=97`,
+   `runtime.full_scene.progress_estimate_percent=98`,
    `runtime.full_scene.native_present_route_ready=true`,
    `runtime.full_scene.retained_resource_model_ready=true`,
    `runtime.full_scene.timeline_snapshot_runtime_ready=true`,
@@ -1084,6 +1087,14 @@ fields together with the report directory.
    `runtime.full_scene.arc_path_layer_count=1`, completed
    `arc-path-flattening-runtime`, `vertex_count=32`, `index_count=90`,
    and `descriptor_set_count=0`.
+   Current compound-path scene smoke after rebuilding the native CLI:
+   `WAYLAND_DISPLAY=wayland-1 XDG_RUNTIME_DIR=/run/user/1000 target/debug/gilder-native-vulkan --json --run-scene --output-name HDMI-A-1 --path-data 'M0 0 L100 0 L100 100 L0 100 Z M25 25 L75 25 L75 75 L25 75 Z' --color '#22aa88' --duration 1 --target-fps 30 --fit cover`
+   reports `scene_present_route=solid-quad`, `frames_presented=30`,
+   `average_present_fps=29.99702765452377`,
+   `draw_pass_backend_status=solid-quad-recording-ready`,
+   `runtime.full_scene.compound_path_layer_count=1`, completed
+   `compound-path-evenodd-fill-runtime`, `vertex_count=16`,
+   `index_count=24`, and `descriptor_set_count=0`.
    Current video scene smoke:
    `/tmp/gilder-scene-video-h265-main8-background-final.json` from
    `WAYLAND_DISPLAY=wayland-1 target/release/gilder-native-vulkan --run-scene --scene-video --output-name HDMI-A-1 --source artifacts/video-sources/h265/h265-main-8-b0-ref1-3840x2160-240fps-566frames-g240-d240.mp4 --video-codec h265 --width 3840 --height 2160 --decode-h265-ready-prefix 4 --playback-frames 4 --target-fps 240 --background '#102030' --fit contain`
@@ -1116,12 +1127,13 @@ fields together with the report directory.
    `timeline-animation-runtime`, `property-update-runtime`,
    `pause-resume-policy-runtime`, `package-state-persistence`,
    `wallpaper-engine-scene-pkg-import`,
-   `scene-we-spritesheet-atlas-runtime`, `curve-path-flattening-runtime`, and
-   `arc-path-flattening-runtime`; Hyprland/override cursor scene coverage also
-   asserts `cursor-parallax-input-source` completion.
+   `scene-we-spritesheet-atlas-runtime`, `curve-path-flattening-runtime`,
+   `arc-path-flattening-runtime`, and
+   `compound-path-evenodd-fill-runtime`; Hyprland/override cursor scene
+   coverage also asserts `cursor-parallax-input-source` completion.
    Next gates:
    wiring mixed video-as-scene layer composition from this explicit bridge boundary,
-   complex font shaping/atlas typography, multi-subpath/fill-rule path rasterization,
+   complex font shaping/atlas typography, explicit nonzero path fill-rule selection,
    full Wallpaper Engine graph execution, WE animation layer blending,
    arbitrary SceneScript runtime, shader/material graph, particle systems,
    broader compositor cursor sources beyond Hyprland, and PipeWire audio response.
