@@ -924,6 +924,16 @@ fields together with the report directory.
    bindings should produce a restricted scene IR such as `on-idle -> reveal
    layer -> play video/audio -> fade -> hide`, with unresolved source scripts
    kept as explicit pending systems rather than compatibility runtime code.
+   The converter now has an internal IR boundary for native scene controller
+   lowering: WE utility scripts are first normalized into `SceneControllerIr`
+   with a typed controller kind, target layer, native active property,
+   default-hide policy, and copied controller settings; only then are gscene
+   `properties.controller` metadata, opacity `property_bindings`, and
+   completed/pending input-source features emitted. This IR is not a runtime
+   compatibility layer and is not serialized as a public wallpaper format; it
+   is the converter-owned normalization step that future SceneScript,
+   animation-layer, and effect-graph lowering should target before writing
+   clean gscene.
    Parallax now has a gscene runtime model:
    `render.parallax.amount` plus node `parallax_depth` consumes
    `scene.parallax.x/y` property values to offset snapshot transforms.
@@ -937,8 +947,9 @@ fields together with the report directory.
    instead of being copied as runtime `texture` compatibility assets.
    The converter split follows the same-name module root plus same-name
    directory rule (`wallpaper_engine.rs` with `wallpaper_engine/tex.rs`,
-   `wallpaper_engine/gtex.rs`, and `wallpaper_engine/effect.rs`); `mod.rs` is
-   not used for new scene-conversion code.
+   `wallpaper_engine/gtex.rs`, `wallpaper_engine/effect.rs`, and
+   `wallpaper_engine/ir.rs`); `mod.rs` is not used for new scene-conversion
+   code.
    WE built-in utility models such as `models/util/fullscreenlayer.json` and
    `models/util/composelayer.json` are now recognized as first-class native
    utility script layers in provenance instead of being treated as missing
@@ -1189,6 +1200,7 @@ fields together with the report directory.
    of missing resources, lowers pure sound objects to first-class `audio` cue
    nodes, and detects no `audio-response` system for this sample. The two WE
    utility controllers with `scriptproperties.targetLayerId` now lower to
+   native `SceneControllerIr` first, then to
    native `properties.controller` metadata plus
    `scene.controller.<node>.active -> target opacity` property bindings, so
    the idle and click video targets are hidden by opacity at startup and can be
@@ -1198,9 +1210,11 @@ fields together with the report directory.
    `fullscreenlayer` becomes active after its `mouse_inactive_sec=70` threshold,
    while the `composelayer` click controller remains inactive until real
    pointer input is wired. The reconversion records
-   `scene-idle-controller-input-source` under completed boundaries and keeps
-   `scene-controller-input-source` pending for click/property-driven
-   controllers. Effect
+   `native-scene-controller-idle-input-source` and
+   `native-scene-controller-external-input-source-required` as IR-derived
+   conversion features, moves `scene-idle-controller-input-source` under
+   completed boundaries, and keeps `scene-controller-input-source` pending for
+   click/property-driven controllers. Effect
    metadata is explicit: the three still-pending visible `blurprecise` graphs
    remain `runtime: "wallpaper-engine-effect"` with copied effect resources,
    the opacity fade is `runtime: "native-opacity-timeline"`, and the
