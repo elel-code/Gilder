@@ -965,10 +965,13 @@ fields together with the report directory.
    The converter split follows the same-name module root plus same-name
    directory rule (`wallpaper_engine.rs` with `wallpaper_engine/tex.rs`,
    `wallpaper_engine/gtex.rs`, `wallpaper_engine/effect.rs`,
-   `wallpaper_engine/ir.rs`, and `wallpaper_engine/ir/controller.rs`); `mod.rs`
-   is not used for new scene-conversion code. `ir.rs` stays the SceneScript
-   numeric/property-binding IR root, while controller state-machine lowering
-   lives in `ir/controller.rs`.
+   `wallpaper_engine/ir.rs`, `wallpaper_engine/ir/controller.rs`,
+   `wallpaper_engine/ir/effect.rs`, and `wallpaper_engine/ir/timeline.rs`);
+   `mod.rs` is not used for new scene-conversion code. `ir.rs` stays the
+   SceneScript numeric/property-binding IR root, controller state-machine
+   lowering lives in `ir/controller.rs`, WE opacity effect normalization lives
+   in `ir/effect.rs`, and explicit keyframe/timeline normalization lives in
+   `ir/timeline.rs`.
    WE built-in utility models such as `models/util/fullscreenlayer.json` and
    `models/util/composelayer.json` are now recognized as first-class native
    utility script layers in provenance instead of being treated as missing
@@ -991,8 +994,10 @@ fields together with the report directory.
    `metadata-only`, or `wallpaper-engine-effect`. Deterministic no-op or
    invisible WE effects are preserved as metadata and no longer block a
    renderable texture material graph. WE `effects/opacity/effect.json` alpha
-   constants and the common bounded `delayTime`/`fadeTime` SceneScript pattern
-   lower into native gscene `opacity` timelines without embedding a JS engine;
+   constants and bounded fade SceneScript patterns now lower through
+   `SceneOpacityEffectIr` into native gscene `opacity` timelines without
+   embedding a JS engine, including `delayTime`/`fadeTime` plus
+   `startDelay`/`fadeDuration` and explicit source/target alpha aliases;
    native-lowered or no-op/invisible effects are preserved as structured node
    metadata but no longer copied into runtime `we-effect` resources. Only
    `wallpaper-engine-effect` entries with real WE effect resources keep the
