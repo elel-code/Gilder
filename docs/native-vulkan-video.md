@@ -859,8 +859,9 @@ fields together with the report directory.
    property bindings, and native idle video-switch controller sampling for
    `scene.controller.<node>.active` property bindings including fade-in
    opacity ramps are in place;
-   arbitrary SceneScript, shader/material graph, complex WE particle
-   shader/graph parity, real PipeWire spectrum/FFT audio-response input,
+   arbitrary SceneScript, shader/material graph, WE particle rope/trail
+   renderers, complex particle operators, particle material shader parity,
+   real PipeWire spectrum/FFT audio-response input,
    complex font
    shaping/atlas typography, explicit nonzero path fill-rule selection,
    and actual mixed
@@ -909,12 +910,29 @@ fields together with the report directory.
    `properties.particle` into stable rectangle/ellipse particle layers with
    bounded `count`, seeded spawn phase, lifetime, rate/count, speed, size,
    spread, gravity, fade, and emitter area; WE independent particle objects
-   lower `particle`/`emitter` plus
-   `instanceoverride.count/rate/speed/size/lifetime` into those fields. The
-   current WE field reference for this mapping is
+   lower through `SceneParticleIr`, including `particle`/`emitter`,
+   `instanceoverride.count/rate/speed/size/lifetime/colorn`, `speedMin`,
+   `speedMax`, `directionDeg`, `spreadDeg`, `gravityDirection`,
+   `gravityStrength`, `fadeOut`, particle dimensions, and spawn area into
+   native runtime fields. External WE particle definition files referenced as
+   `particles/*.json` now also lower through the same IR: `maxcount`,
+   `material`, `emitter` `boxrandom`/`sphererandom` runtime fields,
+   `distancemax`/`directions` spawn area, `rate`, `speedmin`/`speedmax`,
+   simple `sizerandom`/`lifetimerandom`/`colorrandom` initializers, movement
+   gravity, renderer fade metadata, and CWE-backed defaults become gscene
+   particle properties before object fields override them and
+   `instanceoverride` applies WE count/rate/speed/size/lifetime multipliers.
+   The current WE field references for this mapping are
    `references/linux-wallpaperengine/src/scene/loader/object.rs`, whose
    `Object` includes `particle` and whose `Instanceoverride` carries
-   `alpha`, `speed`, `size`, `lifetime`, `count`, and `rate`. Explicit source
+   `alpha`, `speed`, `size`, `lifetime`, `count`, `rate`, and `colorn`, plus
+   `references/linux-wallpaperengine/src/scene/loader/scene.rs` for
+   `gravitydirection`/`gravitystrength`, and
+   `references/cwe/src/WallpaperEngine/Data/Parsers/ObjectParser.cpp` plus
+   `references/cwe/src/WallpaperEngine/Render/Objects/CParticle.cpp` for WE
+   particle JSON loading, emitter/default parsing, instance override
+   multiplication, box/sphere spawn ranges, initializer behavior, and movement
+   gravity. Explicit source
    keyframe tracks for supported transform/opacity properties now lower into
    gscene `timelines`, including vector `origin`/`scale` split into native
    `x`/`y` and `scale-x`/`scale-y` channels, so the existing core timeline runtime
@@ -969,14 +987,15 @@ fields together with the report directory.
    directory rule (`wallpaper_engine.rs` with `wallpaper_engine/tex.rs`,
    `wallpaper_engine/gtex.rs`, `wallpaper_engine/effect.rs`,
    `wallpaper_engine/ir.rs`, `wallpaper_engine/ir/animation.rs`,
-   `wallpaper_engine/ir/controller.rs`, `wallpaper_engine/ir/effect.rs`, and
-   `wallpaper_engine/ir/timeline.rs`);
+   `wallpaper_engine/ir/controller.rs`, `wallpaper_engine/ir/effect.rs`,
+   `wallpaper_engine/ir/particle.rs`, and `wallpaper_engine/ir/timeline.rs`);
    `mod.rs` is not used for new scene-conversion code. `ir.rs` stays the
    SceneScript numeric/property-binding IR root, controller state-machine
    lowering lives in `ir/controller.rs`, deterministic animation layer
    expansion lives in `ir/animation.rs`, WE opacity effect normalization lives
-   in `ir/effect.rs`, and explicit keyframe/timeline normalization lives in
-   `ir/timeline.rs`.
+   in `ir/effect.rs`, WE object-level particle fields and external particle
+   definition normalization live in `ir/particle.rs`, and explicit
+   keyframe/timeline normalization lives in `ir/timeline.rs`.
    WE built-in utility models such as `models/util/fullscreenlayer.json` and
    `models/util/composelayer.json` are now recognized as first-class native
    utility script layers in provenance instead of being treated as missing
