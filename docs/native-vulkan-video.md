@@ -870,7 +870,6 @@ fields together with the report directory.
    `full_scene` report block with
    `target_runtime=native-vulkan-full-scene`,
    `current_runtime=native-vulkan-scene-runtime`,
-   `progress_estimate_percent=99` as report-only telemetry,
    preserved source-scene metadata paths, completed boundaries, and pending
    full-scene boundaries. Current gating uses the explicit boundary lists.
    Converted scene entries no longer inject a default
@@ -1132,7 +1131,7 @@ fields together with the report directory.
    Visible scene present results now include `runtime.full_scene`, with
    `target_runtime=native-vulkan-full-scene`,
    `current_runtime=native-vulkan-scene-runtime`,
-   report-only `progress_estimate_percent=99`, `native_present_route_ready`,
+   `native_present_route_ready`,
    `retained_resource_model_ready`, `timeline_snapshot_runtime_ready`,
    `timeline_animation_runtime_ready`, fixed-topology timeline geometry is
    resampled on each native present frame, `timeline_animation_count`,
@@ -1279,7 +1278,7 @@ fields together with the report directory.
    `WAYLAND_DISPLAY=wayland-1 XDG_RUNTIME_DIR=/run/user/1000 target/debug/gilder-native-vulkan --json --run-scene --output-name HDMI-A-1 --source /tmp/gilder-dynamic-timeline.gscene.json --fit cover --duration 2 --target-fps 60`
    presents through `scene_present_route=solid-quad`, `frames_presented=120`,
    `average_present_fps=59.99628407014983`,
-   report-only `runtime.full_scene.progress_estimate_percent=99`, completed
+   completed
    `per-frame-timeline-geometry-runtime`,
    `timeline_animation_count=2`, `timeline_animated_layer_count=1`,
    `present.geometry.upload_model=persistently mapped per-frame host-visible solid-quad vertex buffers reused by frame slot`,
@@ -1363,7 +1362,6 @@ fields together with the report directory.
    Current runtime smoke:
    `WAYLAND_DISPLAY=wayland-1 target/release/gilder-native-vulkan --run-scene --output-name HDMI-A-1 --source artifacts/smoke/scene-heap-smoke.png --fit cover --duration 1 --target-fps 30 --scene-time-ms 1234`
    presents `30` frames at `29.99748264125423` FPS and reports
-   report-only `runtime.full_scene.progress_estimate_percent=99`,
    `runtime.full_scene.native_present_route_ready=true`,
    `runtime.full_scene.retained_resource_model_ready=true`,
    `runtime.full_scene.timeline_snapshot_runtime_ready=true`,
@@ -1422,7 +1420,7 @@ fields together with the report directory.
    `native_runtime_coverage_percent=100`, presented `4` H.265 Main8 frames,
    `descriptor_model=VK_EXT_descriptor_heap`, `all_zero_copy_presented=true`,
    and decoded-image draw `clear_color=[0.062745101749897,0.125490203499794,0.1882352977991104,1.0]`.
-   Current focused regression coverage asserts gscene package validation, clean
+   Focused regression coverage asserts gscene package validation, clean
    WE scene-to-gscene conversion, WE model/material texture provenance,
    renderable material image texture resource resolution, WE parent
    graph lowering into gscene children, render clear-color snapshot layers,
@@ -1458,10 +1456,7 @@ fields together with the report directory.
    `SceneWallpaperRuntimeSampler` frames.
    `native_runtime_coverage_percent=100` means the currently completed native
    runtime boundaries have no pending native layers; it is not a claim of full
-   WE-scene parity. The latest focused conversion pass ran
-   `cargo test --features native-vulkan-video convert::wallpaper_engine::tests:: -- --nocapture`
-   with `45` passing converter tests and `cargo check --features
-   native-vulkan-video`; the 3724575699 reconversion confirms no `.tex`
+   WE-scene parity. Focused conversion coverage for 3724575699 confirms no `.tex`
    runtime files, no util missing-resource warnings, no audio-response system,
    initial-visible video scene composition completed, native controller
    property bindings for idle/click video switching, completed native idle
