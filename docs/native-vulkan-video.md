@@ -900,10 +900,14 @@ fields together with the report directory.
    `clear_enabled != false` now emits the first snapshot color layer, so
    converted WE scene clear color participates in native clear-background and
    mixed scene composition. WE `{ value: ... }` wrappers for text, point size,
-   font, and horizontal alignment are lowered to gscene text node fields, and
-   WE `visible: { value, user }` is lowered to a gscene opacity property
-   binding so runtime property updates can reveal/hide the layer without a
-   legacy visibility path. WE `shape`/`solid` objects now lower directly into
+   font, and horizontal alignment are lowered to gscene text node fields. Font
+   values that reference package font files now copy into first-class
+   `SceneResourceKind::Font` entries with text-node `font_resource` references,
+   and the snapshot/render/native draw data path carries the resolved package
+   font source for future atlas shaping. WE `visible: { value, user }` is
+   lowered to a gscene opacity property binding so runtime property updates can
+   reveal/hide the layer without a legacy visibility path. WE `shape`/`solid`
+   objects now lower directly into
    gscene `rectangle`/`ellipse` nodes with color, size, and `corner_radius`,
    so ordinary vector shape layers enter the same native solid-geometry
    runtime instead of staying as source metadata. Native gscene
@@ -1084,7 +1088,9 @@ fields together with the report directory.
    geometry and render through the same solid dynamic-rendering pipeline as
    rectangles, rounded rectangles, ellipses, and simple paths; this gives text
    layers real native coverage without adding a legacy font-renderer
-   compatibility path. Path layers now parse `M/L/H/V/Z`, `C/S/Q/T` cubic,
+   compatibility path; package font files are now available as retained scene
+   resources instead of being only string metadata. Path layers now parse
+   `M/L/H/V/Z`, `C/S/Q/T` cubic,
    smooth cubic, quadratic, and smooth quadratic Bezier commands, plus `A/a`
    SVG elliptical arcs. Curves flatten into deterministic 16-segment
    polylines; arcs flatten from SVG center-parameterized geometry with 8
@@ -1525,7 +1531,7 @@ fields together with the report directory.
    WE scene-to-gscene conversion, WE model/material texture provenance,
    renderable material image texture resource resolution, WE parent
    graph lowering into gscene children, render clear-color snapshot layers,
-   WE text wrapper conversion, visible property binding lowering, WE
+   WE text wrapper/font resource conversion, visible property binding lowering, WE
    shape/solid/radius lowering into native snapshot nodes, explicit WE
    keyframe timeline lowering and deterministic WE animation-layer keyframe
    plus rate/time-scale lowering into native timeline snapshot values,
@@ -1586,7 +1592,8 @@ fields together with the report directory.
    native audio cue activation for standby voice/music selection scripts, and
    native blurprecise text glow lowering. Remaining expansion surfaces are live
    click/property event sources beyond the state-property input bridge,
-   complex font shaping/atlas typography, broader WE animation-layer
+   font atlas shaping/rasterization beyond deterministic built-in glyph
+   geometry, broader WE animation-layer
    blend/weight semantics, executable shader/effect material graphs for effects
    that cannot lower to native IR, real PipeWire spectrum/FFT audio-response
    input, and multi-video overlay composition for scenes that show more than
