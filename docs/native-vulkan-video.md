@@ -773,7 +773,7 @@ fields together with the report directory.
 2. Full scene wallpaper support: the current completed work is a first-class
    Gilder scene document/runtime path plus explicit full-scene boundaries, not
    full Wallpaper Engine scene execution. For progress accounting, full scene
-   is roughly `98%`: package/conversion boundaries, `scene/gscene` format
+   is roughly `99%`: package/conversion boundaries, `scene/gscene` format
    validation, snapshot-time propagation, render clear-color snapshot layers,
    WE `scene.pkg` direct import,
    WE parent-id graph lowering into gscene children,
@@ -795,7 +795,8 @@ fields together with the report directory.
    fill, stroke geometry, deterministic text glyph geometry,
    first-class `video` layer detection, single-video-layer Vulkan Video scene
    composition, clear-background plus video scene composition, scene
-   timeline animation snapshotting, property update binding, pause/resume
+   timeline animation snapshotting plus per-frame fixed-topology geometry
+   updates during native present, property update binding, pause/resume
    policy, package state/property persistence, renderer-resolved scene audio
    cues, and native FFmpeg/PipeWire scene audio cue playback are in place;
    particle systems, arbitrary SceneScript, shader/material graph,
@@ -809,7 +810,7 @@ fields together with the report directory.
    `full_scene` report block with
    `target_runtime=native-vulkan-full-scene`,
    `current_runtime=native-vulkan-scene-runtime`,
-   `progress_estimate_percent=98`,
+   `progress_estimate_percent=99`,
    preserved source-scene metadata paths, completed boundaries, and pending
    full-scene boundaries. Gilder scene is the runtime format, not a
    Wallpaper Engine schema clone: WE's historical fields are treated as an
@@ -959,9 +960,10 @@ fields together with the report directory.
    Visible scene present results now include `runtime.full_scene`, with
    `target_runtime=native-vulkan-full-scene`,
    `current_runtime=native-vulkan-scene-runtime`,
-   `progress_estimate_percent=98`, `native_present_route_ready`,
+   `progress_estimate_percent=99`, `native_present_route_ready`,
    `retained_resource_model_ready`, `timeline_snapshot_runtime_ready`,
-   `timeline_animation_runtime_ready`, `timeline_animation_count`,
+   `timeline_animation_runtime_ready`, fixed-topology timeline geometry is
+   resampled on each native present frame, `timeline_animation_count`,
    `timeline_animated_layer_count`, `property_update_runtime_ready`,
    `property_binding_count`, `cursor_parallax_input_ready`,
    `pause_resume_policy_ready`,
@@ -1020,6 +1022,20 @@ fields together with the report directory.
    `rows`, `fps`, and `loop_playback`; animated atlas regions now use a
    per-frame host-visible vertex-buffer ring and update only the current frame
    slot's UVs from runtime elapsed time after that slot fence has completed.
+   Current dynamic timeline scene smoke after rebuilding the native CLI:
+   `WAYLAND_DISPLAY=wayland-1 XDG_RUNTIME_DIR=/run/user/1000 target/debug/gilder-native-vulkan --json --run-scene --output-name HDMI-A-1 --source /tmp/gilder-dynamic-timeline.gscene.json --fit cover --duration 2 --target-fps 60`
+   presents through `scene_present_route=solid-quad`, `frames_presented=120`,
+   `average_present_fps=59.99628407014983`,
+   `runtime.full_scene.progress_estimate_percent=99`, completed
+   `per-frame-timeline-geometry-runtime`,
+   `timeline_animation_count=2`, `timeline_animated_layer_count=1`,
+   `present.geometry.upload_model=per-frame host-visible solid-quad geometry buffers retained across present frames`,
+   `vertex_buffer_bytes=96`,
+   `index_count=6`, and `descriptor_set_count=0`. Fixed-topology timeline
+   transform/opacity changes are resampled from the source gscene at native
+   present elapsed time and written into the current frame slot's vertex buffer;
+   layer/resource topology changes still remain explicit unsupported scene
+   graph changes instead of being silently patched into an old path.
    Sized `scene-render-clear-color` layers are treated as render
    clear-background layers in the native draw pass, not as normal geometry, so
    the WE clear color composes with the atlas image without introducing a
@@ -1053,7 +1069,7 @@ fields together with the report directory.
    Current runtime smoke:
    `WAYLAND_DISPLAY=wayland-1 target/release/gilder-native-vulkan --run-scene --output-name HDMI-A-1 --source artifacts/smoke/scene-heap-smoke.png --fit cover --duration 1 --target-fps 30 --scene-time-ms 1234`
    presents `30` frames at `29.99748264125423` FPS and reports
-   `runtime.full_scene.progress_estimate_percent=98`,
+   `runtime.full_scene.progress_estimate_percent=99`,
    `runtime.full_scene.native_present_route_ready=true`,
    `runtime.full_scene.retained_resource_model_ready=true`,
    `runtime.full_scene.timeline_snapshot_runtime_ready=true`,
@@ -1122,9 +1138,11 @@ fields together with the report directory.
    WE `.tex` RGBA/LZ4 first-frame or spritesheet-atlas decoding to a renderable
    PNG resource, `scene.pkg` direct import, and parallax depth property-camera
    offsets, timeline animation metadata reaches `SceneWallpaperPlan`,
+   source-backed `SceneWallpaperRuntimeSampler` resamples timeline layers,
    atlas-frame texture regions are time sampled, property binding counts reach
    the native runtime, and the completed full-scene boundaries include
-   `timeline-animation-runtime`, `property-update-runtime`,
+   `timeline-animation-runtime`, `per-frame-timeline-geometry-runtime`,
+   `property-update-runtime`,
    `pause-resume-policy-runtime`, `package-state-persistence`,
    `wallpaper-engine-scene-pkg-import`,
    `scene-we-spritesheet-atlas-runtime`, `curve-path-flattening-runtime`,
