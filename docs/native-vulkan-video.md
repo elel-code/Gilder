@@ -437,10 +437,12 @@ elapsed time was in `vkQueuePresentKHR`.
 - `src/renderer.rs`: top-level renderer planning orchestration and shared
   plan types. Scene-specific runtime property/controller code should not be
   added back here.
-- `src/renderer/scene_runtime.rs`: scene property resolution, manifest/render
-  property numeric defaults, native controller active-state sampling, idle
-  fade-ramp sampling, deterministic audio-response property values, and
-  `SceneWallpaperRuntimeSampler` source-backed runtime frame resampling.
+- `src/renderer/scene_runtime.rs`: `SceneWallpaperRuntimeSampler`
+  source-backed runtime frame resampling and sampler state only.
+- `src/renderer/scene_runtime/input.rs`: scene property resolution,
+  manifest/render property numeric defaults, native controller active-state
+  sampling, idle fade-ramp sampling, deterministic audio-response property
+  values, and retained scene input-property collection.
 - `src/renderer/native_vulkan.rs`: facade, shared codec parsers, snapshot
   construction, and public native Vulkan contract types.
 - `src/renderer/native_vulkan/video/`: FFmpeg demux/packet handoff, codec
@@ -962,9 +964,11 @@ fields together with the report directory.
    instead of being copied as runtime `texture` compatibility assets.
    The converter split follows the same-name module root plus same-name
    directory rule (`wallpaper_engine.rs` with `wallpaper_engine/tex.rs`,
-   `wallpaper_engine/gtex.rs`, `wallpaper_engine/effect.rs`, and
-   `wallpaper_engine/ir.rs`); `mod.rs` is not used for new scene-conversion
-   code.
+   `wallpaper_engine/gtex.rs`, `wallpaper_engine/effect.rs`,
+   `wallpaper_engine/ir.rs`, and `wallpaper_engine/ir/controller.rs`); `mod.rs`
+   is not used for new scene-conversion code. `ir.rs` stays the SceneScript
+   numeric/property-binding IR root, while controller state-machine lowering
+   lives in `ir/controller.rs`.
    WE built-in utility models such as `models/util/fullscreenlayer.json` and
    `models/util/composelayer.json` are now recognized as first-class native
    utility script layers in provenance instead of being treated as missing
