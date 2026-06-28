@@ -950,9 +950,12 @@ fields together with the report directory.
    unwraps `{ value: ... }` frame values, and accepts compact `[time, value]`
    frame pairs before writing clean gscene timeline channels. The same
    `SceneTimelineIr` path now lowers deterministic WE `animationlayers`
-   keyframes into executable gscene timelines; only complex blend/rate layer
-   semantics remain preserved as explicit pending metadata. The same channel
-   now covers geometry fields (`width`, `height`, `corner-radius`), and WE
+   keyframes into executable gscene timelines. Animation layer
+   `rate`/`speed`/`timescale` now compiles into keyframe time-scale transforms
+   in IR, so faster/slower layers execute through the same native timeline
+   runtime; only complex blend/weight layer semantics remain preserved as
+   explicit pending metadata. The same channel now covers geometry fields
+   (`width`, `height`, `corner-radius`), and WE
    `{script: ..., value: ...}` wrappers are unwrapped to deterministic gscene
    defaults without introducing a JS engine. User-bound
    scalar wrappers for transform, opacity, size, and radius lower into
@@ -1525,7 +1528,7 @@ fields together with the report directory.
    WE text wrapper conversion, visible property binding lowering, WE
    shape/solid/radius lowering into native snapshot nodes, explicit WE
    keyframe timeline lowering and deterministic WE animation-layer keyframe
-   lowering into native timeline snapshot values,
+   plus rate/time-scale lowering into native timeline snapshot values,
    geometry field timeline/property animation, script/value wrapper lowering
    without a JS engine, deterministic numeric SceneScript expression lowering,
    embedded WE property keyframe extraction into gscene timelines,
@@ -1583,11 +1586,11 @@ fields together with the report directory.
    native audio cue activation for standby voice/music selection scripts, and
    native blurprecise text glow lowering. Remaining expansion surfaces are live
    click/property event sources beyond the state-property input bridge,
-   complex font shaping/atlas typography, broader WE animation-layer blend
-   semantics, executable shader/effect material graphs for effects that cannot
-   lower to native IR, real PipeWire spectrum/FFT audio-response input, and
-   multi-video overlay composition for scenes that show more than one video
-   layer at the same time.
+   complex font shaping/atlas typography, broader WE animation-layer
+   blend/weight semantics, executable shader/effect material graphs for effects
+   that cannot lower to native IR, real PipeWire spectrum/FFT audio-response
+   input, and multi-video overlay composition for scenes that show more than
+   one video layer at the same time.
    The scene path must keep retained GPU images,
    `descriptor_sets=0`, and descriptor-heap sampling.
 3. Video coverage and regression: the H.264/H.265/AV1 core decode/present path
