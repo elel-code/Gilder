@@ -389,20 +389,14 @@ If a performance run starts immediately after
 `target/release/gilder-native-vulkan` was rebuilt or replaced, Linux can report
 the freshly executed binary mapping as private dirty memory. The sampler now
 classifies `gilder-native-vulkan` under `memory_category_gilder_binary_*`
-instead of the generic `file-mapping` bucket so this is visible. The H.264 smoke
-script records the release-binary fingerprint before and after `cargo build`.
-When the binary changed, it syncs
-`target/release/gilder-native-vulkan` with file-data, file-metadata, and release
-directory syncs before starting the measured process so the executable is not
-sampled while the freshly written file is still dirty. If a performance attempt
-still fails with either a high file-backed/gilder-binary dirty category or a
-fresh-build cold heap dirty category while mapping dirty is clean, the script
-preserves that attempt as `performance.fresh-build-contaminated[.N]`, syncs the
-same binary again, waits a short stabilization window, and retries up to four
-total attempts. The accepted result is still the final attempt's unadjusted
-total `performance_max_private_dirty_kib < 25000`; if the dirty category does
-not fall, the run fails as rebuild contamination rather than being reclassified
-as codec heap pressure.
+instead of the generic `file-mapping` bucket so this is visible. The native
+binary also syncs its own executable before allocator self-exec on Linux, so a
+freshly rebuilt binary enters the measured Vulkan process with clean executable
+file mappings instead of relying on a script-side warmup. The H.264 smoke script
+still records the release-binary fingerprint before and after `cargo build`,
+preserves contaminated attempts as `performance.fresh-build-contaminated[.N]`,
+and retries only to prove the same unadjusted memory gate; no file-mapping or
+gilder-binary dirty memory is subtracted from reported totals.
 
 `/tmp/gilder-vulkan-h264-ready-prefix-video.7WuEs7` is the current rejected
 example after the inline-session-parameters flag build:
@@ -490,6 +484,11 @@ Current modern baseline:
   fields; path evidence is the id2/wait2 field set plus
   `present_id_mode=present-id2-khr`. Swapchain creation now hard-fails when
   the selected device/surface cannot enable both id2 and wait2.
+- Scene present snapshots do not retain an unbounded per-frame `present_ids`
+  vector. They expose `retained_frame_telemetry_limit`, `present_ids_head`, and
+  `present_ids_tail`; the default retained-frame limit is `0`, so present-id2
+  remains enabled for pacing while the CPU side keeps no historical frame ID
+  list in steady state.
 - `VK_KHR_present_mode_fifo_latest_ready` is queried and enabled through the
   device feature chain when available. Present mode selection now uses
   `FIFO_LATEST_READY` when that KHR feature and surface mode are both
@@ -499,16 +498,49 @@ Current modern baseline:
   `mailbox`/`immediate` evidence.
 - Resource memory binding and host mapping use Vulkan 1.4-style
   `vkBind*Memory2`, `vkMapMemory2`, and `vkUnmapMemory2`.
-- Scene sampled-image upload uses Vulkan 1.4 `hostImageCopy`: image resources
-  carry `HOST_TRANSFER | TRANSFER_DST | SAMPLED`, upload uses
-  `vkTransitionImageLayout` + `vkCopyMemoryToImage`, and no staging buffer,
-  upload queue submit, or upload fence is retained for the scene image path.
+- Scene sampled-image upload now follows the video memory model instead of a
+  CPU decoded-image model: native `.gtex` BC7 payload is streamed directly
+  through one 128 KiB host-visible staging buffer, recorded with
+  `cmd_copy_buffer_to_image2`, submitted with `queue_submit2`, and trimmed after
+  each chunk. The runtime never keeps a full PNG/JPG/RGBA payload in process
+  memory. Dynamic/full scene image layers still use the retained GPU image plus
+  `VK_EXT_descriptor_heap` real-time render path.
+- Pure static `.gtex` wallpapers use a transfer-only first-present route:
+  upload into a BC7 `TRANSFER_SRC` image, `cmd_blit_image2` into the swapchain,
+  wait the submit fence, then destroy the source image. This is a fast path, not
+  a capability cut; video layers, mixed scene layers, animation, and full scene
+  rendering continue through their native render/decode paths.
+- Dynamic scene geometry now follows the same reuse rule as the video
+  bitstream ring: dynamic solid-quad vertex buffers and dynamic/atlas
+  sampled-image vertex buffers are allocated per frame slot and kept mapped
+  until resource teardown. Per-frame updates serialize vertices directly into
+  the mapped buffer and flush only when the selected memory type is
+  non-coherent, so the hot path does not build an intermediate byte `Vec`,
+  repeat `vkMapMemory2`/`vkUnmapMemory2`, or overwrite vertex data still owned
+  by an in-flight frame. Dynamic scene sampling now takes a lightweight runtime
+  frame and lowers its layers directly into Vulkan geometry; mixed
+  sampled/solid scenes share one sampled frame per elapsed timestamp, move the
+  sampled/solid geometry into the upload call, and drop the short-lived cache
+  after both sides are consumed. Dynamic updates validate retained topology and
+  rewrite only vertex bytes; index buffers and sampled-resource lists are
+  retained and compared, not rebuilt as upload payloads every frame. Static
+  topology animated atlases go narrower again: each frame slot is initialized
+  once, runtime animation patches only the UV bytes for the animated vertices,
+  and the present resources keep compact animated-UV metadata instead of a full
+  CPU-side base-vertex copy.
 - Vulkan Video decode uses `VK_KHR_video_maintenance2` inline session
   parameters when the device enables it. The video session is created with
   `VK_VIDEO_SESSION_CREATE_INLINE_SESSION_PARAMETERS_BIT_KHR` (bit `0x20` in
   current vulkanalia), H.264/H.265/AV1 parameter payloads are attached to
   `VkVideoDecodeInfoKHR`, and the streaming path does not create or bind a
   `VkVideoSessionParametersKHR` object.
+- Vulkan Video session memory binding now treats `memoryTypeBits` as the
+  driver-owned compatibility set. The selector still prefers
+  device-local/non-host-visible memory, then device-local memory, but it no
+  longer rejects a driver-allowed host-visible or BAR-style type when that is
+  the only legal bind target. Rejecting those bits caused the runtime to fall
+  back to the clear placeholder path, which looked like a black video frame
+  even though decode had never started.
 - The Vulkan 1.4 feature chain requests `host_image_copy` when the device
   reports it. Keeping this enabled is part of the roadmap contract; the 25,000
   KiB memory gate must be met by reducing FFmpeg/runtime retained memory, not by
@@ -591,10 +623,11 @@ Primary Vulkan references for this baseline:
 
 Next Vulkan/roadmap gates:
 
-1. Extend the completed scene `hostImageCopy` pattern to any remaining
-   host-to-image upload path where the enabled device exposes it. The rule is
-   the same: remove upload buffer allocation, upload submit/fence pressure, and
-   transfer queue dependency without adding CPU-retained decoded-frame copies.
+1. Extend the scene/video resource-lifetime pattern to remaining scene payloads:
+   bounded staging/ring buffers, `queue_submit2` fence ownership, and immediate
+   CPU-side release after GPU handoff. `hostImageCopy` remains optional for
+   paths where it gives lower retained memory than the 128 KiB staging ring, but
+   it must not reintroduce CPU-retained decoded-frame copies.
 2. Keep the `VK_KHR_video_maintenance2` inline path as the only streaming
    decode route, and restrict `VkVideoSessionParametersKHR` object creation to
    explicit smoke/probe validation.
@@ -873,14 +906,18 @@ fields together with the report directory.
    Standard WE `TEXV0005/TEXB0004` RGBA `.tex` material textures are decoded
    through their LZ4 block payload. Non-spritesheet textures are cropped to the
    model's first frame when the model width/height divides the atlas; WE
-   `SPRITESHEET` materials instead write the full atlas as a generated PNG
-   image resource and attach `properties.spritesheet` (`atlas-grid`, atlas
-   size, frame size, columns/rows, frame count, FPS, loop flag) to the gscene
-   node. The original `.tex` remains as provenance, while the runtime-facing
-   sampled image is the generated PNG. Runtime `_rt_`
-   textures, shaders, particles, arbitrary SceneScript, effect graphs, and
-   audio-response systems are preserved structurally and reported as explicit
-   pending runtime systems instead of being hidden behind a legacy loader.
+   `SPRITESHEET` materials instead write the full atlas as a generated native
+   BC7 `.gtex` image resource and attach `properties.spritesheet`
+   (`atlas-grid`, atlas size, frame size, columns/rows, frame count, FPS, loop
+   flag) to the gscene node. The original `.tex` remains as provenance, while
+   the runtime-facing sampled image is the generated `.gtex`. Runtime `_rt_`
+   textures, custom shaders,
+   arbitrary SceneScript, executable effect graphs, and audio-response systems
+   are preserved structurally and reported as explicit pending runtime systems
+   instead of being hidden behind a legacy loader. Deterministic no-op or
+   invisible WE effects are preserved as metadata and no longer block a
+   renderable texture material graph; visible pass/effect inputs still remain
+   an explicit runtime boundary.
    There is no internal legacy scene format, loader, preview-fallback scene
    node, or lowering bridge; old `layers` fixture data was replaced by
    `nodes/resources` gscene documents. Static wallpapers now lower into a
@@ -914,13 +951,39 @@ fields together with the report directory.
    polylines; arcs flatten from SVG center-parameterized geometry with 8
    segments per quadrant, scaled radii, rotation, and large-arc/sweep flags.
    The resulting native points feed the existing fill/stroke tessellation
-   path. Multi-subpath paths now enter a deterministic even-odd scanline fill
-   that emits native trapezoid/quad geometry, so common Wallpaper Engine/SVG
-   curve, arc, and compound-hole shapes render as solid Vulkan geometry instead
-   of staying as unsupported path metadata.
-   Scene sampled-image uploads now use Vulkan 1.4
-   `hostImageCopy`, so static scene image upload has no staging buffer, upload
-   queue submit, or upload fence. Scene runtime and `SceneWallpaperPlan`
+   path. Multi-subpath paths now enter deterministic scanline fill respecting
+   explicit nonzero and even-odd fill rules, so common Wallpaper Engine/SVG
+   curve, arc, compound-hole, and winding-filled shapes render as solid Vulkan
+   geometry instead of staying as unsupported path metadata. The CLI exposes
+   this through `--path-fill-rule nonzero|evenodd`; WE/SVG `fillRule` fields
+   lower into the same first-class gscene `path_fill_rule`.
+   Scene sampled-image uploads now stream native `.gtex` BC7 through one 128 KiB
+   staging buffer with `cmd_copy_buffer_to_image2` and `queue_submit2`, matching
+   the video path's bounded-buffer handoff instead of retaining full CPU image
+   payloads. Pure static `.gtex` sources additionally use
+   `scene-static-transfer-visible-present`: no scene geometry buffer, no
+   descriptor heap, no sampled-image graphics pipeline, and the source
+   transfer image is destroyed after the first present fence. The 8K cloud-city
+   static run on `2026-06-28` presented for 6s with
+   `max_pss_dirty_kib=17602`, `max_private_dirty_kib=17600`, a 128 KiB staging
+   buffer, and `scene_resource_model=static-transfer-first-present-source-release`.
+   Mixed, animated, video, and full scene rendering are not reduced by this fast
+   path; they continue through the native descriptor-heap real-time scene
+   renderer. Dynamic scene geometry now uses persistently mapped per-frame
+   vertex buffers for dynamic solid quads, dynamic sampled-image quads, and
+   animated atlas sampled-image quads, so full-scene animation updates reuse
+   bounded buffers instead of mapping/unmapping or overwriting a single
+   in-flight vertex buffer. Dynamic sampled/solid geometry now shares one
+   lightweight sampled frame per elapsed timestamp, reuses sampler-owned
+   snapshot/render-layer scratch buffers, and bypasses full runtime snapshot
+   construction in the per-frame path. Solid-only dynamic scenes now lower
+   render layers directly into Vulkan solid geometry instead of building the
+   diagnostic draw-plan/pass-plan payload first; dynamic sampled/mixed scenes
+   now do the same direct render-layer lowering for sampled-image quads and
+   solid overlays. The resulting geometry is moved into the upload side without
+   clone-retained diagnostic payloads, and only vertex bytes are written
+   directly into the mapped frame-slot buffer.
+   Scene runtime and `SceneWallpaperPlan`
    now carry `snapshot_time_ms` into the native Vulkan render item instead of
    resetting it to zero, which keeps the time-sampled scene state visible at
    the Vulkan boundary. Scene runtime and sampled-image present snapshots now
@@ -1019,15 +1082,27 @@ fields together with the report directory.
    `draw_pass_background_clear_color=#b3b3b3`, `texture_region.frame_count=12`,
    `native_runtime_coverage_percent=100`,
    `scene_resource_model=retained-sampled-images-descriptor-heap`,
-   `uses_host_image_copy=true`, `staging_buffer_bytes=0`, and geometry
+   `uses_host_image_copy=false`, `staging_buffer_bytes=131072`, and geometry
    `source_label=scene-runtime-sampled-image-draw-plan+scene-viewport-fit`,
    `vertex_buffer_count=2`, and
-   `upload_model=per-frame host-visible sampled-image geometry buffers retained across present frames`.
+   `upload_model=persistently mapped per-frame host-visible sampled-image vertex buffers reused by frame slot`.
    Repeating the same direct gscene smoke after rebuild with
    `GILDER_CURSOR_PARALLAX=HDMI-A-1:0.4,-0.2` reports
    `frames_presented=360`, `average_present_fps=59.99940346593094`,
    `cursor_parallax_input_ready=true`, completed
    `cursor-parallax-input-source`, no pending cursor boundary, and
+   `vertex_buffer_count=2`.
+   The release 6s/60fps process snapshot for the same sampled-image atlas
+   after the direct dynamic sampled-geometry, bounded present-id telemetry,
+   and animated-atlas UV patching changes
+   (`/tmp/gilder-scene-uv-patch-atlas-perf`) reports
+   `frames_presented=360`, `average_present_fps=59.99916869151805`,
+   `max_pss_dirty_kib=18332`, `max_private_dirty_kib=18324`,
+   `avg_cpu_percent=11.35`, heap dirty `2720 KiB`, file-mapping dirty `0 KiB`,
+   gilder-binary dirty `108 KiB`, `max_nvidia_process_gpu_memory_mib=78`,
+   `retained_frame_telemetry_limit=0`, empty
+   `present_ids_head`/`present_ids_tail`,
+   `scene_resource_model=retained-sampled-images-descriptor-heap`, and
    `vertex_buffer_count=2`.
    The runtime now carries the gscene document size (`2160x1440`) into the
    sampled-image present path and applies scene-level `cover` viewport mapping
@@ -1036,7 +1111,9 @@ fields together with the report directory.
    being interpreted as output pixels. Spritesheet draw steps retain `columns`,
    `rows`, `fps`, and `loop_playback`; animated atlas regions now use a
    per-frame host-visible vertex-buffer ring and update only the current frame
-   slot's UVs from runtime elapsed time after that slot fence has completed.
+   slot's UV bytes from runtime elapsed time after that slot fence has
+   completed; the present resources no longer retain a full CPU-side
+   `base_vertices` copy for static-topology animated atlases.
    Atlas-only scenes with no explicit timeline channels are also marked as
    time-sampled native scene state when any layer carries an animated
    `texture_region`, so sampled-image spritesheet wallpapers do not freeze on
@@ -1048,13 +1125,21 @@ fields together with the report directory.
    `runtime.full_scene.progress_estimate_percent=99`, completed
    `per-frame-timeline-geometry-runtime`,
    `timeline_animation_count=2`, `timeline_animated_layer_count=1`,
-   `present.geometry.upload_model=per-frame host-visible solid-quad geometry buffers retained across present frames`,
+   `present.geometry.upload_model=persistently mapped per-frame host-visible solid-quad vertex buffers reused by frame slot`,
    `vertex_buffer_bytes=96`,
    `index_count=6`, and `descriptor_set_count=0`. Fixed-topology timeline
    transform/opacity changes are resampled from the source gscene at native
    present elapsed time and written into the current frame slot's vertex buffer;
    layer/resource topology changes still remain explicit unsupported scene
    graph changes instead of being silently patched into an old path.
+   The current release 6s/240fps process snapshot for this same dynamic
+   timeline scene after the direct-mapped vertex write change
+   (`/tmp/gilder-scene-direct-write-timeline-perf-4`) on `2026-06-28`
+   presented `1440` frames at `239.99710187499682` fps with
+   `max_pss_dirty_kib=18426`, `max_private_dirty_kib=18424`,
+   `avg_cpu_percent=8.05`, and `max_nvidia_process_gpu_memory_mib=40`; mapping
+   categories show heap dirty at `2656 KiB`, file-mapping dirty at `12 KiB`,
+   and the remaining dirty memory in driver/system mappings.
    Current native particle scene smoke:
    `WAYLAND_DISPLAY=wayland-1 XDG_RUNTIME_DIR=/run/user/1000 target/debug/gilder-native-vulkan --json --run-scene --output-name HDMI-A-1 --source /tmp/gilder-particles.gscene.json --fit cover --duration 2 --target-fps 60`
    presents through `scene_present_route=solid-quad`, `frames_presented=120`,
@@ -1062,11 +1147,32 @@ fields together with the report directory.
    `runtime.full_scene.scene_particle_system_ready=true`,
    `particle_runtime_layer_count=96`, completed
    `native-particle-system-runtime`, `unsupported_layer_count=0`,
-   `present.geometry.upload_model=per-frame host-visible solid-quad geometry buffers retained across present frames`,
+   `present.geometry.upload_model=persistently mapped per-frame host-visible solid-quad vertex buffers reused by frame slot`,
    `vertex_buffer_bytes=112896`, `index_count=13824`, and
    `descriptor_set_count=0`. Particle systems are source-backed time-sampled
    scene state, so native present enables the same dynamic geometry sampler
    used by timelines even when no explicit timeline channels are present.
+   After sampler scratch reuse, direct solid runtime lowering, and executable
+   sync-before-self-exec, the rebuilt-release first-run 6s/240fps process
+   snapshot for this heavier particle scene
+   (`/tmp/gilder-scene-particle-fsync-before-exec-perf`) on `2026-06-28`
+   reported `max_pss_dirty_kib=18846`, `max_private_dirty_kib=18844`,
+   `avg_cpu_percent=13.13`, heap dirty `3084 KiB`,
+   `memory_category_gilder_binary_private_dirty_kib=108`, file-mapping dirty
+   `12 KiB`, and `max_nvidia_process_gpu_memory_mib=40`. The same binary rerun
+   (`/tmp/gilder-scene-particle-fsync-rerun-perf`) presented `1440` frames at
+   `239.87647025440134` fps with `max_pss_dirty_kib=18898`,
+   `max_private_dirty_kib=18896`, heap dirty `3104 KiB`, and the same `108 KiB`
+   gilder-binary dirty category.
+   After explicit fill-rule support, the direct dynamic geometry changes, and
+   bounded present-id telemetry, the release 6s/240fps particle smoke
+   (`/tmp/gilder-scene-presentid-bounded-particle-perf`) reported `1436`
+   frames, `average_present_fps=239.19133556317604`,
+   `max_pss_dirty_kib=18826`, `max_private_dirty_kib=18824`, heap dirty
+   `3068 KiB`, gilder-binary dirty `104 KiB`, file-mapping dirty `12 KiB`,
+   `retained_frame_telemetry_limit=0`, empty
+   `present_ids_head`/`present_ids_tail`, and
+   `max_nvidia_process_gpu_memory_mib=40`.
    Sized `scene-render-clear-color` layers are treated as render
    clear-background layers in the native draw pass, not as normal geometry, so
    the WE clear color composes with the atlas image without introducing a
@@ -1112,12 +1218,14 @@ fields together with the report directory.
    `scene_resource_model=retained-sampled-images-descriptor-heap`,
    `scene_sampled_image_resource_count=1`,
    `scene_sampled_image_descriptor_heap_required=true`,
-   `uses_host_image_copy=true`, `staging_buffer_bytes=0`,
-   `upload_submitted=false`,
+   `uses_host_image_copy=false`, `staging_buffer_bytes=131072`,
+   `upload_submitted=true`,
    `descriptor_heap.descriptor_model=VK_EXT_descriptor_heap`,
    `uses_present_id2=true`, `present_wait2_available=true`,
    `swapchain.present_id2_enabled=true`, `swapchain.present_wait2_enabled=true`,
-   and no legacy `uses_present_id`/`present_wait_available` fields.
+   `retained_frame_telemetry_limit=0`, empty `present_ids_head`/`present_ids_tail`,
+   no unbounded `present_ids` vector, and no legacy
+   `uses_present_id`/`present_wait_available` fields.
    Current curve-path scene smoke after rebuilding the native CLI:
    `WAYLAND_DISPLAY=wayland-1 XDG_RUNTIME_DIR=/run/user/1000 target/debug/gilder-native-vulkan --json --run-scene --output-name HDMI-A-1 --path-data 'M0 0 C25 80 75 -80 100 0 S175 80 200 0 L200 80 L0 80 Z' --color '#cc8844' --duration 1 --target-fps 30 --fit cover`
    reports `scene_present_route=solid-quad`, `frames_presented=30`,
@@ -1135,13 +1243,16 @@ fields together with the report directory.
    `arc-path-flattening-runtime`, `vertex_count=32`, `index_count=90`,
    and `descriptor_set_count=0`.
    Current compound-path scene smoke after rebuilding the native CLI:
-   `WAYLAND_DISPLAY=wayland-1 XDG_RUNTIME_DIR=/run/user/1000 target/debug/gilder-native-vulkan --json --run-scene --output-name HDMI-A-1 --path-data 'M0 0 L100 0 L100 100 L0 100 Z M25 25 L75 25 L75 75 L25 75 Z' --color '#22aa88' --duration 1 --target-fps 30 --fit cover`
+   `WAYLAND_DISPLAY=wayland-1 XDG_RUNTIME_DIR=/run/user/1000 target/debug/gilder-native-vulkan --json --run-scene --output-name HDMI-A-1 --path-data 'M0 0 L100 0 L100 100 L0 100 Z M25 25 L75 25 L75 75 L25 75 Z' --path-fill-rule evenodd --color '#22aa88' --duration 1 --target-fps 30 --fit cover`
    reports `scene_present_route=solid-quad`, `frames_presented=30`,
    `average_present_fps=29.99702765452377`,
    `draw_pass_backend_status=solid-quad-recording-ready`,
    `runtime.full_scene.compound_path_layer_count=1`, completed
    `compound-path-evenodd-fill-runtime`, `vertex_count=16`,
    `index_count=24`, and `descriptor_set_count=0`.
+   The same compound shape with default nonzero winding fill reports completed
+   `compound-path-nonzero-fill-runtime`, `vertex_count=12`, `index_count=18`,
+   and the same descriptor-heap-free solid geometry route.
    Current video scene smoke:
    `/tmp/gilder-scene-video-h265-main8-background-final.json` from
    `WAYLAND_DISPLAY=wayland-1 target/release/gilder-native-vulkan --run-scene --scene-video --output-name HDMI-A-1 --source artifacts/video-sources/h265/h265-main-8-b0-ref1-3840x2160-240fps-566frames-g240-d240.mp4 --video-codec h265 --width 3840 --height 2160 --decode-h265-ready-prefix 4 --playback-frames 4 --target-fps 240 --background '#102030' --fit contain`
@@ -1155,9 +1266,9 @@ fields together with the report directory.
    `descriptor_model=VK_EXT_descriptor_heap`, `all_zero_copy_presented=true`,
    and decoded-image draw `clear_color=[0.062745101749897,0.125490203499794,0.1882352977991104,1.0]`.
    Current regression coverage:
-   `cargo test --features native-vulkan-renderer scene -- --nocapture`
-   passes `101` filtered lib tests, `5` native-vulkan CLI tests, and `1`
-   gilderd test. The added renderer/runtime coverage asserts gscene package
+   `cargo test --features native-vulkan-video -- --nocapture`
+   passes `585` lib tests, `8` native-vulkan CLI tests, `5` gilderctl tests,
+   and `16` gilderd tests. The added renderer/runtime coverage asserts gscene package
    validation, clean WE scene-to-gscene conversion, WE model/material texture
    provenance, renderable material image texture resource resolution, WE parent
    graph lowering into gscene children, render clear-color snapshot layers,
@@ -1180,14 +1291,18 @@ fields together with the report directory.
    `native-particle-system-runtime`,
    `wallpaper-engine-scene-pkg-import`,
    `scene-we-spritesheet-atlas-runtime`, `curve-path-flattening-runtime`,
-   `arc-path-flattening-runtime`, and
-   `compound-path-evenodd-fill-runtime`; Hyprland/override cursor scene
+   `arc-path-flattening-runtime`,
+   `compound-path-evenodd-fill-runtime`, and
+   `compound-path-nonzero-fill-runtime`; Hyprland/override cursor scene
    coverage also asserts `cursor-parallax-input-source` completion.
-   Next gates:
+   Full-scene status is still `progress_estimate_percent=99` rather than a
+   claimed 100% WE-scene-parity result; `native_runtime_coverage_percent=100`
+   means the currently completed native runtime boundaries have no pending
+   native layers. Next gates:
    wiring mixed video-as-scene layer composition from this explicit bridge boundary,
-   complex font shaping/atlas typography, explicit nonzero path fill-rule selection,
+   complex font shaping/atlas typography,
    full Wallpaper Engine graph execution, WE animation layer blending,
-   arbitrary SceneScript runtime, shader/material graph, particle systems,
+   arbitrary SceneScript runtime, executable shader/effect material graphs,
    broader compositor cursor sources beyond Hyprland, and PipeWire audio response.
    The scene path must keep retained GPU images,
    `descriptor_sets=0`, and descriptor-heap sampling.
