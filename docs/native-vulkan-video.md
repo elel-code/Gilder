@@ -943,8 +943,13 @@ fields together with the report directory.
    keyframe tracks for supported transform/opacity properties now lower into
    gscene `timelines`, including vector `origin`/`scale` split into native
    `x`/`y` and `scale-x`/`scale-y` channels, so the existing core timeline runtime
-   executes converted motion instead of leaving it only in provenance. The
-   same `SceneTimelineIr` path now lowers deterministic WE `animationlayers`
+   executes converted motion instead of leaving it only in provenance.
+   `SceneTimelineIr` now also extracts supported property-local keyframes from
+   WE dynamic value wrappers such as `origin: { value, keyframes }` or
+   `alpha: { value, frames }`, treats bare WE `time` fields as seconds,
+   unwraps `{ value: ... }` frame values, and accepts compact `[time, value]`
+   frame pairs before writing clean gscene timeline channels. The same
+   `SceneTimelineIr` path now lowers deterministic WE `animationlayers`
    keyframes into executable gscene timelines; only complex blend/rate layer
    semantics remain preserved as explicit pending metadata. The same channel
    now covers geometry fields (`width`, `height`, `corner-radius`), and WE
@@ -1002,7 +1007,8 @@ fields together with the report directory.
    expansion lives in `ir/animation.rs`, WE opacity effect normalization lives
    in `ir/effect.rs`, WE object-level particle fields and external particle
    definition normalization live in `ir/particle.rs`, and explicit
-   keyframe/timeline normalization lives in `ir/timeline.rs`.
+   keyframe/timeline normalization, including embedded property keyframe
+   extraction, lives in `ir/timeline.rs`.
    WE built-in utility models such as `models/util/fullscreenlayer.json` and
    `models/util/composelayer.json` are now recognized as first-class native
    utility script layers in provenance instead of being treated as missing
@@ -1474,6 +1480,7 @@ fields together with the report directory.
    lowering into native timeline snapshot values,
    geometry field timeline/property animation, script/value wrapper lowering
    without a JS engine, deterministic numeric SceneScript expression lowering,
+   embedded WE property keyframe extraction into gscene timelines,
    bounded opacity effect lowering into native gscene timelines,
    native gscene particle emitter expansion into deterministic solid geometry
    and sampled-image sprite layers when a WE particle material resolves to a
@@ -1492,6 +1499,7 @@ fields together with the report directory.
    `native-particle-system-runtime`,
    `scene-we-particle-material-runtime`,
    `wallpaper-engine-scene-pkg-import`,
+   `scene-we-embedded-property-timeline`,
    `scene-we-spritesheet-atlas-runtime`, `curve-path-flattening-runtime`,
    `arc-path-flattening-runtime`,
    `compound-path-evenodd-fill-runtime`, and
