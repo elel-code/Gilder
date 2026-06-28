@@ -932,7 +932,11 @@ fields together with the report directory.
    texture resource to the particle-emitter node, and make emitted particle
    layers enter the sampled-image scene path when a material texture is
    available; particles without a material texture remain deterministic
-   solid geometry.
+   solid geometry. WE built-in particle bubble texture references such as
+   `particle/bubbles/bubble3` now generate a native BC7 `.gtex` sprite resource
+   with role `we-builtin-particle-texture` instead of being reported as a
+   missing package file, so preset particle materials can still enter the same
+   sampled-image runtime.
    The current WE field references for this mapping are
    `references/linux-wallpaperengine/src/scene/loader/object.rs`, whose
    `Object` includes `particle` and whose `Instanceoverride` carries
@@ -1294,7 +1298,12 @@ fields together with the report directory.
    `scene-we-tex-video-layer-runtime`, `scene-we-material-graph-runtime`,
    `wallpaper-engine-util-model-lowering`,
    `scene-we-noop-effect-preserved`, `audio-policy`, and ready native
-   particles. The converted scene recognizes the built-in
+   particles. The preset mouse-trail particle material now resolves its WE
+   built-in `particle/bubbles/bubble3` texture to
+   `resource-14-we-builtin-bubble3.gtex`, records
+   `wallpaper-engine-builtin-particle-texture`, and completes
+   `scene-we-particle-material-runtime` without a missing-resource boundary.
+   The converted scene recognizes the built-in
    `models/util/*layer.json` references as native utility controllers or
    native viewport-sized utility target rectangles instead of missing
    resources, lowers pure sound objects to first-class `audio` cue nodes, and
@@ -1583,7 +1592,8 @@ fields together with the report directory.
    conversion also reports full native-scene completion with only explicit
    Linux input-source unsupported boundaries. Focused conversion coverage for
    3724575699 confirms no `.tex`
-   runtime files, no util missing-resource warnings, no audio-response system,
+   runtime files, no util or built-in particle missing-resource warnings, no
+   audio-response system,
    initial-visible video scene composition completed, native controller
    property bindings for idle/click video switching, completed native idle
    controller input sampling, native idle fade-ramp sampling, deterministic
