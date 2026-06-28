@@ -217,6 +217,17 @@ binary itself applies the required process allocator policy.
   `uses_inline_session_parameters=true`,
   `video_session_parameters_handle_used=false`, latest `present_id=2400`, and
   `present_id_mode=present-id2-khr`.
+- Black-frame regression recovery after the video-session memory-type selector
+  was relaxed back to the Vulkan-compatible rule:
+  `/tmp/gilder-vulkan-h264-ready-prefix-video.RiIECB` from the 4K240 H.264
+  ready-prefix smoke reports `present_backend=vulkanalia-decoded-image-dynamic-rendering-present`,
+  decoded/presented `1440/1440`, `decoded_image_zero_copy_presented=true`,
+  `present_mode=fifo-latest-ready`, `average_present_fps=240.19974298874544`,
+  `performance_max_private_dirty_kib=21560`, `performance_max_pss_kib=99134`,
+  `memory_category_heap_private_dirty_kib=3280`, and GPU process memory
+  `84 MiB`. The selected video-session bind plan includes a driver-allowed
+  host-visible bind for one requirement; this is now accepted instead of
+  falling back to the clear placeholder path.
 
 ### H.265
 
@@ -832,9 +843,12 @@ fields together with the report directory.
    timeline animation snapshotting plus per-frame fixed-topology geometry
    updates during native present, property update binding, pause/resume
    policy, package state/property persistence, renderer-resolved scene audio
-   cues, and native FFmpeg/PipeWire scene audio cue playback are in place;
+   cues, native FFmpeg/PipeWire scene audio cue playback, and native
+   audio-response visual geometry driven by standardized gscene audio
+   property bindings are in place;
    arbitrary SceneScript, shader/material graph, complex WE particle
-   shader/graph parity, PipeWire audio response, complex font
+   shader/graph parity, real PipeWire spectrum/FFT audio-response input,
+   complex font
    shaping/atlas typography, explicit nonzero path fill-rule selection,
    and actual mixed
    video-as-scene composition remain open. Wallpaper Engine scene conversions
@@ -847,7 +861,11 @@ fields together with the report directory.
    `current_runtime=native-vulkan-scene-runtime`,
    `progress_estimate_percent=99`,
    preserved source-scene metadata paths, completed boundaries, and pending
-   full-scene boundaries. Gilder scene is the runtime format, not a
+   full-scene boundaries. Converted scene entries no longer inject a default
+   `max_fps: 60`; scene FPS is governed by explicit manifest/user policy caps
+   and present pacing, so real-time scene rendering is not artificially limited
+   by video ready-prefix/playback frame policy. Gilder scene is the runtime
+   format, not a
    Wallpaper Engine schema clone: WE's historical fields are treated as an
    input dialect and are isolated in converter-owned `provenance`/`import`
    metadata. Runtime-facing node roots stay clean (`type`, `transform`,
@@ -967,6 +985,10 @@ fields together with the report directory.
    static run on `2026-06-28` presented for 6s with
    `max_pss_dirty_kib=17602`, `max_private_dirty_kib=17600`, a 128 KiB staging
    buffer, and `scene_resource_model=static-transfer-first-present-source-release`.
+   The corrected-orientation source `/tmp/gilder-cloud-city-8k-static.gtex`
+   repeats the same route at `/tmp/gilder-dgop-static-gtex-original.UgDluL`
+   with `max_pss_dirty_kib=17516`, `max_private_dirty_kib=17508`, dgop
+   `memoryCalculation=pss_dirty` after startup, and 40 MiB process GPU memory.
    Mixed, animated, video, and full scene rendering are not reduced by this fast
    path; they continue through the native descriptor-heap real-time scene
    renderer. Dynamic scene geometry now uses persistently mapped per-frame
@@ -1023,6 +1045,14 @@ fields together with the report directory.
    are not auto-started; `playback_mode=loop` enables FFmpeg EOS seek for the
    requested present duration. Audio response remains a separate pending
    visual-response system.
+   Static Wallpaper Engine image projects with real audio files are not
+   converted to a no-audio static-image package: the converter writes a
+   first-class `scene` manifest with one static image node plus gscene audio
+   cues, sets `runtime.allow_audio=true`, copies the audio into `assets/`, and
+   marks `static-image-audio-scene` plus
+   `scene-audio-cue-pipewire-present-runtime`. This keeps static visual
+   wallpapers eligible for the same PipeWire audio runtime without adding a
+   legacy static-audio side path.
    Cursor parallax input now flows through the desktop snapshot instead of
    taking Wayland pointer focus: Hyprland uses `hyprctl cursorpos -j`, maps the
    cursor into the selected output rectangle, normalizes it to `[-1,1]`, writes
@@ -1303,7 +1333,8 @@ fields together with the report directory.
    complex font shaping/atlas typography,
    full Wallpaper Engine graph execution, WE animation layer blending,
    arbitrary SceneScript runtime, executable shader/effect material graphs,
-   broader compositor cursor sources beyond Hyprland, and PipeWire audio response.
+   broader compositor cursor sources beyond Hyprland, real PipeWire
+   spectrum/FFT audio-response input, and mixed video overlay composition.
    The scene path must keep retained GPU images,
    `descriptor_sets=0`, and descriptor-heap sampling.
 3. Video coverage and regression: the H.264/H.265/AV1 core decode/present path
