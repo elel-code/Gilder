@@ -1144,6 +1144,13 @@ fields together with the report directory.
    pass. Do not treat edge aliasing as a reason to re-export source PNGs or
    hand-edit alpha unless resource evidence directly proves a bad asset.
    Follow-up engineering constraints from this point:
+   all future work must optimize for the long-term native architecture, not a
+   short-term visual substitute. Do not add sample-specific compatibility
+   branches, magic offsets, hidden-layer switches, resource re-export hacks,
+   preview fallbacks, or temporary alternate render paths to mask missing WE
+   semantics. If a visual gap comes from unsupported effect, material, mask,
+   blend, interaction, scene format, or renderer-quality behavior, fix or
+   design that first-class subsystem and document any remaining boundary.
    performance validation for this WE scene must use the release
    `gilder-native-vulkan` binary; debug builds are acceptable for functional
    smoke checks, but FPS/frame pacing numbers from debug builds must not be
