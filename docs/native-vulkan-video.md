@@ -1104,19 +1104,37 @@ fields together with the report directory.
    closed and must not be reopened without new direct evidence: missing
    transparent blue background, missing/incorrect WE `colorBlendMode` routing,
    static puppet body, top hair/eyes detaching from the head, sampled-image
-   texture/upload visibility, and ordinary WE model image UV direction for the
-   two `底发` stacks. Validation evidence is the 6 second no-FPS-limit native
-   run on `HDMI-A-1`, with `scene_present_route=sampled-image`, 10 Vulkan blend
-   pipelines (`solid` and `sampled-image` alpha/additive/multiply/screen/max),
+   texture/upload visibility, ordinary WE model image UV direction for the two
+   `底发` stacks, and the leg-area residual/ghost layer. Validation evidence is
+   the 6 second no-FPS-limit native run on `HDMI-A-1`, with
+   `scene_present_route=sampled-image`, 10 Vulkan blend pipelines (`solid` and
+   `sampled-image` alpha/additive/multiply/screen/max),
    `puppet_animation_layer_count=10`, dynamic full-scene sampling, and explicit
-   WE UV meshes on the bottom-hair nodes (`node-43..48` and `node-51..56`). If
-   bottom-hair visual alignment is reported again, investigate the generated
+   WE UV meshes on the bottom-hair nodes (`node-43..48` and `node-51..56`).
+   The leg residual was not an extra layer to delete: source object `1142`
+   (`角色主影子` -> `主身体`) is a valid animated shadow/blur body branch with
+   `alpha=0.30000001`, `color="0.00000 0.00000 0.00000"`, and the same puppet
+   animation layers as the main body. The fix is sampled-image color/tint
+   modulation through the retained Vulkan sampled-image vertex format and
+   fragment shader, preserving the moving clothing/skirt shadow while drawing
+   it as a dark translucent layer instead of a second original-color body.
+   If bottom-hair visual alignment is reported again, investigate the generated
    WE model-image mesh/UV semantics and runtime mesh sampling before considering
-   transform math; do not add one-off offsets or texture edits. The only
-   remaining known blocker on this item is the leg area residual/ghost layer.
-   Leg ghosting must be investigated as layer semantics first, especially
-   shadow/smoke/opacity/visibility-controlled body or leg layers, before
-   removing or hiding any source layer.
+   transform math; do not add one-off offsets or texture edits.
+   Current open visual gaps on this sample are shader/effect-mask runtime gaps:
+   water ripple/caustic visibility depends on WE `watercaustics`, `waterflow`,
+   `waterripple`, `waterwaves`, normal/phase/mask textures, and material pass
+   semantics; the existing native-effect-motion approximation is not enough to
+   reproduce the missing water-surface ripple visible in the reference video.
+   Closed-eye transparency is also an effect/mask issue, not a reason to hide
+   the eye layer: source eyes `1336` and `1530` use the same
+   `models/眼睛.json` puppet mesh, with `1336` carrying `iris` plus
+   `waterripple` effects and `1530` carrying an `opacity` mask effect. The
+   current symptom is that the eyelid/eyebrow close state moves down while the
+   transparent iris remains visible behind it. Those `wallpaper-engine-effect`
+   mask paths must be implemented as reusable material/effect modules so the
+   closed-eye state occludes the transparent iris correctly; do not paper over
+   it by deleting or globally hiding the eye layers.
    Follow-up engineering constraints from this point:
    performance validation for this WE scene must use the release
    `gilder-native-vulkan` binary; debug builds are acceptable for functional
