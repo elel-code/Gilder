@@ -1100,23 +1100,23 @@ fields together with the report directory.
    texture decoding or Vulkan upload unless new direct evidence contradicts the
    existing draw-op/resource evidence.
    Status as of 2026-06-30: the current working conversion for this sample is
-   `/tmp/gilder-we-3742497499-output-blend-puppet-animation`. The following
-   issues are closed and must not be reopened without new direct evidence:
-   missing transparent blue background, missing/incorrect WE `colorBlendMode`
-   routing, static puppet body, top hair/eyes detaching from the head, and
-   sampled-image texture/upload visibility. Validation evidence is the 6 second
-   no-FPS-limit native run on `HDMI-A-1`, with `scene_present_route=sampled-image`,
-   10 Vulkan blend pipelines (`solid` and `sampled-image` alpha/additive/
-   multiply/screen/max), `puppet_animation_layer_count=10`, and dynamic
-   full-scene sampling. The only remaining known blockers on this item are:
-   the two `底发` groups still render at the wrong position, and the leg area
-   shows a residual/ghost layer. Bottom-hair work must follow the same method
-   used for top hair/body alignment: compare source WE parent transforms,
-   normalized IR, gscene group origins/timelines, viewport fit, and runtime
-   global transforms for `node-42-group`/`node-50-group`; do not add one-off
-   offsets or texture edits. Leg ghosting must be investigated as layer
-   semantics first, especially shadow/smoke/opacity/visibility-controlled body
-   or leg layers, before removing or hiding any source layer.
+   `/tmp/gilder-we-3742497499-output-we-mesh-uv`. The following issues are
+   closed and must not be reopened without new direct evidence: missing
+   transparent blue background, missing/incorrect WE `colorBlendMode` routing,
+   static puppet body, top hair/eyes detaching from the head, sampled-image
+   texture/upload visibility, and ordinary WE model image UV direction for the
+   two `底发` stacks. Validation evidence is the 6 second no-FPS-limit native
+   run on `HDMI-A-1`, with `scene_present_route=sampled-image`, 10 Vulkan blend
+   pipelines (`solid` and `sampled-image` alpha/additive/multiply/screen/max),
+   `puppet_animation_layer_count=10`, dynamic full-scene sampling, and explicit
+   WE UV meshes on the bottom-hair nodes (`node-43..48` and `node-51..56`). If
+   bottom-hair visual alignment is reported again, investigate the generated
+   WE model-image mesh/UV semantics and runtime mesh sampling before considering
+   transform math; do not add one-off offsets or texture edits. The only
+   remaining known blocker on this item is the leg area residual/ghost layer.
+   Leg ghosting must be investigated as layer semantics first, especially
+   shadow/smoke/opacity/visibility-controlled body or leg layers, before
+   removing or hiding any source layer.
    Follow-up engineering constraints from this point:
    performance validation for this WE scene must use the release
    `gilder-native-vulkan` binary; debug builds are acceptable for functional
