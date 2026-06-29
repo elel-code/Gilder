@@ -1135,6 +1135,14 @@ fields together with the report directory.
    mask paths must be implemented as reusable material/effect modules so the
    closed-eye state occludes the transparent iris correctly; do not paper over
    it by deleting or globally hiding the eye layers.
+   The same material/effect runtime backlog also covers the currently missing
+   clothing-side soft blur/drift and skirt floating motion; those are WE
+   blur/sway/waterwave-style effect semantics layered on top of the preserved
+   image/mesh nodes, not replacement textures. Visible jagged edges remain an
+   open renderer-quality gap to verify against sampler mode, alpha-mask
+   execution, geometry edge coverage, and any future MSAA or post-filtering
+   pass. Do not treat edge aliasing as a reason to re-export source PNGs or
+   hand-edit alpha unless resource evidence directly proves a bad asset.
    Follow-up engineering constraints from this point:
    performance validation for this WE scene must use the release
    `gilder-native-vulkan` binary; debug builds are acceptable for functional
