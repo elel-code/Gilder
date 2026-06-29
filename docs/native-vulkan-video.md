@@ -1075,6 +1075,48 @@ fields together with the report directory.
    longer copied into runtime `we-effect` resources. Only
    `wallpaper-engine-effect` entries with real WE effect resources keep the
    shader/effect graph boundary pending.
+   Current real Workshop semantic-debug sample: Steam Workshop item
+   `3742497499` (`麻匪 白泽夢`) converts to
+   `/tmp/gilder-we-3742497499-output-user-bindings`. The default runtime
+   snapshot `/tmp/gilder-3742497499-user-bindings-default-snapshot.json`
+   already contains the long-hair draw ops: shadow hair nodes
+   `node-43..48`, main hair nodes `node-51..56`, and resources
+   `resource-80-1-frame-0.gtex`, `resource-85-2-frame-0.gtex`,
+   `resource-90-3-frame-0.gtex`, `resource-95-4-frame-0.gtex`,
+   `resource-101-5-frame-0.gtex`, and
+   `resource-107-6-frame-0.gtex`. The source project default
+   `newproperty28=true` means the shadow/long-hair branch is enabled by
+   default; `visible.value` is save-time UI state and must not be treated as a
+   permanent gate when a WE `visible.user` condition exists. Therefore the
+   observed missing/default-short-hair and missing transparent blue background
+   are conversion-semantics blockers, not a reason to reopen `.tex`, `.gtex`,
+   BC1/BC3/BC7 payload, Vulkan sampled-image upload, target-size conversion,
+   or static flattened-preview investigations. The sample is a stack of many
+   WE image components and effect/material passes, not one image that should be
+   re-cropped, re-packed, or re-uploaded differently. Any later regression on
+   this item must be debugged by comparing the source WE graph, normalized IR,
+   gscene nodes, and runtime draw ops for each component's global transform,
+   visibility, material, blend, and draw order. Do not route this back through
+   texture decoding or Vulkan upload unless new direct evidence contradicts the
+   existing draw-op/resource evidence.
+   Future work on this sample must stay on the WE-to-gscene semantic path:
+   material passes must lower `shader`, `blending`, `combos`, depth/cull, and
+   texture-pass metadata into `properties.material`; WE `translucent` and
+   layer/effect `blend`/`alpha` semantics must not be rendered as an ordinary
+   opaque image with opacity `1`; utility `composelayer`/`fullscreenlayer`
+   output and `watercaustics`, `waterflow`, `waterripple`, `waterwaves`, and
+   `shake` effects must lower to native gscene visual/motion IR; relative loop
+   parent-origin timelines on the two `底发` groups must continue to drive
+   their child image stacks; user color bindings such as `newproperty5` and
+   `newproperty6` must resolve through the same runtime text/property resolver
+   used by scene planning. A concrete example is `Water Caustic`
+   (`node-57-models-workshop-2790231929-wc-test-json`): its material pass is
+   `shader=genericimage2`, `blending=translucent`, depth disabled, and it sits
+   immediately after the long-hair layers. Treating that material as a normal
+   fully opaque sampled image can hide the already-present long-hair draw ops.
+   The fix is first-class gscene material/effect semantics, not a preview
+   fallback, legacy loader mapping, resource probe, compatibility branch, or
+   one-off Workshop-specific patch.
    There is no internal legacy scene format, loader, preview-fallback scene
    node, or lowering bridge; old `layers` fixture data was replaced by
    `nodes/resources` gscene documents. Static wallpapers now lower into a
