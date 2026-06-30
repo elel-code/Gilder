@@ -37,6 +37,16 @@ for old renderer, GStreamer, decoded-frame copy, or descriptor-set paths.
   by unsupported format, effect, material, mask, blend, interaction,
   renderer-quality, or runtime behavior, implement or design that first-class
   subsystem and document any remaining boundary explicitly.
+- Refactors have zero compatibility budget for old internal fields, old schemas,
+  old fixtures, or old code paths. When an internal format is wrong, migrate it
+  boldly and delete the obsolete reader/writer/runtime branch in the same
+  change; do not add serde aliases, dual-format runtime readers, hidden
+  translation layers, legacy loaders, or temporary compatibility adapters. The
+  planned binary scene format is a replacement for the current JSON runtime
+  shape, not an additional compatibility layer. Design binary scene chunks,
+  resource tables, texture-slot/material/effect records, animation data, and
+  retained GPU-binding state for the target runtime; then remove JSON-only
+  plumbing as each subsystem moves to the binary representation.
 
 ## FFmpeg References
 
@@ -1083,114 +1093,127 @@ fields together with the report directory.
    `wallpaper-engine-effect` entries with real WE effect resources keep the
    shader/effect graph boundary pending.
    Current real Workshop semantic-debug sample: Steam Workshop item
-   `3742497499` (`麻匪 白泽夢`) converts to
-   `/tmp/gilder-we-3742497499-output-user-bindings`. The default runtime
-   snapshot `/tmp/gilder-3742497499-user-bindings-default-snapshot.json`
-   already contains the long-hair draw ops: shadow hair nodes
-   `node-43..48`, main hair nodes `node-51..56`, and resources
-   `resource-80-1-frame-0.gtex`, `resource-85-2-frame-0.gtex`,
-   `resource-90-3-frame-0.gtex`, `resource-95-4-frame-0.gtex`,
-   `resource-101-5-frame-0.gtex`, and
-   `resource-107-6-frame-0.gtex`. The source project default
-   `newproperty28=true` means the shadow/long-hair branch is enabled by
-   default; `visible.value` is save-time UI state and must not be treated as a
-   permanent gate when a WE `visible.user` condition exists. Therefore the
-   observed missing/default-short-hair and missing transparent blue background
-   are conversion-semantics blockers, not a reason to reopen `.tex`, `.gtex`,
-   BC1/BC3/BC7 payload, Vulkan sampled-image upload, target-size conversion,
-   or static flattened-preview investigations. The sample is a stack of many
-   WE image components and effect/material passes, not one image that should be
-   re-cropped, re-packed, or re-uploaded differently. Any later regression on
-   this item must be debugged by comparing the source WE graph, normalized IR,
-   gscene nodes, and runtime draw ops for each component's global transform,
-   visibility, material, blend, and draw order. Do not route this back through
-   texture decoding or Vulkan upload unless new direct evidence contradicts the
-   existing draw-op/resource evidence.
-   Status as of 2026-06-30: the current working conversion for this sample is
-   `/tmp/gilder-we-3742497499-output-we-mesh-uv`. The following issues are
-   closed and must not be reopened without new direct evidence: missing
-   transparent blue background, missing/incorrect WE `colorBlendMode` routing,
-   static puppet body, top hair/eyes detaching from the head, sampled-image
-   texture/upload visibility, ordinary WE model image UV direction for the two
-   `底发` stacks, and the leg-area residual/ghost layer. Validation evidence is
-   the 6 second no-FPS-limit native run on `HDMI-A-1`, with
-   `scene_present_route=sampled-image`, 10 Vulkan blend pipelines (`solid` and
-   `sampled-image` alpha/additive/multiply/screen/max),
-   `puppet_animation_layer_count=10`, dynamic full-scene sampling, and explicit
-   WE UV meshes on the bottom-hair nodes (`node-43..48` and `node-51..56`).
-   The leg residual was not an extra layer to delete: source object `1142`
-   (`角色主影子` -> `主身体`) is a valid animated shadow/blur body branch with
-   `alpha=0.30000001`, `color="0.00000 0.00000 0.00000"`, and the same puppet
-   animation layers as the main body. The fix is sampled-image color/tint
-   modulation through the retained Vulkan sampled-image vertex format and
-   fragment shader, preserving the moving clothing/skirt shadow while drawing
-   it as a dark translucent layer instead of a second original-color body.
-   If bottom-hair visual alignment is reported again, investigate the generated
-   WE model-image mesh/UV semantics and runtime mesh sampling before considering
-   transform math; do not add one-off offsets or texture edits.
-   Current open visual gaps on this sample are shader/effect-mask runtime gaps:
-   water ripple/caustic visibility depends on WE `watercaustics`, `waterflow`,
-   `waterripple`, `waterwaves`, normal/phase/mask textures, and material pass
-   semantics; the existing native-effect-motion approximation is not enough to
-   reproduce the missing water-surface ripple visible in the reference video.
-   Closed-eye transparency is also an effect/mask issue, not a reason to hide
-   the eye layer: source eyes `1336` and `1530` use the same
-   `models/眼睛.json` puppet mesh, with `1336` carrying `iris` plus
-   `waterripple` effects and `1530` carrying an `opacity` mask effect. The
-   current symptom is that the eyelid/eyebrow close state moves down while the
-   transparent iris remains visible behind it. Those `wallpaper-engine-effect`
-   mask paths must be implemented as reusable material/effect modules so the
-   closed-eye state occludes the transparent iris correctly; do not paper over
-   it by deleting or globally hiding the eye layers.
-   The same material/effect runtime backlog also covers the currently missing
-   clothing-side soft blur/drift and skirt floating motion; those are WE
-   blur/sway/waterwave-style effect semantics layered on top of the preserved
-   image/mesh nodes, not replacement textures. Visible jagged edges remain an
-   open renderer-quality gap to verify against sampler mode, alpha-mask
-   execution, geometry edge coverage, and any future MSAA or post-filtering
-   pass. Do not treat edge aliasing as a reason to re-export source PNGs or
-   hand-edit alpha unless resource evidence directly proves a bad asset.
-   Follow-up engineering constraints from this point:
-   all future work must optimize for the long-term native architecture, not a
-   short-term visual substitute. Do not add sample-specific compatibility
-   branches, magic offsets, hidden-layer switches, resource re-export hacks,
-   preview fallbacks, or temporary alternate render paths to mask missing WE
-   semantics. If a visual gap comes from unsupported effect, material, mask,
-   blend, interaction, scene format, or renderer-quality behavior, fix or
-   design that first-class subsystem and document any remaining boundary.
-   performance validation for this WE scene must use the release
-   `gilder-native-vulkan` binary; debug builds are acceptable for functional
-   smoke checks, but FPS/frame pacing numbers from debug builds must not be
-   used as performance evidence. The current JSON gscene document is no longer
-   a sufficient long-term format for the lightweight runtime target. A new
-   binary scene format needs a real design pass covering versioning, schema
-   evolution, resource-table indexing, compact animation/timeline data,
-   random-access loading, and retained GPU resource binding; do not try to
-   solve that with ad hoc JSON trimming. The native scene renderer also needs
-   module boundaries before more WE effects are added: blend policy/equations,
-   solid quads, sampled images, puppet/skinned geometry, effect-lowered visual
-   layers, and future shader/material graph execution should live in focused
-   modules instead of continuing to grow the current large draw-pass/runtime
-   files. This split is a maintainability requirement for future effect
-   completeness and extension work, not optional cleanup.
+   `3742497499` (`麻匪 白泽夢`) uses source
+   `/tmp/gilder-3742497499-source`, mesh/UV baseline
+   `/tmp/gilder-we-3742497499-output-we-mesh-uv`, and latest closed-eye
+   investigation output
+   `/tmp/gilder-we-3742497499-output-release-eye-uvscale`. This sample is a
+   stack of WE image components plus material/effect passes, not a single image
+   to crop, repack, re-upload, hide, or offset by hand.
+   Closed issues for this sample are: missing/default-short-hair,
+   transparent blue background, WE `colorBlendMode` routing, static puppet body,
+   top hair/eyes detaching from the head, sampled-image texture/upload
+   visibility, ordinary WE model-image UV direction for the two `底发` stacks,
+   and the leg-area residual/ghost layer. Do not reopen them without new direct
+   resource, draw-order, or screenshot evidence. The key retained facts are:
+   `newproperty28=true` enables the long-hair branch; `visible.value` is
+   save-time UI state and must not override a WE `visible.user` condition;
+   long hair is represented by shadow nodes `node-43..48`, main nodes
+   `node-51..56`, and resources `resource-80/85/90/95/101/107-*-frame-0.gtex`;
+   source object `1142` (`角色主影子` -> `主身体`) is a valid animated dark
+   shadow/blur body branch with alpha `0.30000001`, not an extra layer to
+   delete. Any regression must compare source WE graph, normalized IR, gscene
+   nodes, runtime draw ops, global transform, visibility, material, blend, and
+   draw order before reopening texture decoding or Vulkan upload.
+   The current active blockers are closed-eye image/effect composition,
+   fine-grained WE-driven drift/sway for hair, ribbons, clothing side blur, and
+   skirt motion, water-surface ripple/caustic effects, visible edge aliasing,
+   and release performance/memory/CPU/FPS validation. Six-second smoke is not
+   enough for new correctness or performance claims. Latest 2026-06-30 evidence
+   used release/no-FPS-limit 30 second runs and targeted tests:
+   `cargo test --features native-vulkan-renderer opacity -- --nocapture`,
+   `cargo test --features native-vulkan-renderer effect_uv -- --nocapture`,
+   and `cargo build --release --features native-vulkan-renderer`. The clean run
+   `/tmp/gilder-eye-doc-test-run-clean.json` reported
+   `scene_present_route=sampled-image`, `average_present_fps=107.23652580716912`,
+   `frames_presented=3218`, `runtime_elapsed_ms=30008`,
+   `descriptor_model=VK_EXT_descriptor_heap`, `draw_op_count=3882`,
+   `sampled_image_layer_count=3845`, and `puppet_animation_layer_count=10`.
+   This is functional evidence, not final performance evidence.
+   Closed-eye status: source eyes `1336` and `1530` share
+   `models/眼睛.json`; `1336` carries `iris` plus `waterripple`, while `1530`
+   is a lock-transform opacity-mask duplicate. The duplicate must remain an
+   independent alpha-masked draw; deleting it, hiding it, folding its mask into
+   `1336`, special-casing layer ids, or trying another alpha multiplier/UV
+   scale is invalid without new contradictory evidence. The 30 second debug run
+   `/tmp/gilder-eye-doc-test-run.{json,log}` proved `node-89-models-json` draws
+   after `node-77-models-json`, binds base
+   `resource-173-frame-0.gtex` plus R8 mask
+   `resource-207-opacity-mask-d2f87f99-frame-0.gtex`, pushes
+   `alpha_slot=Some(1)`, binds descriptor resources `[28, 33]`, and samples
+   `effect_uv` in material UV space. The mask is mostly black
+   (`bbox_gt127=0..91x0..114`, mesh coverage `gt127=383/4106`), so the
+   remaining pupil leak is a WE image/effect pass composition issue, not a
+   missing alpha texture, descriptor bug, alpha/base size scale, or base-layer
+   mask fold. The next implementation direction is explicit reusable
+   image-layer/effect/FBO pass semantics for how the opacity duplicate
+   contributes the closed-eye cover.
+   Drift/sway timing must follow CWE's final unified calculation sequence:
+   `WallpaperApplication::render` updates `g_Time`, audio, media, input, and
+   driver events; `CScene::renderFrame` updates mouse/parallax, runs the script
+   tick, updates image textures, and then renders objects; `CImage::render` and
+   `CPass::render` resolve current geometry, FBO chain, texture bindings,
+   uniforms, and pass blending immediately before draw. Native drift, water,
+   blur, opacity, iris, and material parameters must therefore be evaluated in
+   a final per-frame scene/effect-material stage after property bindings,
+   keyframes, puppet meshes, input state, scripts, and texture animation are
+   sampled. Do not freeze sway phase or amplitudes as early layer snapshot
+   fields, do not add independent hair/ribbon/skirt offset formulas, and do not
+   extend `native-effect-motion` as scattered approximations.
+   This timing problem is also a major CPU, memory, and FPS root cause. Any
+   design that turns effects into per-frame JSON/document sampling, whole-layer
+   snapshot rebuilding, dynamic-geometry cache locking, CPU mesh
+   subdivision/rebuilds, or large vertex-buffer rewrites will scale poorly on
+   scenes with many animated image parts and effect passes. The target is
+   retained frame-context/effect-pass evaluation: small frame-context,
+   uniform/push, descriptor-slot, and truly changed-topology updates; ordinary
+   drift, ripple, UV disturbance, opacity-mask sampling, blur/sway, and future
+   pass parameters execute as retained material/vertex/fragment/compute
+   semantics.
+   Required follow-up order is correctness, maintainable structure, then
+   performance. First finish closed-eye composition. Second move effect
+   evaluation to the CWE-style final per-frame boundary for opacity/mask, iris,
+   `waterripple`, `waterwaves`, `waterflow`, `watercaustics`, blur/sway/shake,
+   and hair/ribbon/clothing/skirt drift. Third split the native scene renderer
+   into focused modules for texture-slot/descriptor binding, blend
+   policy/equations, solid quads, sampled images, puppet/skinned geometry,
+   material/effect passes, and debug/evidence logging. Fourth replace the
+   current JSON runtime shape with a binary scene format and retained/partial
+   update path; do not optimize JSON trimming or CPU snapshot rebuilds as a
+   substitute for that design.
+   Binary scene format is a first-class architecture item, not a later
+   serialization cleanup. It must cover versioned chunks, resource-table
+   indexing, compact transform/timeline/puppet data, material/effect pass
+   records, texture-slot tables including future third/fourth `g_TextureN`
+   inputs, blend/depth/cull state, random-access loading, and retained GPU
+   binding/state IDs. It has zero compatibility obligation to old JSON field
+   names, old fixture shapes, or old runtime branches: migrate tests/fixtures
+   and delete obsolete code instead of adding aliases, dual readers/writers, or
+   hidden lowering bridges.
+   Fine-grained runtime logging is required evidence, not optional telemetry.
+   When a visual gap cannot be explained from existing logs, add targeted logs
+   before changing semantics. A useful effect investigation captures draw order,
+   layer ids, resource indices, texture slots, descriptor group indices, alpha
+   slot/mode, push constants, blend mode, mesh bounds, per-frame
+   transform/mesh deltas, base/effect UV ranges, mask coverage, and sampled mask
+   values at render-plan, runtime composition, draw-pass, and Vulkan
+   command-recording boundaries. Visual guesses, alpha multiplier changes, UV
+   scale guesses, layer hiding, or resource rewrites are not acceptable
+   replacements for runtime evidence.
    Future work on this sample must stay on the WE-to-gscene semantic path:
-   material passes must lower `shader`, `blending`, `combos`, depth/cull, and
-   texture-pass metadata into `properties.material`; WE `translucent` and
-   layer/effect `blend`/`alpha` semantics must not be rendered as an ordinary
-   opaque image with opacity `1`; utility `composelayer`/`fullscreenlayer`
-   output and `watercaustics`, `waterflow`, `waterripple`, `waterwaves`, and
-   `shake` effects must lower to native gscene visual/motion IR; relative loop
-   parent-origin timelines on the two `底发` groups must continue to drive
-   their child image stacks; user color bindings such as `newproperty5` and
-   `newproperty6` must resolve through the same runtime text/property resolver
-   used by scene planning. A concrete example is `Water Caustic`
-   (`node-57-models-workshop-2790231929-wc-test-json`): its material pass is
-   `shader=genericimage2`, `blending=translucent`, depth disabled, and it sits
-   immediately after the long-hair layers. Treating that material as a normal
-   fully opaque sampled image can hide the already-present long-hair draw ops.
-   The fix is first-class gscene material/effect semantics, not a preview
-   fallback, legacy loader mapping, resource probe, compatibility branch, or
-   one-off Workshop-specific patch.
+   material passes lower `shader`, `blending`, `combos`, depth/cull, and
+   texture-pass metadata into first-class material/effect records; WE
+   `translucent` and layer/effect `blend`/`alpha` semantics must not render as
+   ordinary opaque sampled images; utility `composelayer`/`fullscreenlayer`,
+   `watercaustics`, `waterflow`, `waterripple`, `waterwaves`, `shake`, user
+   color bindings such as `newproperty5`/`newproperty6`, and the `底发` parent
+   origin timelines must remain executable native semantics. `Water Caustic`
+   (`node-57-models-workshop-2790231929-wc-test-json`) remains the concrete
+   regression guard: `shader=genericimage2`, `blending=translucent`, depth
+   disabled, immediately after the long-hair layers. The fix is first-class
+   gscene/material/effect semantics, not preview fallback, legacy loader
+   mapping, resource probing, compatibility branches, or Workshop-specific
+   patches.
    There is no internal legacy scene format, loader, preview-fallback scene
    node, or lowering bridge; old `layers` fixture data was replaced by
    `nodes/resources` gscene documents. Static wallpapers now lower into a
