@@ -30,6 +30,13 @@ for old renderer, GStreamer, decoded-frame copy, or descriptor-set paths.
   average present FPS, descriptor-set count, descriptor-heap-only state, and
   zero-copy state. Evidence without `--performance-snapshot` is only a
   functional smoke, not a performance result.
+- All work must be designed for the long-term native runtime. Do not add
+  short-term substitutes, sample-specific fixes, hidden compatibility branches,
+  magic offsets, layer hiding, resource re-export hacks, preview fallbacks, or
+  temporary render paths to make one scene appear correct. If a gap is caused
+  by unsupported format, effect, material, mask, blend, interaction,
+  renderer-quality, or runtime behavior, implement or design that first-class
+  subsystem and document any remaining boundary explicitly.
 
 ## FFmpeg References
 
