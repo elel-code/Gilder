@@ -20,8 +20,15 @@ passes:
    blend mode moved to that final scene pass.
 
 The renderer must not treat an image layer with an unimplemented effect chain as
-a plain sampled-image quad. That is the source of the visible raw rectangles in
-scene `3742497499`.
+a plain sampled-image quad. That was the source of the earlier raw carrier
+rectangles in scene `3742497499`.
+
+2026-07-02 correction: the final one-large/one-small rectangle pair that the
+user confirmed fixed was a separate pass-boundary bug on `waterwaves` character
+layers. Those layers were valid visible image layers and had to stay recorded;
+the bug was that Gilder promoted the effect material pass `blending="normal"`
+to the final swapchain composite instead of keeping the base material
+`blending="translucent"` as the scene blend.
 
 ## Hard Requirements
 
@@ -177,6 +184,15 @@ Current implementation progress:
   allocated yet, and already executable opacity/iris bindings also point at the
   real Vulkan effect-target resource. This is the resource boundary needed
   before descriptor binding can execute the graph.
+- Final scene material selection now preserves the base image material blend
+  when an effect pass says `normal`. In WE/CWE, `normal` on an effect pass is
+  the local FBO overwrite state, not permission to overwrite the swapchain.
+  The converter/runtime now recognizes material `translucent` as
+  `SceneBlendMode::Alpha`, binary material lowering prefers
+  `node.properties.material.passes[0]` over effect passes, and draw-pass
+  recording no longer lets an effect pass override the scene composite blend.
+  This keeps visible `waterwaves` hair/body layers in the plan while preventing
+  their transparent source rectangles from overwriting the character/background.
 
 The next coding boundary is no longer "detect the rectangle"; it is to bind the
 typed graph targets and per-step texture binding plans to descriptor sets, then
@@ -211,12 +227,13 @@ temporarily only when it preserves the pass-chain contract.
 
 ## Temporary Rectangle Guard
 
-The current guard is deliberately narrow:
+The current guard is deliberately narrow by effect family, not by blend mode:
 
-- It applies only to water ripple/flow/caustics chains that have no first-class
-  effect target and use a non-plain scene blend such as WE `colorBlendMode`
-  passthrough.
-- It prevents the incorrect raw source carrier from being composited directly.
+- It applies to water ripple/flow/caustics chains that have no first-class
+  graph executor target yet.
+- It prevents the incorrect raw source carrier from being composited directly,
+  including plain `normal` water-ripple chains. Plain water-ripple carriers are
+  still WE material graph inputs; they are not safe raw sampled-image fallbacks.
 - It must not suppress ordinary alpha/normal character layers, and it must not
   hide `waterwaves` hair/body layers.
 - It must be deleted once the graph executor can run those passes.
@@ -255,6 +272,61 @@ For scene `3742497499` the evidence must prove all of the following:
   when the current executor has one.
 - Release conversion is from the original WE directory, not hand-edited JSON.
 - Release smoke uses the latest rebuilt binaries.
+
+Latest local evidence after the 2026-07-02 `waterwaves` blend-boundary fix:
+
+- Converted directly from
+  `artifacts/wallpaper-engine-workshop/steamcmd-root/steamapps/workshop/content/431960/3742497499`
+  to `/tmp/gilder-we-3742497499-alpha-blend-fix`.
+- Snapshot:
+  `/tmp/gilder-we-3742497499-alpha-blend-fix-runtime.json`.
+- Smoke:
+  `/tmp/gilder-we-3742497499-alpha-blend-fix-smoke.json`.
+- User visual confirmation: the previously unchanged one-large/one-small
+  rectangle pair is gone.
+- The remaining rectangle pair was localized to `effects/waterwaves` visible
+  image layers, not to `.gscn`/binary loss and not to the earlier
+  `node-108/id=544/name=方块` water-ripple carrier.
+- Large rectangle location: bottom hair/body waterwaves layers
+  `node-43..48` and `node-51..56`, source resources
+  `resource-73/78/81/86/91/96`, with runtime bboxes around
+  `836..3333 x 291..2224` and `858..3355 x 320..2252`.
+- Small rectangle location: head/hair waterwaves layers starting at
+  `node-70`, including `resource-149-1-frame-0.gtex`, with runtime bboxes
+  around `1341..2125 x 1309..2124`.
+- Pre-fix snapshot
+  `/tmp/gilder-we-3742497499-no-raw-water-ripple-runtime.json` showed
+  `waterwaves` swapchain recording steps as `35 normal + 1 multiply`; the
+  affected `node-43..47`, `node-51..56`, `node-70..76`, and `node-79` steps
+  were `normal`.
+- Post-fix snapshot shows the same sources and geometry still present, but
+  `waterwaves` swapchain recording steps are `35 alpha + 1 multiply`; the
+  affected large/small rectangle layers are now `alpha`. `node-48` remains
+  `multiply` because that is its authored/effect chain state, not the artifact.
+- Mathematical cause:
+  `waterwaves.frag` computes a UV offset and returns
+  `texSample2D(g_Texture0, texCoord)`, so source alpha is preserved. Correct
+  scene composite is `Cout = As * Cs + (1 - As) * Cd`; the old promoted
+  `normal` state was `Cout = Cs`. For transparent source pixels `As=0`,
+  alpha composite leaves `Cd`, while normal overwrite writes the source RGB
+  rectangle. This exactly predicts the observed hard rectangles and their
+  disappearance after the blend fix.
+- CWE reference:
+  `references/cwe/src/WallpaperEngine/Render/Objects/CImage.cpp:750-775`
+  appends the color-blend passthrough and moves the first blend mode to the
+  last pass for multi-pass images; `references/cwe/src/WallpaperEngine/Render/Objects/Effects/CPass.cpp:130-140`
+  defines `Translucent` as source-alpha blending and `Normal` as `ONE,ZERO`.
+- Release smoke presented `305` frames in `6014 ms`, average
+  `50.70766027941938 FPS`, with `68` GPU draw calls (`60` sampled-image,
+  `8` solid), `19` pipeline binds, `3839` sampled-image recording steps,
+  `248` WE graph chains, `547` WE graph steps, `275` WE graph targets,
+  `343` WE graph resources, and `99` visible effect passes including
+  `76` `water-waves` passes.
+- Release tests/build used the rebuilt release binaries:
+  `keeps_scene_alpha`,
+  `draw_pass_plan_keeps_alpha_waterwaves_character_quad`,
+  `plain_unimplemented_water_ripple`, and
+  `cargo build --release --features native-vulkan-video,native-vulkan-vulkanalia --bin gilder-native-vulkan --bin gilder-convert`.
 
 Latest local evidence after the graph pass-field/binary preservation change:
 
