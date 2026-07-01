@@ -157,6 +157,9 @@ deferred eye/closed-eye investigation.
      renderer-side sampling needs their full keyframe stream.
    - `geometry`: solid quad records, sampled-image quads, puppet meshes, mesh
      bounds, vertex/index streams, material UV sets, and topology-change ids.
+   - `particle_emitter`: typed emitter settings, deterministic seed/lifetime,
+     spawn/particle extents, velocity/gravity ranges, shape, color, fade/loop
+     flags, and retained runtime ids.
    - `texture_slots`: first-class `g_TextureN` slot records, resource index,
      sampler state, UV source, alpha/mask role, and future third/fourth texture
      inputs.
@@ -183,10 +186,10 @@ deferred eye/closed-eye investigation.
 
    Current implementation progress:
 
-   - Binary version `11` uses a fixed chunk-table format with typed chunks for
+   - Binary version `12` uses a fixed chunk-table format with typed chunks for
      resources, nodes, transform timelines, transform keyframes, geometry
-     streams, texture slots, material/effect passes, effect parameters,
-     effect-UV transforms, flutter state, puppet skin bones/vertices,
+     streams, particle emitters, texture slots, material/effect passes, effect
+     parameters, effect-UV transforms, flutter state, puppet skin bones/vertices,
      attachments, clips, frames, animation layers, render state, retained GPU
      state, and debug names.
    - The native Vulkan CLI can now build render layers from `.gscn` directly for
@@ -196,9 +199,11 @@ deferred eye/closed-eye investigation.
      transform/opacity/extent timelines are reconstructed without reading
      `.gscene.json` or retaining the full binary payload. Puppet skinning now
      reconstructs skin bones, vertex weights, clips, frames, and animation layers
-     from binary ranges and samples mesh vertices on the `.gscn` path. Remaining
-     binary render gaps are particle runtime payloads and material/effect graph
-     execution.
+     from binary ranges and samples mesh vertices on the `.gscn` path. Particle
+     emitters now expand from typed binary records on the direct `.gscn` path
+     instead of reading JSON properties. Remaining binary render gaps are
+     material/effect graph execution, effect target compositing, and retained
+     runtime updates.
    - `.gscn` node records now carry resolved default user-condition visibility,
      text/font payloads, and parent-composed transform/opacity state on direct
      binary ingest. The workshop `3742497499` eye binary smoke no longer draws
@@ -213,6 +218,13 @@ deferred eye/closed-eye investigation.
    - Stream ingest validates chunk shape with record-sized reads and keeps
      keyframes/geometry streams as counted record ranges rather than retaining
      full JSON-derived tables.
+   - The current `3742497499` binary eye smoke reports `unsupported_layer_count=0`,
+     `draw_op_count=3862`, `sampled_image_layer_count=3845`, `chunk_count=24`,
+     `effect_pass_count=120`, and `retained.record_count=1714`. The remaining
+     visible failure is no longer missing particle support; it is the
+     `shader-material-graph` boundary: large effect/material patches and missing
+     composites until WE pass targets, material graph execution, UV transforms,
+     and blend state are first-class end to end.
    - Conversion now emits a `.gscn` binary scene asset from the typed
      `SceneDocument`, and the native Vulkan CLI can accept `.gscn` sources for
      direct binary-scene smoke/ingest without routing through the JSON scene
@@ -246,21 +258,18 @@ preview fallback, old loader mapping, resource probing, dual branches, or
 Workshop-specific patches.
 
 `WE Eye Closed Frame` (workshop scene `3742497499`) is now an accepted
-architecture regression guard with an invalidated MDLE hypothesis and an active
-render/effect composite root-cause document:
+architecture regression guard. Obsolete eye handoff and MDLE/composite
+misdiagnosis documents have been deleted so the active plan has a single root
+cause:
 
-- `docs/native-vulkan-we-eye-mdle-inverse-bind-root-cause.md`: invalidated
-  geometry hypothesis. `MDLE0002` must not be parsed as first-class
-  inverse-bind data for this bug.
-- `docs/native-vulkan-we-eye-iris-mask-uv-root-cause.md`: precise active root
-  cause. The `node-77` iris pass samples the effect target at an offset driven by
-  a nonzero iris mask in eyelid pixels. The hard-coded identity mask UV transform
-  is a trigger, but the fix is full WE effect-UV transform/backing-extent
-  semantics, not a decoded alpha/base ratio.
-- `docs/native-vulkan-we-eye-render-composite-root-cause.md`: broader
-  render-composition root cause. It remains the first-class pass-chain context
-  for iris local target/final composite, `normal` blend, `locktransforms`, and
-  backing-extent mask UV work.
+- `docs/native-vulkan-we-eye-iris-mask-uv-root-cause.md`: current root cause and
+  fix direction. The `node-77` iris pass samples the effect target at an offset
+  driven by a nonzero iris mask in eyelid pixels. Identity mask UVs were a
+  trigger in the old path, but the fix is full WE effect-UV
+  transform/backing-extent semantics plus first-class pass target composition,
+  not a decoded alpha/base ratio or any MDLE/inverse-bind change.
+- `docs/native-vulkan-we-eye-original-semantics.md`: source evidence for the WE
+  layer/material/effect semantics used by the implementation plan.
 
 The required fix path is:
 

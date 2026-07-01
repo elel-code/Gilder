@@ -1,7 +1,8 @@
-# 闭眼帧瞳孔可见：iris mask UV scale 根因
+# 闭眼帧瞳孔可见：iris effect UV / pass graph 根因
 
 本文件是 workshop scene `3742497499` 闭眼帧瞳孔可见的**当前有效根因**。
-旧假设均已推翻（见本文档第 2 节）。
+旧交接、MDLE 和不完整 composite 诊断文档已删除；源语义证据保留在
+`docs/native-vulkan-we-eye-original-semantics.md`。
 
 ---
 
@@ -31,16 +32,15 @@ iris mask texture（resource-175, 331×115 R8）。
 
 ### 1.2 为什么眼睑区域 mask_0 不是 0
 
-iris mask 的 effect UV scale 当前强制为 identity (1.0, 1.0)，和 opacity mask
-共享同一套 scale 逻辑（`render_plan.rs:489-499`）。iris mask 是 331×115，
-EffectTarget FBO 覆盖的是 663×230 的 eye 纹理空间。用 identity scale 采样时，
-眼睑区域的 effect UV 会落到 iris mask 的非零中央带；实测该非零带在眼睛 UV
-中约为 x[0.47,0.76]、y[0.10,0.91]，会覆盖闭合眼睑片元并触发 iris offset。
+旧运行时把 iris/opacity mask 的 effect UV 当作 identity (1.0, 1.0) 使用；
+这会让 331×115 的 iris mask 被当成 663×230 的 eye pass 空间采样。眼睑区域的
+effect UV 因此落到 iris mask 的非零中央带；实测该非零带在眼睛 UV 中约为
+x[0.47,0.76]、y[0.10,0.91]，会覆盖闭合眼睑片元并触发 iris offset。
 
 这里不能把“正确修复”简化成 alpha/base 的 331/663、115/230 均匀缩放。该
 比例会把 mask 有效区移到错误半区，离真实瞳孔位置 x≈0.63 很远，导致睁眼帧
-iris 视差落空。这与旧 handoff 中已经撤销的“按 decoded logical extent 缩放”
-失败现象一致。
+iris 视差落空。正确方向是 converter 保存 WE 原始 pass/effect UV 变换、backing
+extent 和 slot 语义，runtime 只消费这些 typed records。
 
 ### 1.3 闭合眼睑如何被瞳孔颜色替换
 
@@ -55,19 +55,19 @@ iris 视差落空。这与旧 handoff 中已经撤销的“按 decoded logical e
 
 ## 2. 已推翻的假设
 
-### 2.1 MDLE0002 inverse-bind 缺失（已撤销）
+### 2.1 MDLE0002 inverse-bind 缺失（已推翻）
 
-`docs/native-vulkan-we-eye-mdle-inverse-bind-root-cause.md` 原主张 MDLE0002
-是逆绑定矩阵、缺失导致眼睑盖不住瞳孔。已被三条证据推翻：
+旧 MDLE 诊断把 `MDLE0002` 当成逆绑定矩阵，并把闭眼失败归因于
+inverse-bind 缺失。该方向已被三条证据推翻：
 
 1. MDLA clip 730 frame 0 的局部变换精确等于 MDLS 局部矩阵。蒙皮 pose 来自 MDLA
    系，静止帧必须 `pose × inv(bind) = I`，只能使用 MDLS bind。
 2. MDLE 对 45/54 骨骼等于 MDLS 正向局部矩阵——逆绑定矩阵不应等同正向矩阵。
    旧对比中数百单位的差异是正向 vs 逆向的伪差异。
 3. 当前 computed inverse-bind 的 node-77 单独渲染已能闭合眼睑。把 MDLE 当
-   inverse-bind 会破坏睁眼状态（handoff 文档记录的瞳孔/眉毛消失回退）。
+   inverse-bind 会破坏睁眼状态，表现为睁眼时瞳孔/眉毛消失。
 
-MDLE 不是闭眼帧修复路径，文档已标注"已撤销"。
+MDLE 不是闭眼帧修复路径；不要为该 bug 增加 MDLE/inverse-bind 字段或分支。
 
 ### 2.2 node-89 opacity mask 重绘瞳孔（已降级）
 
@@ -85,7 +85,7 @@ node-89 的 opacity mask 在眼部/瞳孔区域 66-72% 为黑（mask=0），node
 
 | 缺口 | 位置 | 影响 |
 |------|------|------|
-| `"normal"` blend → Alpha 回退 | core/draw-pass/Vulkan blend state | WE Normal(ONE/ZERO) 替换语义必须显式建模 |
+| `normal` blend | core/draw-pass/Vulkan blend state | WE Normal(ONE/ZERO) 替换语义必须显式建模 |
 | `locktransforms` provenance-only | puppet animation layer state | transform 通道和 opacity/material 通道必须拆开采样 |
 | mask UV identity | effect UV transform | iris/opacity mask 都不能靠 identity 或 decoded extent 比例猜测 |
 
@@ -95,9 +95,6 @@ node-89 的 opacity mask 在眼部/瞳孔区域 66-72% 为黑（mask=0），node
 
 ### 4.1 主修复：first-class WE effect-UV transform
 
-`native_vulkan_scene_opacity_effect_material_uv_scale()` 当前强制返回
-`(1.0, 1.0)`。这解释了当前错误，但不等于“返回 alpha/base 比例”就是正确修复。
-
 必须在 converter 中把 WE 原始 effect-UV 语义 first-class 落到 gscene：
 
 1. 保存 WE 原始 backing texture extents 与 effect/material pass 的 UV 变换输入。
@@ -106,6 +103,8 @@ node-89 的 opacity mask 在眼部/瞳孔区域 66-72% 为黑（mask=0），node
 3. runtime 只消费这些 first-class 记录，不再从 decoded logical extents 临时推断。
 4. iris 与 opacity 共享的 mask UV 逻辑必须走同一套 typed effect-UV transform，
    但各自的 shader 语义和 alpha 输出语义仍保持独立。
+5. `.gscn` binary 必须携带这些 typed records；runtime 不能回读 `.gscene.json`
+   或保留大块 JSON 派生 payload。
 
 明确禁止把下面这种比例作为修复落地：
 
