@@ -15,37 +15,70 @@ support with sample-specific hiding.
 
 ## Current Landing Point
 
-- 2026-07-01 rollback correction: the attempted `native-iris-mask`
-  first-class/alpha-texture shortcut was rejected because it makes the whole
-  eye render through the wrong pass path. Until the real WE iris shader is
-  implemented, `effects/iris/effect.json` stays effect metadata only:
-  `node-77` (`1336` base eye) must render as direct puppet mesh with
-  `alpha_slot=None`, not through an iris alpha slot or effect-target final
-  quad. This matches the rollback note in `docs/native-vulkan-video.md`.
+- 2026-07-01 iris first-class routing update: `native-iris-mask` is no longer
+  metadata-only for the base eye. The renderer now keeps `node-77`'s scene
+  layer `alpha_slot=None`, but builds an explicit two-step first-class path:
+  first draw the puppet mesh into a local effect target, then draw a final
+  scene quad that samples that target as `g_Texture0` and the iris mask as
+  slot 1 with `mode=iris`. This does not hide, fold, or remove `node-89`, and
+  it does not re-enable the rejected opacity local-target route.
+- 20s HDMI-A-1 evidence after the change:
+  `/tmp/gilder-eye-iris-target-hdmi-a-1-20s-r2.log`. Key lines show
+  `node-77` base step as `target=effect-target(index=0, clear=true)` with
+  `geometry_semantics=we-iris-effect-local-target-base-mesh`, followed by
+  `node-77` final step as `target=swapchain`, `texture_slot_resource_indices=[50, 29]`,
+  `alpha_slot=Some(1)`, `mode=iris`, and
+  `geometry_semantics=we-iris-effect-final-scene-quad`. The Vulkan command log
+  binds slot 0 to `we-image-effect-target-layer-63-0` and slot 1 to
+  `resource-175-iris-mask-7c584a3b-frame-0.gtex`. Runtime overlap now reports
+  `direct_base_swapchain=false`, meaning the base pupil mesh is no longer
+  emitted directly to the swapchain before the opacity duplicate.
+- 2026-07-01 closed-frame call-chain correction: the old converted scene at
+  `/tmp/gilder-we-3742497499-output-restored-placement` was missing the MDLA
+  opacity tail from `models/眼睛_puppet.mdl`, so `sample_puppet_animation()`
+  produced `base_opacity_range=1.000..1.000` for both `node-77` and `node-89`.
+  The original MDLA does contain the opacity block after a 5-byte tail preamble:
+  one bone has non-default opacity with minimum `0.265767`. Runtime gscene
+  loading now does not add a compatibility field; it resolves the puppet from
+  `provenance.model.puppet` to the packaged `role=we-puppet-mdl` /
+  `original_source` resource and backfills missing WE puppet opacity tracks
+  before validation/snapshotting. The relevant call chain is now
+  `load_scene_document()` -> puppet opacity backfill -> `snapshot_sampled_layers_at(time_ms)`
+  -> `sample_puppet_animation()` -> sampled mesh vertices -> native
+  sampled-image draw. Runtime eye debug logs `native-iris-mask` base-eye layers
+  even when `alpha_slot=None`, so closed frames expose both `node-77` and
+  `node-89`.
+- 2026-07-01 rollback correction still applies to the old shortcut: do not set
+  the layer's own alpha slot for iris and do not send iris through the
+  rejected alpha/local-target shortcut. The current path is narrower: the layer
+  stays `alpha_slot=None`; only the generated final effect draw step receives
+  the iris mask slot so the shader can sample `g_Texture1`.
 - The attempted mask UV scale `alpha_texture_extent / base_texture_extent` was
   also rejected. Gilder's `SceneTextureSlot` dimensions are decoded logical
   extents, not Wallpaper Engine backing texture extents. Until the converter
   preserves those backing extents separately, opacity material UV scale must
   stay identity `(1.0, 1.0)`.
-- The current intended topology is: `node-77` (`1336` base eye) renders its
-  puppet mesh directly to the scene, while `node-89` (`1530`) remains an
-  independent later opacity-masked image under parent `937`. The
-  `native-opacity-mask` FBO/effect-target route is backed out for now because
-  it reintroduced whole-eye loss/misalignment; the active code path is the
-  simple two-image behavior: draw the duplicate puppet mesh and multiply that
-  image's alpha by the opacity mask sampled in material UV space. Do not hide,
-  fold, or remove `1530`.
-- The active visible bug remains the closed-eye/blink pupil leak until HDMI-A-1
-  observation confirms otherwise. Before the rejected mask-UV-scale attempt, at
-  `time_ms=12000` in `/tmp/gilder-eye-hdmi-a-1-iris-firstclass-rerun.log`,
-  `node-77` still had visible dark base texels while
-  `base_opacity_range=0.266..1.000 below_one=203/4106`.
+- 2026-07-01 opacity rollback correction: the current attempted
+  `native-opacity-mask` local-target route repeated the documented eye
+  drift/disappear failure. The active renderer is back to the documented
+  stable boundary: `node-77` (`1336` base eye) draws as a direct puppet mesh
+  with `alpha_slot=None`; `node-89` (`1530`) remains an independent later-drawn
+  duplicate and draws as a direct puppet mesh with `alpha_slot=Some(1)`,
+  `mode=multiply`, and material-UV opacity-mask sampling. This keeps the
+  two-image behavior: only `node-89`'s own alpha is multiplied by
+  `masks/opacity_mask_d2f87f99`; it does not erase pixels already drawn by
+  `node-77`. Do not hide, fold, or remove `1530`.
+- The active visual result still needs user confirmation. Runtime evidence now
+  proves the old direct base-eye draw path is gone for `node-77`, but the
+  current native iris shader is still the existing simplified `mode=iris`
+  sampled-image shader, not a complete port of all original `iris.vert`
+  time/noise constants.
 - Keep MDLE/rest-bind investigation as a fallback, not the primary next step.
-  The immediate code path is the simple per-image effect semantics: opacity
-  pass samples the previous image and multiplies that image's alpha by its
-  mask; iris samples the previous image through its own mask UV. Do not
-  reintroduce the rejected whole-puppet y/v migration; keep mesh storage as
-  `x = raw_x`, `y = raw_y`, `v = 1.0 - raw_v`.
+  The immediate code path is now: `node-77` local effect target base mesh,
+  `node-77` iris final scene quad, then later independent `node-89` direct
+  duplicate mesh with its own opacity mask. Do not reintroduce the rejected
+  whole-puppet y/v migration; keep mesh storage as `x = raw_x`, `y = raw_y`,
+  `v = 1.0 - raw_v`.
 
 ## User-Visible Failure
 
@@ -119,7 +152,7 @@ Generated runtime names/resources observed in the converted scene:
 - Opacity duplicate node: `node-89-models-json`
 - Eye texture: `resource-173-frame-0.gtex`, `663x230`, BC7
 - Iris mask: `resource-175-iris-mask-7c584a3b-frame-0.gtex`, `331x115`, R8
-- Opacity mask: `resource-207-opacity-mask-d2f87f99-frame-0.gtex`,
+- Opacity mask: `resource-206-opacity-mask-d2f87f99-frame-0.gtex`,
   `331x115`, R8
 
 Original hierarchy/order under parent source `937`:
@@ -202,27 +235,29 @@ CWE image/effect chain:
 
 This means the native renderer must model material/effect passes as a chain for
 each image source. Source `1530` still remains an independent later-drawn scene
-source, but its opacity effect is applied through that source's local pass chain;
-collapsing it into `1336`, hiding it, or treating it as a scene-level
-alpha-textured replacement is not equivalent to Wallpaper Engine semantics.
+source. Long term its opacity effect belongs in that source's local pass chain,
+but the current local-target attempt is disabled because live HDMI-A-1 evidence
+matched the documented eye drift/disappear rollback. Collapsing it into `1336`
+or hiding it is not equivalent to Wallpaper Engine semantics.
 
 ## Current Native Runtime State
 
 Current native behavior is intentionally narrow:
 
-- `effects/iris/effect.json` remains metadata only until the real iris shader
-  pass exists; `node-77` must stay a direct puppet mesh with no alpha slot.
-- `effects/opacity/effect.json` keeps its mask texture slot, but the renderer
-  no longer routes `node-89` through an effect target. The retained and dynamic
-  paths both draw it as a second puppet mesh with `alpha_slot=Some(1)` and
-  `effect_uv` equal to material UV.
-- The next validation target is therefore not "previous layer erasure"; it is
-  whether the second eye image is present and its masked part becomes alpha 0
-  without making the whole eye disappear or drift.
+- `effects/iris/effect.json` now creates a first-class effect target for
+  `node-77` only. The base puppet mesh is local-target pass-space geometry; the
+  final scene quad samples the local target and iris mask. The scene layer's
+  own `alpha_slot` remains `None`.
+- `effects/opacity/effect.json` leaves `node-89` as a direct second puppet
+  mesh. Its `alpha_slot=Some(1)` mask is sampled in material UV space and
+  multiplies only this duplicate image's alpha.
+- The rejected local-target path for opacity must stay disabled until the full
+  WE pass-space shader chain is implemented without causing eye drift or
+  disappearance.
 
-Consequence: do not re-enable the rejected iris alpha shortcut or the opacity
-effect-target route unless a real WE pass implementation replaces the current
-sampled-image alpha-mask shader.
+Consequence: keep iris first-class routing separate from the rejected alpha
+shortcut, and do not re-enable the rejected opacity local-target shortcut as a
+partial fix.
 
 ## Puppet Format Evidence
 
@@ -344,9 +379,9 @@ GILDER_NATIVE_VULKAN_EFFECT_DEBUG=1 target/release/gilder-native-vulkan \
 
 ## Implementation Direction
 
-Longer-term direction: implement a real first-class Wallpaper Engine image
-material and effect pass chain. Current repair must keep the simple direct
-opacity-mask path until that real pass implementation exists.
+Longer-term direction: extend the first-class Wallpaper Engine image material
+and effect pass chain. The current opacity local-target attempt is disabled;
+opacity, iris, and other effects still need real shader-pass semantics.
 
 1. Represent WE image rendering as:
    - first material pass into a local image/effect target,
@@ -354,11 +389,13 @@ opacity-mask path until that real pass implementation exists.
    - final scene composite.
 2. Model pass-space geometry separately from scene-space geometry.
 3. Preserve source `1530` as the independent later-drawn duplicate under
-   parent `937`. In the current renderer, run it as a direct puppet mesh whose
-   alpha is multiplied by the opacity mask in material UV space; do not hide it,
-   merge it into `1336`, or route it through the rejected effect-target shortcut.
-4. Run source `1336` iris as a real pass that samples `g_Texture0` and the iris
-   mask, rather than leaving `native-iris-mask` unconnected.
+   parent `937`. In the current renderer, keep it as a direct duplicate puppet
+   mesh with material-UV opacity masking; do not hide it, merge it into `1336`,
+   or re-enable the rejected partial local-target route.
+4. Source `1336` iris is now connected as a first-class two-step pass. Remaining
+   shader work is to replace the simplified native `mode=iris` offset with the
+   full original `iris.vert` time/noise constant semantics if visual evidence
+   still differs.
 5. Keep the established native puppet storage convention. Use CWE coordinate and
    UV semantics only inside the local pass-space effect chain where needed; do
    not migrate the whole scene again.

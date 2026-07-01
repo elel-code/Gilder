@@ -3,32 +3,57 @@
 本文件记录闭眼帧中瞳孔仍然显示（workshop scene `3742497499`）的代码级根因，
 取代 `native-vulkan-we-eye-first-class-handoff.md` 中已被代码证伪的旧结论。
 
-2026-07-01 更新：后续 HDMI-A-1 观察证明，把 iris 或 opacity 继续塞进
-当前半成品 effect-target/alpha shortcut 会重新造成整只眼丢失、错位或漂移。
-当前落点以 `native-vulkan-we-eye-first-class-handoff.md` 为准：`node-77` 直接
-画 puppet mesh，`node-89` 作为第二张 eye 图直接画 puppet mesh，并用 material
-UV 采样 opacity mask 乘自己的 alpha。
+2026-07-01 更新：后续 HDMI-A-1 观察证明，把 iris 塞进当前
+alpha shortcut 会重新造成整只眼丢失、错位或漂移。当前落点以
+`native-vulkan-we-eye-first-class-handoff.md` 为准：`node-77` 直接画
+puppet mesh；`node-89` 保持独立第二张 eye 图，并回到文档记录的稳定路径：
+direct puppet mesh + material-UV opacity mask。不要再把当前半成品
+local-target opacity 路径当成修复。
 
-旧文档的核心错误：声称 `native-iris-mask` 已被分类为 first-class local
-effect-target pass。代码（包括工作目录中未提交的修改）从未实现这一点。
-以下每条根因都附带精确的文件路径、行号与工具验证证据。
+2026-07-01 更新二：闭眼调用链复查确认，旧的
+`/tmp/gilder-we-3742497499-output-restored-placement` gscene 丢了原始
+`models/眼睛_puppet.mdl` 的 MDLA opacity tail；原始 MDLA 在 transform tracks
+后 5 字节处有 opacity block，最低值仍为 `0.265767`。运行时 loader 已增加
+通用 backfill：不增加兼容字段；loader 通过节点的 `provenance.model.puppet`
+匹配 packaged `role=we-puppet-mdl` / `original_source` 资源，并在 gscene 缺失
+非默认 puppet opacity 时补回 clip frames。
+
+2026-07-01 更新三：复查 `docs/native-vulkan-video.md` 的回退记录后，当前
+工作目录已关闭 opacity local-target 尝试。正确的闭眼调用链应显示：
+`node-77` 为 `direct-puppet-mesh`、`alpha_slot=None`；`node-89` 为
+`we-opacity-effect-direct-puppet-mesh-material-uv`、`alpha_slot=Some(1)`，
+且没有 `effect-target(index=0)` / final scene quad。
+
+2026-07-01 更新四：上面“node-77 direct-puppet-mesh”的落点已被新的
+iris first-class 修复取代。当前调用链是：`node-77` 先把 puppet mesh 画到
+local effect target，再用 final scene quad 采样该 target 和 iris mask；
+`node-89` 仍保持 direct puppet mesh + material-UV opacity mask。当前
+HDMI-A-1 日志为 `/tmp/gilder-eye-iris-target-hdmi-a-1-20s-r2.log`，其中
+`runtime.eye-overlap` 明确记录 `direct_base_swapchain=false`。以下旧根因仍
+作为历史证据保留，但“effect chain 跳过”已经不是当前代码状态。
+
+旧文档的核心错误：声称当前 renderer 可以安全把眼睛接进 first-class local
+effect-target pass。HDMI-A-1 观察已经证明这个半成品路径会造成整眼漂移、
+丢失或错乱；当前代码故意关闭该路径。以下每条根因都附带精确的文件路径、
+行号与工具验证证据。
 
 ## 根因一（effect chain 跳过）
 
 **文件**：`src/renderer/native_vulkan/scene/draw_pass.rs`  
-**行号**：1542–1548（未提交，`git blame` 显示 `Not Committed Yet`）
+**行号**：约 1565–1571（未提交，`git blame` 显示 `Not Committed Yet`）
 
 ```rust
 fn native_vulkan_scene_effect_pass_uses_first_class_target(
     runtime: Option<&str>,
     effect_file: &str,
 ) -> bool {
-    matches!(runtime, Some("native-opacity-mask"))
-        || native_vulkan_scene_effect_file_is_opacity_mask(effect_file)
+    let _ = (runtime, effect_file);
+    false
 }
 ```
 
-该函数只匹配 `"native-opacity-mask"`，不匹配 `"native-iris-mask"`。
+该函数现在故意不匹配 `"native-opacity-mask"` 或 `"native-iris-mask"`。
+这会关闭当前半成品 local-target 路径，避免重现整眼漂移/丢失。
 
 而 iris 的 runtime 已在 `src/core/scene.rs:2981-2982` 正确设置为 `"native-iris-mask"`：
 
@@ -43,6 +68,7 @@ if file == "effects/iris/effect.json" || … {
 - `image_effect_pass_count` 对 base eye（source 1336，node-77）= 0
 - `native_vulkan_scene_sampled_image_needs_we_effect_chain()` 返回 `false`
 - base eye 走 else-if 分支（`draw_pass.rs:1478`），mesh 直接渲到 swapchain
+- opacity duplicate（source 1530，node-89）也保持 direct mesh + material-UV mask
 - 无 effect-target FBO，无 iris pass，无 waterripple pass
 
 ## 根因二（opacity 最低值 ≠ 0）
@@ -82,15 +108,15 @@ bone 22 的 0.266 被传播到受影响顶点的 `SceneMeshVertex.opacity`。
 
 其余 95% 顶点 opacity = 1.0 → 完全不透明。
 
-## 根因四（1530 opacity mask UV 映射失配）
+## 根因四（1530 只影响自己的本地图像）
 
-**文件**：`src/renderer/native_vulkan/scene/draw_pass.rs:1542–1548`
+**文件**：`src/renderer/native_vulkan/scene/draw_pass.rs`
 
-1530（opacity duplicate）的 effect chain 被正确触发（runtime 匹配
-`"native-opacity-mask"`），但其 opacity mask（`331×115`，R8）在
-effect pass 中是按 pass-space 四边形采样的，mask UV 坐标与
-base eye mesh 的顶点 UV 不匹配，导致 mask 无法擦除 node-77
-已绘制的瞳孔像素。
+1530（opacity duplicate）现在按 direct puppet mesh 路径绘制，其 opacity
+mask（`331×115`，R8）在 material UV 空间采样，只会改变 `1530` 这张图的
+alpha。它不会、也不应该擦除 `node-77` 已经画到场景里的像素。若闭眼瞳孔
+仍可见，下一步应继续查 `node-77` 的 iris/rest-bind/闭眼本地图像输出，而
+不是隐藏或折叠 `1530`。
 
 ## 证据来源
 
@@ -101,12 +127,15 @@ base eye mesh 的顶点 UV 不匹配，导致 mask 无法擦除 node-77
 - `git blame`：根因一所在函数为 `Not Committed Yet`（2026-07-01）
 - `git diff`：效应链基础设施在工作目录中存在，但 iris 匹配条件未被加入
 
-## 修复（结论）
+## 当前修复结论
 
-在 `native_vulkan_scene_effect_pass_uses_first_class_target` 中增加
-`"native-iris-mask"` 分支是使 effect chain 执行的必要条件，但仅此不够。
+不要把 `"native-iris-mask"` 接到旧的 alpha shortcut；当前修复是单独的
+first-class iris target path：`node-77` local target base mesh -> iris final
+scene quad。`"native-opacity-mask"` 仍保持 direct material-UV alpha mask
+路径，避免重现文档记录的整眼漂移/丢失回退。
 
-瞳孔消失需要：
-1. bone 22 的 MDLA opacity 能驱动到接近 0（或与 opacity mask 联动）
-2. effect chain 正确执行 iris pass，产生正确的本地图像
-3. 1530 的 opacity mask UV 映射到正确的 pass-space 坐标
+剩余风险：
+1. 当前 native `mode=iris` shader 仍是简化 offset，不是完整 original
+   `iris.vert` time/noise 常量语义。
+2. `node-89` 必须继续保持独立本地 opacity pass，不隐藏、不折叠、不回退到
+   opacity local-target shortcut。
