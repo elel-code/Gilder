@@ -183,7 +183,7 @@ deferred eye/closed-eye investigation.
 
    Current implementation progress:
 
-   - Binary version `10` uses a fixed chunk-table format with typed chunks for
+   - Binary version `11` uses a fixed chunk-table format with typed chunks for
      resources, nodes, transform timelines, transform keyframes, geometry
      streams, texture slots, material/effect passes, effect parameters,
      effect-UV transforms, flutter state, puppet skin bones/vertices,
@@ -197,8 +197,13 @@ deferred eye/closed-eye investigation.
      `.gscene.json` or retaining the full binary payload. Puppet skinning now
      reconstructs skin bones, vertex weights, clips, frames, and animation layers
      from binary ranges and samples mesh vertices on the `.gscn` path. Remaining
-     binary render gaps are text payloads, particle runtime payloads, and
-     material/effect graph execution.
+     binary render gaps are particle runtime payloads and material/effect graph
+     execution.
+   - `.gscn` node records now carry resolved default user-condition visibility,
+     text/font payloads, and parent-composed transform/opacity state on direct
+     binary ingest. The workshop `3742497499` eye binary smoke no longer draws
+     the hidden pure-color theme layer, no longer places child utility layers at
+     local origin, and no longer rejects text layers for missing text payloads.
    - `node_table` now carries direct child/subtree, transform-range, material,
      geometry, puppet, and static visual-state data: opacity, packed color,
      packed stroke color, stroke width, corner radius, and fit mode.
