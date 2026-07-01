@@ -1145,9 +1145,27 @@ fields together with the report directory.
    (`bbox_gt127=0..91x0..114`, mesh coverage `gt127=383/4106`), so the
    remaining pupil leak is a WE image/effect pass composition issue, not a
    missing alpha texture, descriptor bug, alpha/base size scale, or base-layer
-   mask fold. The next implementation direction is explicit reusable
-   image-layer/effect/FBO pass semantics for how the opacity duplicate
-   contributes the closed-eye cover.
+   mask fold. The short-term effect-target route made the whole eye drift or
+   disappear again, so the active renderer keeps the opacity duplicate as the
+   simple second image: the duplicate puppet mesh is drawn in place and its own
+   alpha is multiplied by the opacity mask in material UV space.
+   Follow-up source-format audit against `references/cwe` confirmed the
+   concrete pass model. `CImage::setupPasses` first draws a puppet image with
+   puppet geometry into an image-layer FBO, then later effect passes use a
+   full pass-space quad and the previous FBO as `g_Texture0`; the final pass
+   moves the original material blend mode to a scene-space quad. Therefore the
+   opacity duplicate is not a direct second puppet mesh with a material-UV
+   mask. `opacity.vert` scales mask UV by
+   `g_Texture1Resolution.zw / g_Texture1Resolution.xy`, i.e. real texture size
+   over backing texture size, not opacity-mask size over base-eye size. Native
+   decoded `.gtex` frames currently use real extents, so this scale is `1.0`.
+   `iris` is also an effect shader that perturbs `g_Texture0` sampling; it is
+   not an alpha-mask shortcut and must not be lowered as an alpha texture until
+   the real pass runtime exists. Current native evidence should show
+   `node-77-models-json alpha_slot=None direct-puppet-mesh` and
+   `node-89-models-json alpha_slot=Some(1)
+   geometry_semantics=we-opacity-effect-direct-puppet-mesh-material-uv` with
+   the mask sampled from material UV and `we_texture_resolution_scale=1.0/1.0`.
    Drift/sway timing must follow CWE's final unified calculation sequence:
    `WallpaperApplication::render` updates `g_Time`, audio, media, input, and
    driver events; `CScene::renderFrame` updates mouse/parallax, runs the script
