@@ -188,6 +188,14 @@ deferred eye/closed-eye investigation.
      streams, texture slots, material/effect passes, effect parameters,
      effect-UV transforms, flutter state, puppet records, render state,
      retained GPU state, and debug names.
+   - The native Vulkan CLI can now build render layers from `.gscn` directly for
+     static binary-scene smoke with a header/table/range reader: resource paths,
+     node visual state, default transforms, mesh vertex/index streams, material
+     texture slots, effect passes, alpha state, effect-UV transforms, and scalar
+     transform/opacity/extent timelines are reconstructed without reading
+     `.gscene.json` or retaining the full binary payload. Remaining binary
+     render gaps are text payloads, particle runtime payloads, and full puppet
+     skinning payloads.
    - `node_table` now carries direct child/subtree, transform-range, material,
      geometry, puppet, and static visual-state data: opacity, packed color,
      packed stroke color, stroke width, corner radius, and fit mode.
