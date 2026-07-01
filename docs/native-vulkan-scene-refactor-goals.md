@@ -43,6 +43,12 @@ eye/closed-eye investigation.
    Move blend, alpha, depth, cull, translucency, and effect blend semantics out
    of ad hoc draw branching and into typed render/material state.
 
+   Blend is first-class pass state. WE `colorBlendMode` must be represented as
+   the same passthrough material pass CWE appends to the image chain, and the
+   first-pass blend must be moved to the final scene-composite pass when a chain
+   contains multiple passes. Raw sampled-image fallback must never stand in for
+   this pass routing.
+
 3. Solid quads
 
    Isolate solid/color rectangle recording, transform handling, full-extent
@@ -72,6 +78,20 @@ eye/closed-eye investigation.
    drift-like effects as first-class material/effect records instead of scattered
    string checks or one-off runtime branches.
 
+   The mainline is full WE/CWE image effect graph execution, documented in
+   `docs/native-vulkan-we-effect-graph-mainline.md`. The renderer must model the
+   same pass-chain contract as CWE: base material pass, visible effect passes,
+   declared effect FBOs/binds, image-local ping-pong targets, optional
+   `colorBlendMode` passthrough, and final scene composite. Hiding an
+   unsupported effect carrier is only a temporary guard against drawing the wrong
+   raw source quad; it is not the architecture target.
+
+   Effects are first-class pass records. No effect family should be reduced to a
+   late draw-pass string check, a hidden layer flag, or a global "skip water"
+   rule. The effect module owns parameter decoding and shader/material graph
+   participation; the graph executor owns ordering, targets, bindings, and final
+   blend routing.
+
    WE image pass chains must model `node-77` iris/effect composition as
    first-class local-target and final-composite passes. They must also model
    `normal` blend as an explicit overwrite blend equation, `locktransforms` as
@@ -94,6 +114,73 @@ eye/closed-eye investigation.
      `g_Texture0` from that target and `g_Texture1` from the mask, `normal`
      blend remains an overwrite equation, and final alpha uses coverage semantics
      instead of a direct material-UV alpha-mask draw.
+   - A narrow temporary guard prevents raw direct composition of unimplemented
+     water ripple/flow/caustics passthrough carriers while their WE
+     fragment/material graph is not implemented. The guard must not suppress
+     alpha/normal character layers or waterwaves hair/body layers. The permanent
+     fix remains the full WE image effect graph executor in
+     `docs/native-vulkan-we-effect-graph-mainline.md`; rectangle evidence is in
+     `docs/native-vulkan-we-water-rectangle-root-cause.md`.
+   - A typed `we_image_pass_chain` is now produced for sampled-image quads that
+     need WE graph semantics. It records local target/ping-pong requirements,
+     base/effect/passthrough pass roles, final-scene blend routing, execution
+     mode, and unsupported reason. This is the first implementation step toward
+     replacing raw direct fallback with a real graph executor.
+   - Draw-pass planning now promotes those chains into a first-class graph step
+     plan with chain/step counts and per-step input/target/final-blend evidence.
+     The plan also carries first-class graph target records for image-local
+     main/sub targets and first-class effect targets, plus target indices on
+     every graph step. Pass records preserve texture slots, shader/effect file,
+     parameter keys, combo keys, blend/depth/cull state, and final-scene routing.
+     The existing opacity/iris executable effect-target path now records its
+     graph chain/target/step linkage, so the old first-class target route is
+     being folded into the general WE graph executor instead of remaining a
+     special case. Collapsed legacy steps are left unlinked when they do not
+     correspond to the planned graph, which keeps remaining multi-pass work
+     visible instead of faking completion. Runtime graph target snapshots now
+     distinguish allocated Vulkan effect targets from planned-only graph
+     targets and carry the Vulkan effect-target resource index. Graph steps now
+     also carry typed `g_TextureN` binding plans: base passes bind source
+     texture input, effect/passthrough passes bind the previous graph target as
+     `g_Texture0`, and effect-owned texture slots such as water ripple normal
+     maps remain explicit pass texture bindings with source path and resolution.
+     Effect pass `command/source/target/binds` are now preserved from the WE
+     effect file through render planning, graph planning, runtime snapshots, and
+     direct `.gscn` binary ingest. Effect-declared FBOs are also preserved as
+     typed scene data and graph targets with name, format, scale, uniqueness,
+     scaled extent, write counts, and sampled-by-following-pass evidence. Binary
+     format version `14` stores `command/source/target` on `effect_pass` and
+     stores pass binds/FBO declarations as typed `PASS_BIND`/`EFFECT_FBO`
+     effect parameters. Runtime snapshots annotate texture bindings with
+     sampled-image or allocated effect-target resource indices when available,
+     and bind overrides now distinguish `previous-graph-target` from resolved
+     or unresolved `named-fbo-bind`. The next implementation boundary is to
+     allocate named FBO targets, bind all executable graph targets/texture
+     bindings to real Vulkan descriptors, and execute pass-specific
+     shader/material modules.
+   - Runtime snapshots now expose a first-class WE graph resource table: file
+     texture sources and graph targets share one planned resource index space.
+     Texture bindings carry `planned_graph_resource_index`; allocated
+     opacity/iris targets additionally carry the real Vulkan effect-target
+     index, while unallocated water main/sub targets remain visible as
+     `planned-until-graph-executor` resources. This keeps descriptor/resource
+     work on the main graph-executor path instead of hiding it behind the
+     temporary rectangle guard.
+   - WE graph passes now carry typed render state as well as blend labels:
+     runtime snapshots expose the resolved blend equation, depth flags, and cull
+     mode per pass. This is the evidence boundary that blend has moved into
+     first-class pass execution data instead of staying as a final-quad label.
+   - Native draw-pass planning now inventories all visible WE effect passes,
+     including non-image draw ops. Runtime snapshots report the total effect
+     pass count, effect-bearing non-image layer count, and counts by typed
+     effect family. This keeps text/material effects such as `scroll`,
+     `colorkey`, `clipping_mask`, and `rounded_mask` on the main graph-executor
+     work list instead of treating the sampled-image water case as the whole
+     problem.
+   - Runtime draw-op snapshots now preserve the typed effect pass records on
+     those non-image layers too. The executor still has to run them, but their
+     effect file, shader, pass index, binds/FBO metadata, and classified family
+     now survive into renderer evidence instead of collapsing to a count.
 
    Dedicated effect modules must be introduced for the effect families that are
    currently mixed into generic draw/runtime branches:
@@ -169,8 +256,9 @@ eye/closed-eye investigation.
      inputs.
    - `material_pass`: shader/material kind, combos, blend/depth/cull state,
      tint/user properties, descriptor layout id, and retained pipeline key.
-   - `effect_pass`: effect kind, parameter block, source/target texture slots,
-     time/uniform inputs, pass ordering, and evidence-log labels.
+   - `effect_pass`: effect kind, `command/source/target`, parameter block,
+     source/target texture slots, pass binds, time/uniform inputs, pass
+     ordering, and evidence-log labels.
    - `effect_uv_transform`: source/mask texture slots, input/mask/backing
      extents, transform scale, transform offset, mapping kind, and retained
      state ids for opacity/iris mask UV evaluation.
@@ -249,6 +337,11 @@ eye/closed-eye investigation.
      `SceneDocument`, and the native Vulkan CLI can accept `.gscn` sources for
      direct binary-scene smoke/ingest without routing through the JSON scene
      loader.
+   - Binary format version `14` extends effect records for WE graph execution:
+     `effect_pass` carries `command/source/target`, `effect_parameter` carries
+     pass binds with `PASS_BIND` and effect-declared FBOs with `EFFECT_FBO`, and
+     direct binary ingest reconstructs binds, FBOs, combos, and constant shader
+     values into render effect passes.
 
 ## Execution Order
 
