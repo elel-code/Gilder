@@ -204,6 +204,22 @@ deferred eye/closed-eye investigation.
      instead of reading JSON properties. Remaining binary render gaps are
      material/effect graph execution, effect target compositing, and retained
      runtime updates.
+   - `.gscn` sampled-image present now uses a binary runtime sampler instead of
+     falling back to a single static frame. The sampler keeps only the file
+     reader, chunk table, debug-name index, resource table, package root, and
+     scene constants; each frame re-reads the required binary ranges for
+     transform timelines, opacity, puppet meshes, and particle emitters, builds
+     vertex-only dynamic updates against the retained draw topology, then drops
+     frame layers. It does not load `.gscene.json` and does not retain the
+     binary payload.
+   - `3742497499` release binary eye smoke now presents dynamic `.gscn` frames:
+     `frames_presented=600`, `average_present_fps=29.99` at `--target-fps 30`,
+     `vertex_buffer_count=4`, `particle_emitter_count=10`, and
+     `payload_retention_model=read-header-table-stream-records-drop-source-bytes`.
+     The scene is no longer frozen by the binary path. The remaining visible
+     failure is still `shader-material-graph`: WE pass-target composition,
+     material/effect graph execution, blend, and effect-UV semantics must be
+     completed rather than patched per sample.
    - `.gscn` node records now carry resolved default user-condition visibility,
      text/font payloads, and parent-composed transform/opacity state on direct
      binary ingest. The workshop `3742497499` eye binary smoke no longer draws
