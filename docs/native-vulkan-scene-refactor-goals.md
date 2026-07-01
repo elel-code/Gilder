@@ -81,6 +81,16 @@ deferred eye/closed-eye investigation.
    Existing decoded logical extents, alpha/base extent ratios, or sample-specific
    constants must not be used as substitutes for the original WE UV transform.
 
+   Current implementation progress:
+
+   - `SceneEffectPass` now carries a typed `SceneEffectUvTransform` for
+     opacity/iris mask passes. The converter lowers WE pass constants,
+     mask/source slots, node extents, and mask backing extents into this record
+     instead of deriving UV scale from decoded alpha/base image ratios.
+   - Render-plan, runtime, and draw-pass UV generation consume the typed
+     transform as `scale + offset`, and the old identity scale helper has been
+     removed from the active path.
+
    Dedicated effect modules must be introduced for the effect families that are
    currently mixed into generic draw/runtime branches:
 
@@ -151,6 +161,9 @@ deferred eye/closed-eye investigation.
      tint/user properties, descriptor layout id, and retained pipeline key.
    - `effect_pass`: effect kind, parameter block, source/target texture slots,
      time/uniform inputs, pass ordering, and evidence-log labels.
+   - `effect_uv_transform`: source/mask texture slots, input/mask/backing
+     extents, transform scale, transform offset, mapping kind, and retained
+     state ids for opacity/iris mask UV evaluation.
    - `flutter_state`: wind/noise curves, phase offsets, anchor/origin binding,
      affected vertex/material ranges, per-layer weights, and retained dirty
      ranges for hair/clothing/ribbon/skirt/accessory flutter. The chunk must
@@ -222,7 +235,9 @@ The required fix path is:
 5. Preserve WE backing texture extents and effect-UV transform inputs in
    texture/effect records. Use those records to compute iris/opacity mask UVs.
    Do not use current decoded logical extents, alpha/base ratios, or
-   sample-specific constants as substitutes.
+   sample-specific constants as substitutes. The first typed gscene and binary
+   records for this are now in place; remaining work is full WE pass-chain
+   routing and visual validation on the closed/open eye frames.
 6. Keep source `1530` as an independent later-drawn source; do not hide, fold,
    or special-case it. Validate the final pass chain with targeted logs and
    HDMI-A-1 observation.
