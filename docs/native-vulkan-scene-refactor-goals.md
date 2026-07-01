@@ -216,13 +216,6 @@ The required fix path is:
    or special-case it. Validate the final pass chain with targeted logs and
    HDMI-A-1 observation.
 
-Progress on 2026-07-01: item 1 is now implemented as a first-class scene
-schema/runtime boundary. `SceneMeshSkinBone.inverse_bind` is required,
-Wallpaper Engine conversion parses `MDLE0002` when present, conversion
-materializes inverse-bind matrices for puppet sources without `MDLE`, and the
-runtime skinning path consumes those matrices directly instead of deriving them
-from bind-world parent chains.
-
 ## Acceptance Criteria
 
 - Draw-pass planning exposes typed routes and payloads instead of one giant
