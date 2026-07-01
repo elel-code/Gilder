@@ -152,6 +152,9 @@ deferred eye/closed-eye investigation.
      and retained runtime ids.
    - `transform_timeline`: compact transform channels, parent origin data,
      interpolation mode, default values, and random-access frame ranges.
+   - `transform_keyframes`: compact time/value/curve records referenced by
+     `transform_timeline`; timeline channels must not remain summary-only if
+     renderer-side sampling needs their full keyframe stream.
    - `geometry`: solid quad records, sampled-image quads, puppet meshes, mesh
      bounds, vertex/index streams, material UV sets, and topology-change ids.
    - `texture_slots`: first-class `g_TextureN` slot records, resource index,
@@ -177,6 +180,21 @@ deferred eye/closed-eye investigation.
      pipeline ids, dirty ranges, and partial-update masks.
    - `debug_names`: compact ids for layer names, material/effect names, resource
      labels, and log correlation.
+
+   Current implementation progress:
+
+   - Binary version `8` uses a fixed chunk-table format with typed chunks for
+     resources, nodes, transform timelines, transform keyframes, geometry
+     streams, texture slots, material/effect passes, effect parameters,
+     effect-UV transforms, flutter state, puppet records, render state,
+     retained GPU state, and debug names.
+   - `node_table` now carries direct child/subtree, transform-range, material,
+     geometry, and puppet record indices. `transform_timeline` records point to
+     `transform_keyframes` ranges, so targeted timeline sampling can be driven
+     from binary records instead of JSON summaries.
+   - Stream ingest validates chunk shape with record-sized reads and keeps
+     keyframes/geometry streams as counted record ranges rather than retaining
+     full JSON-derived tables.
 
 ## Execution Order
 
