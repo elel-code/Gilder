@@ -1,8 +1,8 @@
 # Native Vulkan WE Eye — 闭眼帧瞳孔可见根因
 
-> **⚠ 本文档已更新。2026-07-01 完整根因分析已拆分为两个专门文档：**
-> - 几何层根因：`docs/native-vulkan-we-eye-mdle-inverse-bind-root-cause.md`
-> - 渲染合成层根因：`docs/native-vulkan-we-eye-render-composite-root-cause.md`
+> **⚠ 本文档已更新。2026-07-01 MDLE 几何根因已撤销：**
+> - 已撤销假设：`docs/native-vulkan-we-eye-mdle-inverse-bind-root-cause.md`
+> - 当前根因：`docs/native-vulkan-we-eye-render-composite-root-cause.md`
 >
 > 本文档保留 iris/opacity 效应链路由的历史记录和实验证据。
 

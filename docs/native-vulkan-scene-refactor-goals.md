@@ -15,8 +15,9 @@ deferred eye/closed-eye investigation.
   temporary debugging.
 - Prepare the renderer for a binary scene format and retained/partial update
   path.
-- Use the accepted WE eye root-cause documents as regression-driven architecture
-  work for first-class puppet skinning and material/effect composition.
+- Use the validated WE eye evidence as regression-driven architecture work for
+  first-class material/effect composition, iris routing, blend state, puppet
+  animation-layer state, and pass targets.
 
 ## Non-Goals
 
@@ -58,11 +59,12 @@ deferred eye/closed-eye investigation.
    Isolate puppet mesh extraction, material UV selection, mesh bounds, bone or
    skinning inputs, per-frame mesh deltas, and geometry upload decisions.
 
-   WE puppet skinning must consume first-class inverse-bind matrices from the
-   scene data. `MDLE0002` inverse-bind matrices are accepted as the geometry
-   root cause for workshop scene `3742497499`; they must be parsed at conversion
-   time and stored as required skinning inputs, not recovered through runtime
-   parent-chain inverse calculation or optional compatibility fields.
+   Workshop scene `3742497499` no longer treats `MDLE0002` as a proven
+   inverse-bind source. Current evidence shows `MDLA` frame `0` matches `MDLS`
+   bind local transforms and current `MDLS` parent-chain inverse skinning can
+   close `node-77` by itself. Do not add MDLE/inverse-bind scene fields or dual
+   skinning paths unless new evidence proves the semantics in the `MDLA` pose
+   space.
 
 6. Material and effect passes
 
@@ -71,11 +73,12 @@ deferred eye/closed-eye investigation.
    drift-like effects as first-class material/effect records instead of scattered
    string checks or one-off runtime branches.
 
-   WE image pass chains must model `normal` blend as an explicit overwrite blend
-   equation, `locktransforms` as first-class puppet animation-layer input, and
-   opacity mask UV scale from preserved WE backing texture extents. Existing
-   decoded logical extents must not be reused as a substitute for backing
-   extents.
+   WE image pass chains must model `node-77` iris/effect composition as
+   first-class local-target and final-composite passes. They must also model
+   `normal` blend as an explicit overwrite blend equation, `locktransforms` as
+   first-class puppet animation-layer input, and opacity/iris mask UV scale from
+   preserved WE backing texture extents. Existing decoded logical extents must
+   not be reused as a substitute for backing extents.
 
    Dedicated effect modules must be introduced for the effect families that are
    currently mixed into generic draw/runtime branches:
@@ -189,30 +192,32 @@ preview fallback, legacy loader mapping, resource probing, compatibility
 branches, or Workshop-specific patches.
 
 `WE Eye Closed Frame` (workshop scene `3742497499`) is now an accepted
-architecture regression guard with two root-cause documents:
+architecture regression guard with an invalidated MDLE hypothesis and an active
+render/effect composite root-cause document:
 
-- `docs/native-vulkan-we-eye-mdle-inverse-bind-root-cause.md`: geometry root
-  cause. `models/眼睛_puppet.mdl` carries `MDLE0002` inverse-bind matrices, and
-  deriving inverse bind from MDLS parent-chain bind matrices under-deforms the
-  eyelid mesh.
+- `docs/native-vulkan-we-eye-mdle-inverse-bind-root-cause.md`: invalidated
+  geometry hypothesis. `MDLE0002` must not be parsed as first-class
+  inverse-bind data for this bug.
 - `docs/native-vulkan-we-eye-render-composite-root-cause.md`: render-composition
-  root cause. The current direct puppet mesh + material-UV mask path does not
-  model WE local material/effect pass chains, `normal` blend, first-class
-  `locktransforms`, or backing-extent mask UVs.
+  root cause. Current evidence points to `node-77` iris/effect composite
+  re-drawing the pupil after eyelid geometry has closed, while `normal` blend,
+  first-class `locktransforms`, and backing-extent mask UVs remain real
+  first-class architecture gaps.
 
 The required fix path is:
 
-1. Parse MDLE inverse-bind matrices and store them as required first-class
-   puppet skinning data. Delete the runtime computed-inverse skinning path
-   instead of preserving old and new fields.
-2. Add explicit `normal` blend semantics through core scene state, render-plan
+1. Preserve the current MDLS/MDLA skinning path for the eye bug; do not add
+   MDLE/inverse-bind fields or compatibility branches.
+2. Build first-class `node-77` iris/effect composite routing with local target,
+   mask/effect slots, final scene composite, draw order, and evidence logs.
+3. Add explicit `normal` blend semantics through core scene state, render-plan
    state, and Vulkan blend equations.
-3. Lower `locktransforms` into first-class puppet animation-layer state instead
+4. Lower `locktransforms` into first-class puppet animation-layer state instead
    of reading provenance at runtime.
-4. Preserve WE backing texture extents in texture/effect records and use them
+5. Preserve WE backing texture extents in texture/effect records and use them
    for opacity mask UV scale. Do not use current decoded logical extents as a
    substitute.
-5. Keep source `1530` as an independent later-drawn source; do not hide, fold,
+6. Keep source `1530` as an independent later-drawn source; do not hide, fold,
    or special-case it. Validate the final pass chain with targeted logs and
    HDMI-A-1 observation.
 

@@ -1,8 +1,8 @@
 # Native Vulkan WE Eye First-Class Handoff
 
-> **⚠ 本文档已更新。2026-07-01 完整根因分析已拆分为两个专门文档：**
-> - 几何层根因：`docs/native-vulkan-we-eye-mdle-inverse-bind-root-cause.md`
-> - 渲染合成层根因：`docs/native-vulkan-we-eye-render-composite-root-cause.md`
+> **⚠ 本文档已更新。2026-07-01 MDLE 几何根因已撤销：**
+> - 已撤销假设：`docs/native-vulkan-we-eye-mdle-inverse-bind-root-cause.md`
+> - 当前根因：`docs/native-vulkan-we-eye-render-composite-root-cause.md`
 >
 > 本文档保留 iris/opacity 效应链路由和 puppet 格式的历史证据。
 
@@ -319,18 +319,14 @@ converter.
   eye around frame `300`, but the `node-77` local base FBO still contains
   visible dark pupil pixels. That is a real closed/blink-time output problem,
   not just a missing final opacity multiply.
-- Verified: `MDLE0002` contains `3456` bytes, exactly `54 * 64`, which parses
-  cleanly as one 4x4 matrix per bone. Matrices `45/54` match the MDLS local
-  matrix convention, while `9` parent-chain/key bones differ. The strongest
-  discrepancy is in root/parent-0 child bones, where x translation offsets are
-  much larger than the current computed bind-chain values. Do not ignore
-  `MDLE0002` as padding; it remains the most important candidate for missing
-  original rest/inverse-bind semantics.
-- Verified: CWE only implements raw puppet mesh pass-space drawing for this
-  path. It does not implement the full MDLS/MDLA/MDLE skinning semantics needed
-  by this scene, so CWE can be used as a reference for image/effect FBO pass
-  space, material pass chaining, and blend setup, but not as proof that native
-  MDLS/MDLA skinning is currently correct.
+- Superseded: `MDLE0002` contains `3456` bytes, exactly `54 * 64`, but it is
+  not established as inverse-bind data. Follow-up evidence shows `MDLA` clip
+  `730` frame `0` equals `MDLS` local bind transforms for all `54` bones, and
+  `MDLE` matches `MDLS` forward local matrices for `45/54` bones. Treating
+  `MDLE` as inverse-bind breaks the static/open-eye identity pose.
+- Current conclusion: native `MDLS`/`MDLA` skinning is not the closed-eye root
+  cause. The `node-77` geometry can close the eyelids; the active failure is
+  render/effect composite, especially iris pass routing.
 
 2026-07-01 offline blend/cull check status:
 
