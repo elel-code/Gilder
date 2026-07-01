@@ -1,9 +1,8 @@
 # Native Vulkan Scene Refactor Goals
 
-This document extracts the native scene renderer goals from
-`docs/native-vulkan-video.md` into a standalone refactor target. The scope here
-is the native scene renderer architecture, not the video pipeline and not the
-deferred eye/closed-eye investigation.
+This is the active native scene renderer refactor target. The scope here is the
+native scene renderer architecture, not the video pipeline and not a deferred
+eye/closed-eye investigation.
 
 ## Scope
 
@@ -90,6 +89,11 @@ deferred eye/closed-eye investigation.
    - Render-plan, runtime, and draw-pass UV generation consume the typed
      transform as `scale + offset`, and the old identity scale helper has been
      removed from the active path.
+   - Opacity mask effects now route through a first-class local effect target:
+     the base mesh renders to a retained target, the final scene quad samples
+     `g_Texture0` from that target and `g_Texture1` from the mask, `normal`
+     blend remains an overwrite equation, and final alpha uses coverage semantics
+     instead of a direct material-UV alpha-mask draw.
 
    Dedicated effect modules must be introduced for the effect families that are
    currently mixed into generic draw/runtime branches:
@@ -274,9 +278,9 @@ preview fallback, old loader mapping, resource probing, dual branches, or
 Workshop-specific patches.
 
 `WE Eye Closed Frame` (workshop scene `3742497499`) is now an accepted
-architecture regression guard. Obsolete eye handoff and MDLE/composite
-misdiagnosis documents have been deleted so the active plan has a single root
-cause:
+architecture regression guard. Obsolete handoff documents and the old
+video-scene catch-all document have been deleted so the active scene plan has a
+single root cause:
 
 - `docs/native-vulkan-we-eye-iris-mask-uv-root-cause.md`: current root cause and
   fix direction. The `node-77` iris pass samples the effect target at an offset
