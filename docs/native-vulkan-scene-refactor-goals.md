@@ -181,6 +181,15 @@ eye/closed-eye investigation.
      those non-image layers too. The executor still has to run them, but their
      effect file, shader, pass index, binds/FBO metadata, and classified family
      now survive into renderer evidence instead of collapsing to a count.
+   - Performance evidence is tracked as part of the same first-class execution
+     boundary. The current scene `3742497499` smoke produced `3843` sampled-image
+     recording steps but only `71` Vulkan draw calls after command coalescing.
+     The immediate regression was not the step count by itself: two allocated
+     opacity/iris effect targets disabled recorded command-buffer reuse and
+     forced per-frame re-recording. Reuse is now controlled by a typed material
+     `uses_elapsed_push_constants` flag, so static first-class effect targets do
+     not pessimize the whole scene; actual time-driven material effects must opt
+     into per-frame command data until their uniforms are retained/dynamic.
 
    Dedicated effect modules must be introduced for the effect families that are
    currently mixed into generic draw/runtime branches:

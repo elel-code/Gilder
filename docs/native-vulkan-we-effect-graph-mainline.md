@@ -312,6 +312,19 @@ Latest local evidence after the graph pass-field/binary preservation change:
   `/tmp/gilder-we-3742497499-resource-model-v14-smoke.json` presented `150`
   frames at about `49.96 FPS` via the release binary on `HDMI-A-1`;
   Vulkan effect target resource labels include graph chain/target endpoint ids.
+- Performance diagnosis from that smoke: the scene is not issuing `3843` GPU
+  draw calls. Runtime planning has `3843` sampled-image recording steps, but the
+  Vulkan command stream is coalesced to `71` draws (`63` sampled-image and `8`
+  solid), `26` pipeline binds, and `63` descriptor-heap resource binds. The
+  unnecessary cost was that any allocated effect target disabled recorded
+  command-buffer reuse, so the two pre-existing opacity/iris targets forced a
+  full per-frame command-buffer reset/re-record even though the current
+  sampled-image shader path does not consume elapsed-time push constants for
+  those targets. Command reuse is now keyed by material
+  `uses_elapsed_push_constants` instead of `effect_target_count > 0`: current
+  static opacity/iris target passes can reuse recorded swapchain-image command
+  buffers, while a future real water-ripple/material shader can opt out until
+  its time uniform moves to retained dynamic data.
 - Release tests proving this boundary:
   `draw_pass_plan_preserves_we_effect_bind_overrides_as_graph_bindings`,
   `draw_pass_plan_resolves_named_fbo_bindings_to_graph_targets`,
