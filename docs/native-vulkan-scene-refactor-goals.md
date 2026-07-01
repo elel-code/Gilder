@@ -183,18 +183,24 @@ deferred eye/closed-eye investigation.
 
    Current implementation progress:
 
-   - Binary version `8` uses a fixed chunk-table format with typed chunks for
+   - Binary version `9` uses a fixed chunk-table format with typed chunks for
      resources, nodes, transform timelines, transform keyframes, geometry
      streams, texture slots, material/effect passes, effect parameters,
      effect-UV transforms, flutter state, puppet records, render state,
      retained GPU state, and debug names.
    - `node_table` now carries direct child/subtree, transform-range, material,
-     geometry, and puppet record indices. `transform_timeline` records point to
-     `transform_keyframes` ranges, so targeted timeline sampling can be driven
-     from binary records instead of JSON summaries.
+     geometry, puppet, and static visual-state data: opacity, packed color,
+     packed stroke color, stroke width, corner radius, and fit mode.
+     `transform_timeline` records point to `transform_keyframes` ranges, so
+     targeted timeline sampling can be driven from binary records instead of
+     JSON summaries.
    - Stream ingest validates chunk shape with record-sized reads and keeps
      keyframes/geometry streams as counted record ranges rather than retaining
      full JSON-derived tables.
+   - Conversion now emits a `.gscn` binary scene asset from the typed
+     `SceneDocument`, and the native Vulkan CLI can accept `.gscn` sources for
+     direct binary-scene smoke/ingest without routing through the JSON scene
+     loader.
 
 ## Execution Order
 
