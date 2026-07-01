@@ -1,5 +1,11 @@
 # Native Vulkan WE Eye — 闭眼帧瞳孔可见根因
 
+> **⚠ 本文档已更新。2026-07-01 完整根因分析已拆分为两个专门文档：**
+> - 几何层根因：`docs/native-vulkan-we-eye-mdle-inverse-bind-root-cause.md`
+> - 渲染合成层根因：`docs/native-vulkan-we-eye-render-composite-root-cause.md`
+>
+> 本文档保留 iris/opacity 效应链路由的历史记录和实验证据。
+
 本文件记录闭眼帧中瞳孔仍然显示（workshop scene `3742497499`）的代码级根因，
 取代 `native-vulkan-we-eye-first-class-handoff.md` 中已被代码证伪的旧结论。
 

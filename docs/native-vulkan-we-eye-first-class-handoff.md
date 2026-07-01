@@ -1,5 +1,11 @@
 # Native Vulkan WE Eye First-Class Handoff
 
+> **⚠ 本文档已更新。2026-07-01 完整根因分析已拆分为两个专门文档：**
+> - 几何层根因：`docs/native-vulkan-we-eye-mdle-inverse-bind-root-cause.md`
+> - 渲染合成层根因：`docs/native-vulkan-we-eye-render-composite-root-cause.md`
+>
+> 本文档保留 iris/opacity 效应链路由和 puppet 格式的历史证据。
+
 This document preserves the evidence for the Wallpaper Engine eye-rendering bug
 in workshop scene `3742497499`. It exists so the next implementation step does
 not restart from guesses, repeat extraction work, or replace first-class runtime

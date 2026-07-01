@@ -15,10 +15,14 @@ deferred eye/closed-eye investigation.
   temporary debugging.
 - Prepare the renderer for a binary scene format and retained/partial update
   path.
+- Use the accepted WE eye root-cause documents as regression-driven architecture
+  work for first-class puppet skinning and material/effect composition.
 
 ## Non-Goals
 
-- Do not continue the eye/closed-eye fix in this work stream.
+- Do not treat the eye/closed-eye work as a sample-specific patch stream. Eye
+  work in this plan must advance first-class puppet, material, effect, blend, and
+  pass-chain architecture.
 - Do not spend this work stream on video pipeline fixes.
 - Do not treat file splitting as the refactor by itself.
 - Do not optimize JSON trimming, whole-snapshot rebuilding, or compatibility
@@ -54,12 +58,24 @@ deferred eye/closed-eye investigation.
    Isolate puppet mesh extraction, material UV selection, mesh bounds, bone or
    skinning inputs, per-frame mesh deltas, and geometry upload decisions.
 
+   WE puppet skinning must consume first-class inverse-bind matrices from the
+   scene data. `MDLE0002` inverse-bind matrices are accepted as the geometry
+   root cause for workshop scene `3742497499`; they must be parsed at conversion
+   time and stored as required skinning inputs, not recovered through runtime
+   parent-chain inverse calculation or optional compatibility fields.
+
 6. Material and effect passes
 
    Represent `shader`, `blending`, `combos`, texture-pass metadata, masks,
    opacity, iris, water ripple/waves/flow/caustics, blur, sway, shake, and
    drift-like effects as first-class material/effect records instead of scattered
    string checks or one-off runtime branches.
+
+   WE image pass chains must model `normal` blend as an explicit overwrite blend
+   equation, `locktransforms` as first-class puppet animation-layer input, and
+   opacity mask UV scale from preserved WE backing texture extents. Existing
+   decoded logical extents must not be reused as a substitute for backing
+   extents.
 
    Dedicated effect modules must be introduced for the effect families that are
    currently mixed into generic draw/runtime branches:
@@ -171,6 +187,34 @@ concrete native scene regression guard for material/effect semantics:
 The expected fix path is first-class gscene/material/effect semantics, not
 preview fallback, legacy loader mapping, resource probing, compatibility
 branches, or Workshop-specific patches.
+
+`WE Eye Closed Frame` (workshop scene `3742497499`) is now an accepted
+architecture regression guard with two root-cause documents:
+
+- `docs/native-vulkan-we-eye-mdle-inverse-bind-root-cause.md`: geometry root
+  cause. `models/眼睛_puppet.mdl` carries `MDLE0002` inverse-bind matrices, and
+  deriving inverse bind from MDLS parent-chain bind matrices under-deforms the
+  eyelid mesh.
+- `docs/native-vulkan-we-eye-render-composite-root-cause.md`: render-composition
+  root cause. The current direct puppet mesh + material-UV mask path does not
+  model WE local material/effect pass chains, `normal` blend, first-class
+  `locktransforms`, or backing-extent mask UVs.
+
+The required fix path is:
+
+1. Parse MDLE inverse-bind matrices and store them as required first-class
+   puppet skinning data. Delete the runtime computed-inverse skinning path
+   instead of preserving old and new fields.
+2. Add explicit `normal` blend semantics through core scene state, render-plan
+   state, and Vulkan blend equations.
+3. Lower `locktransforms` into first-class puppet animation-layer state instead
+   of reading provenance at runtime.
+4. Preserve WE backing texture extents in texture/effect records and use them
+   for opacity mask UV scale. Do not use current decoded logical extents as a
+   substitute.
+5. Keep source `1530` as an independent later-drawn source; do not hide, fold,
+   or special-case it. Validate the final pass chain with targeted logs and
+   HDMI-A-1 observation.
 
 ## Acceptance Criteria
 
