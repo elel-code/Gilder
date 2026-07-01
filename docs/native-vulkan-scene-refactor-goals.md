@@ -26,10 +26,10 @@ deferred eye/closed-eye investigation.
   pass-chain architecture.
 - Do not spend this work stream on video pipeline fixes.
 - Do not treat file splitting as the refactor by itself.
-- Do not optimize JSON trimming, whole-snapshot rebuilding, or compatibility
-  branches as substitutes for retained scene architecture.
+- Do not optimize JSON trimming, whole-snapshot rebuilding, or old dual branches
+  as substitutes for retained scene architecture.
 - Do not add Workshop-specific patches, preview fallback behavior, or hidden
-  legacy lowering paths.
+  old lowering paths.
 
 ## Architecture Targets
 
@@ -183,19 +183,22 @@ deferred eye/closed-eye investigation.
 
    Current implementation progress:
 
-   - Binary version `9` uses a fixed chunk-table format with typed chunks for
+   - Binary version `10` uses a fixed chunk-table format with typed chunks for
      resources, nodes, transform timelines, transform keyframes, geometry
      streams, texture slots, material/effect passes, effect parameters,
-     effect-UV transforms, flutter state, puppet records, render state,
-     retained GPU state, and debug names.
+     effect-UV transforms, flutter state, puppet skin bones/vertices,
+     attachments, clips, frames, animation layers, render state, retained GPU
+     state, and debug names.
    - The native Vulkan CLI can now build render layers from `.gscn` directly for
      static binary-scene smoke with a header/table/range reader: resource paths,
      node visual state, default transforms, mesh vertex/index streams, material
      texture slots, effect passes, alpha state, effect-UV transforms, and scalar
      transform/opacity/extent timelines are reconstructed without reading
-     `.gscene.json` or retaining the full binary payload. Remaining binary
-     render gaps are text payloads, particle runtime payloads, and full puppet
-     skinning payloads.
+     `.gscene.json` or retaining the full binary payload. Puppet skinning now
+     reconstructs skin bones, vertex weights, clips, frames, and animation layers
+     from binary ranges and samples mesh vertices on the `.gscn` path. Remaining
+     binary render gaps are text payloads, particle runtime payloads, and
+     material/effect graph execution.
    - `node_table` now carries direct child/subtree, transform-range, material,
      geometry, puppet, and static visual-state data: opacity, packed color,
      packed stroke color, stroke width, corner radius, and fit mode.
@@ -221,7 +224,7 @@ deferred eye/closed-eye investigation.
    than per-frame JSON/document sampling or large CPU geometry rebuilds.
 4. Introduce the binary scene format and retained/partial update path, then
    migrate tests and fixtures to the new model.
-5. Delete obsolete compatibility branches instead of preserving dual paths.
+5. Delete obsolete dual branches instead of preserving parallel old paths.
 
 ## Regression Guard
 
@@ -234,8 +237,8 @@ concrete native scene regression guard for material/effect semantics:
 - ordered immediately after the long-hair layers
 
 The expected fix path is first-class gscene/material/effect semantics, not
-preview fallback, legacy loader mapping, resource probing, compatibility
-branches, or Workshop-specific patches.
+preview fallback, old loader mapping, resource probing, dual branches, or
+Workshop-specific patches.
 
 `WE Eye Closed Frame` (workshop scene `3742497499`) is now an accepted
 architecture regression guard with an invalidated MDLE hypothesis and an active
@@ -257,7 +260,7 @@ render/effect composite root-cause document:
 The required fix path is:
 
 1. Preserve the current MDLS/MDLA skinning path for the eye bug; do not add
-   MDLE/inverse-bind fields or compatibility branches.
+   MDLE/inverse-bind fields or dual branches.
 2. Build first-class `node-77` iris/effect composite routing with local target,
    mask/effect slots, final scene composite, draw order, and evidence logs.
 3. Add explicit `normal` blend semantics through core scene state, render-plan
