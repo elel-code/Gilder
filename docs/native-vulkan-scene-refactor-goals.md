@@ -76,9 +76,10 @@ deferred eye/closed-eye investigation.
    WE image pass chains must model `node-77` iris/effect composition as
    first-class local-target and final-composite passes. They must also model
    `normal` blend as an explicit overwrite blend equation, `locktransforms` as
-   first-class puppet animation-layer input, and opacity/iris mask UV scale from
-   preserved WE backing texture extents. Existing decoded logical extents must
-   not be reused as a substitute for backing extents.
+   first-class puppet animation-layer input, and opacity/iris mask effect-UV
+   transform from preserved WE pass metadata and backing texture extents.
+   Existing decoded logical extents, alpha/base extent ratios, or sample-specific
+   constants must not be used as substitutes for the original WE UV transform.
 
    Dedicated effect modules must be introduced for the effect families that are
    currently mixed into generic draw/runtime branches:
@@ -198,11 +199,15 @@ render/effect composite root-cause document:
 - `docs/native-vulkan-we-eye-mdle-inverse-bind-root-cause.md`: invalidated
   geometry hypothesis. `MDLE0002` must not be parsed as first-class
   inverse-bind data for this bug.
-- `docs/native-vulkan-we-eye-render-composite-root-cause.md`: render-composition
-  root cause. Current evidence points to `node-77` iris/effect composite
-  re-drawing the pupil after eyelid geometry has closed, while `normal` blend,
-  first-class `locktransforms`, and backing-extent mask UVs remain real
-  first-class architecture gaps.
+- `docs/native-vulkan-we-eye-iris-mask-uv-root-cause.md`: precise active root
+  cause. The `node-77` iris pass samples the effect target at an offset driven by
+  a nonzero iris mask in eyelid pixels. The hard-coded identity mask UV transform
+  is a trigger, but the fix is full WE effect-UV transform/backing-extent
+  semantics, not a decoded alpha/base ratio.
+- `docs/native-vulkan-we-eye-render-composite-root-cause.md`: broader
+  render-composition root cause. It remains the first-class pass-chain context
+  for iris local target/final composite, `normal` blend, `locktransforms`, and
+  backing-extent mask UV work.
 
 The required fix path is:
 
@@ -214,9 +219,10 @@ The required fix path is:
    state, and Vulkan blend equations.
 4. Lower `locktransforms` into first-class puppet animation-layer state instead
    of reading provenance at runtime.
-5. Preserve WE backing texture extents in texture/effect records and use them
-   for opacity mask UV scale. Do not use current decoded logical extents as a
-   substitute.
+5. Preserve WE backing texture extents and effect-UV transform inputs in
+   texture/effect records. Use those records to compute iris/opacity mask UVs.
+   Do not use current decoded logical extents, alpha/base ratios, or
+   sample-specific constants as substitutes.
 6. Keep source `1530` as an independent later-drawn source; do not hide, fold,
    or special-case it. Validate the final pass chain with targeted logs and
    HDMI-A-1 observation.
