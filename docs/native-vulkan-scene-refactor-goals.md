@@ -375,11 +375,51 @@ eye/closed-eye investigation.
      `SceneDocument`, and the native Vulkan CLI can accept `.gscn` sources for
      direct binary-scene smoke/ingest without routing through the JSON scene
      loader.
-   - Binary format version `14` extends effect records for WE graph execution:
+   - Binary format version `15` extends effect records for WE graph execution
+     and puppet attachment runtime sampling. Version `14` added
+     `effect_pass.command/source/target`, pass binds, and effect-declared FBO
+     records; version `15` adds the child-node `puppet_attachment_name` field so
+     direct `.gscn` binary ingest can apply parent puppet attachment deltas
+     without falling back to JSON.
      `effect_pass` carries `command/source/target`, `effect_parameter` carries
      pass binds with `PASS_BIND` and effect-declared FBOs with `EFFECT_FBO`, and
      direct binary ingest reconstructs binds, FBOs, combos, and constant shader
      values into render effect passes.
+
+## 2026-07-02 Current Status
+
+- The water rectangle/outline regression is fixed on the direct binary `.gscn`
+  path. The verified cause was final scene blend routing, not `.gscn` data loss:
+  effect pass `normal` was escaping into the swapchain composite for visible
+  `waterwaves` character layers. Final composite now preserves the base
+  material alpha/translucent blend.
+- Hair attachment motion is fixed on the direct binary `.gscn` path. Binary
+  node records now preserve `puppet_attachment_name`, binary runtime reconstructs
+  parent puppet attachment deltas from skin attachments/clips/layers, and child
+  group/image transforms receive those deltas before parent composition. The
+  observed scene proof is `node-70-models-1-json` moving between t=0 and
+  t=1000:
+  `x [1340.8876,2124.9495] -> [1339.8561,2129.4248]`,
+  `y [1308.9340,2124.2290] -> [1308.2462,2128.8357]`.
+- Remaining confirmed visual gap is the eye. `node-89` opacity records as a
+  linked two-step first-class target chain. `node-77` still uses the old
+  collapsed first-class target executor: base eye mesh is written to an effect
+  target and the scene pass is a legacy iris composite, while the planned
+  `iris -> image-local-sub -> waterripple -> scene` graph steps are not executed
+  against real image-local targets yet. This is now the next graph-executor
+  boundary, not an attachment, binary, or raw texture problem.
+
+Validation for this state:
+
+- `cargo test --release --features native-vulkan-video,native-vulkan-vulkanalia puppet_attachment -- --nocapture`
+- `cargo test --release --features native-vulkan-video,native-vulkan-vulkanalia moves_attachment -- --nocapture`
+- `cargo test --release --features native-vulkan-video,native-vulkan-vulkanalia binary_puppet_payload_carries_skin_clips_and_layers -- --nocapture`
+- `cargo build --release --features native-vulkan-video,native-vulkan-vulkanalia --bin gilder-native-vulkan --bin gilder-convert`
+- Real smoke on `HDMI-A-1`, direct binary `.gscn`, `10.028s`: `346` frames,
+  `34.500 FPS`, `68` draw calls (`60` sampled-image, `8` solid), `19` pipeline
+  binds, `3839` sampled-image recording steps, `248` WE graph chains, `547`
+  graph steps, `275` graph targets, `343` graph resources, and `99` visible
+  effect passes.
 
 ## Execution Order
 

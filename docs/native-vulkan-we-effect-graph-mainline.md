@@ -330,6 +330,34 @@ Latest local evidence after the 2026-07-02 `waterwaves` blend-boundary fix:
 
 Latest local evidence after the graph pass-field/binary preservation change:
 
+2026-07-02 update after the attachment/binary v15 fix:
+
+- Direct binary `.gscn` now preserves child `puppet_attachment_name` and binary
+  runtime applies parent puppet attachment deltas per sampled frame. This fixes
+  the observed hair not following head/body motion without leaving the WE graph
+  path or falling back to JSON.
+- The remaining eye issue is isolated to `node-77-models-json`, not to
+  attachment motion. Runtime evidence for t=0 shows:
+  - `node-77` graph chain `33` plans three passes:
+    base mesh -> first-class effect target `56`, `iris` -> image-local-sub
+    target `57`, then `waterripple` -> scene.
+  - Actual recording still emits only two steps for `node-77`: base mesh writes
+    effect target `56`, then a legacy iris final scene quad samples Vulkan
+    effect target resource `59`. That final quad is intentionally unlinked from
+    graph steps because it skips the planned image-local-sub/waterripple passes.
+  - `node-89` opacity graph chain `44` is linked through both actual steps:
+    base mesh -> target `70`, final coverage scene quad samples target `70`
+    plus the opacity mask.
+- Therefore the next implementation boundary is to allocate/bind executable
+  image-local graph targets and run `node-77` pass `1` and pass `2` as real
+  graph steps. Treating the old iris final quad as complete would fake the graph
+  evidence and leave the eye incomplete.
+- Latest real smoke on `/tmp/gilder-we-3742497499-attachment-fix/assets/scene.gscn`
+  ran `10.028s` on `HDMI-A-1`: `346` frames, `34.500 FPS`, `68` Vulkan draw
+  calls (`60` sampled-image, `8` solid), `19` pipeline binds, `3839` sampled
+  image recording steps, `248` WE graph chains, `547` graph steps, `275` graph
+  targets, and `343` graph resources.
+
 - Converted directly from
   `/tmp/gilder-we-download-3742497499/steamapps/workshop/content/431960/3742497499`
   to `/tmp/gilder-we-3742497499-resource-model-v14`.
