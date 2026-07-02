@@ -190,6 +190,35 @@ eye/closed-eye investigation.
      `uses_elapsed_push_constants` flag, so static first-class effect targets do
      not pessimize the whole scene; actual time-driven material effects must opt
      into per-frame command data until their uniforms are retained/dynamic.
+   - 2026-07-02 release smoke after the `waterwaves` blend-boundary fix ran the
+     real scene for `10.009s` on `HDMI-A-1`: `479` frames, `47.854 FPS`,
+     `68` Vulkan draw calls (`60` sampled-image, `8` solid), `19` pipeline
+     binds, `3839` sampled-image recording steps, `248` WE graph chains,
+     `547` WE graph steps, `275` WE graph targets, `343` WE graph resources,
+     and `99` visible effect passes. The user confirmed that the one-large/
+     one-small rectangles disappeared, and also observed that other thick
+     outline artifacts around patterned layers disappeared. This reinforces
+     that blend state must remain first-class pass data: the old bug was
+     effect-pass `normal` escaping into final scene composite.
+   - Remaining visual gaps from the same smoke are now tracked as first-class
+     semantics, not water-specific patches:
+     1. Hair does not follow head/body motion. The affected hair groups
+        (`node-61`, `node-63`, `node-69`, `node-78`, etc.) are WE puppet
+        attachment groups named `头发`, parented to `node-59/node-67`
+        `主身体` puppet attachments. The converter preserves attachment
+        metadata (`bone_index=42`, `placement_source=mdls-bone-matrix-chain`),
+        but native runtime still has to apply the sampled parent puppet bone
+        pose every frame to child attachment transforms, including group
+        children with waterwaves/material graph participation.
+     2. Eyes are still visually incomplete. The scene has two eye layers:
+        `node-77` (`effects/iris` + `waterripple`) and `node-89`
+        (`effects/opacity`), both attached to the `眼睛` puppet attachment on
+        the body puppet and both using clip `730`. WE semantics require
+        base puppet mesh -> local effect target -> iris/opacity material pass
+        -> final scene composite with `normal` overwrite where authored. The
+        current opacity/iris target path is first-class evidence, but the full
+        two-layer FBO/mask/effect-UV/composite behavior remains the next
+        executor boundary.
 
    Dedicated effect modules must be introduced for the effect families that are
    currently mixed into generic draw/runtime branches:
