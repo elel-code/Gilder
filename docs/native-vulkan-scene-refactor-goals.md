@@ -420,6 +420,15 @@ Validation for this state:
   binds, `3839` sampled-image recording steps, `248` WE graph chains, `547`
   graph steps, `275` graph targets, `343` graph resources, and `99` visible
   effect passes.
+- 2026-07-02 eye graph update: `node-77-models-json` now records the executable
+  three-step local chain (`base -> first-class-effect-target`, `iris ->
+  image-local-sub`, `waterripple -> scene`) instead of the old collapsed final
+  iris quad. The intermediate iris pass keeps the converter-provided effect UV
+  range `u=0..2.003, v=0..2`, so moving the pass into a local target no longer
+  clips the eye mask back to identity UVs. Release 10s smoke on `HDMI-A-1`
+  completed: `363` frames, `36.240 FPS`, `10.016s`, `3840` sampled-image draw
+  steps, `3` allocated effect targets, `343` WE graph resources (`3` allocated,
+  `272` still planned), command buffers `4` recorded / `359` reused.
 
 ## Execution Order
 
@@ -468,6 +477,9 @@ The required fix path is:
    MDLE/inverse-bind fields or dual branches.
 2. Build first-class `node-77` iris/effect composite routing with local target,
    mask/effect slots, final scene composite, draw order, and evidence logs.
+   The first executable route is now in place for `iris + waterripple`; full
+   waterripple fragment math and the rest of the effect families remain on the
+   same first-class graph path.
 3. Add explicit `normal` blend semantics through core scene state, render-plan
    state, and Vulkan blend equations.
 4. Lower `locktransforms` into first-class puppet animation-layer state instead

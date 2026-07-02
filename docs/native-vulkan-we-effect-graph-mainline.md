@@ -193,10 +193,26 @@ Current implementation progress:
   recording no longer lets an effect pass override the scene composite blend.
   This keeps visible `waterwaves` hair/body layers in the plan while preventing
   their transparent source rectangles from overwriting the character/background.
+- The first executable multi-pass image chain is now recorded for the eye layer
+  `node-77-models-json`: base puppet mesh -> first-class effect target, iris
+  pass -> image-local-sub target, waterripple pass -> scene. The image-local-sub
+  target is allocated as a real Vulkan effect target, texture bindings point at
+  the previous target and pass texture slots, and the final scene pass owns the
+  alpha blend. This replaces the old collapsed "base target + unlinked final
+  iris quad" path.
+- Intermediate effect quads now preserve the first-class effect UV transform.
+  For `node-77`, the iris pass writes to the local target with effect UV range
+  `u=0..2.003, v=0..2`, matching the previous final-pass mask projection instead
+  of falling back to identity `0..1`. This is required for the eye mask to sample
+  the same region after the graph pass is moved off the swapchain and into an
+  image-local target.
 
 The next coding boundary is no longer "detect the rectangle"; it is to bind the
-typed graph targets and per-step texture binding plans to descriptor sets, then
-execute pass-specific shader/material modules against those targets.
+remaining typed graph targets and per-step texture binding plans to descriptor
+sets, then execute pass-specific shader/material modules against those targets.
+The `node-77` iris/waterripple route proves the executor shape; the remaining
+large count of planned graph targets is still pending full effect-family
+coverage.
 
 ## Effect Families
 

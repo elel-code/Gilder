@@ -115,7 +115,25 @@ scale = alpha_decoded_extent / base_decoded_extent
 该比例可以作为证据实验记录，但不是 renderer 修复。它会把本场景的 iris mask
 有效区挪到错误半区，破坏睁眼帧 iris 视差。
 
-### 4.2 验证标准
+### 4.2 2026-07-02 当前修复进展
+
+`node-77-models-json` 的 graph 现在不再被折叠成旧的 scene-final iris quad：
+
+1. step 0: base puppet mesh -> `first-class-effect-target` target 56
+2. step 1: `iris` -> `image-local-sub` target 57
+3. step 2: `waterripple` -> scene
+
+同时修正了一个新的残缺成因：把 iris 从 scene-final pass 移到
+image-local-sub pass 后，中间 pass 的 quad 曾经退回 identity effect UV
+`u/v=0..1`。这会让 331×115 iris mask 在 663×230 eye pass 上采样错误区域，
+表现为眼睛图案被裁掉、错位或只剩局部色块。当前中间 iris pass 已恢复 converter
+保存的 effect-UV transform，运行时证据为 `u=0..2.003, v=0..2`，与旧 final pass
+一致。
+
+这条修复仍是同一主线：effect/material/FBO graph 和 effect UV 都必须 first-class。
+不是二进制丢信息，也不是临时隐藏图层。
+
+### 4.3 验证标准
 
 修复后必须同时满足：
 
